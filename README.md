@@ -2,14 +2,6 @@
 
 Python bindings for the [genogrove](https://github.com/genogrove/genogrove) C++ library - a specialized B+ tree data structure optimized for genomic interval storage and querying.
 
-## Features
-
-- **Efficient Interval Storage**: B+ tree implementation optimized for genomic intervals
-- **Multi-Index Support**: Separate trees for different chromosomes or indices
-- **Fast Queries**: Overlap-based interval queries with efficient tree traversal
-- **Sorted Insertion**: Optimized insertion path for pre-sorted data (10-20x speedup)
-- **Memory Efficient**: Stable memory addresses with deque-based storage
-
 ## Installation
 
 ### Building from Source
@@ -21,7 +13,7 @@ Requirements:
 
 ```bash
 # Clone with submodules
-git clone --recursive https://github.com/yourusername/pygenogrove.git
+git clone --recursive https://github.com/genogrove/pygenogrove.git
 cd pygenogrove
 
 # Build using CMake
@@ -31,11 +23,13 @@ cmake --build build
 # The built module will be in build/pygenogrove.so (or .pyd on Windows)
 ```
 
-### Using pip (when packaged)
+### Using pip 
 
 ```bash
 pip install pygenogrove
 ```
+
+### Using conda/mamba
 
 ## Quick Start
 
@@ -225,49 +219,13 @@ This is an early development version. Currently exposed features:
 3. **Separate by chromosome**: Use index parameter to maintain separate trees per chromosome
 4. **Query specific indices**: Query specific chromosomes instead of all indices when possible
 
-## Development
-
-### Building and Testing
-
-```bash
-# Build in debug mode
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
-
-# Run tests (when added)
-cd build
-ctest
-```
-
-### Project Structure
-
-```
-pygenogrove/
-├── external/
-│   └── genogrove/          # C++ library (git submodule)
-├── src/
-│   └── bindings.cpp        # pybind11 bindings
-├── tests/                  # Python tests (to be added)
-├── CMakeLists.txt          # Build configuration
-├── README.md              # This file
-└── CLAUDE.md              # Development guide
-```
-
-## Contributing
-
-Contributions are welcome! Areas for contribution:
-- Additional bindings for genogrove features
-- Python tests and examples
-- Documentation improvements
-- Performance benchmarks
-
 ## License
 
-This project inherits the license from the genogrove C++ library. See the LICENSE file for details.
+This project inherits the license from the genogrove C++ library and is therefore licensed under the GPLv3 license. 
 
 ## Related Projects
 
-- [genogrove](https://github.com/seschwar/genogrove): The underlying C++ library
+- [genogrove](https://github.com/genogrove/genogrove): The underlying C++ library
 
 ## Citation
 
