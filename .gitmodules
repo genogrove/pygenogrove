@@ -1,0 +1,3 @@
+[submodule "external/genogrove"]
+	path = external/genogrove
+	url = https://github.com/genogrove/genogrove.git
