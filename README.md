@@ -39,17 +39,17 @@ import pygenogrove as pg
 # Create a grove with order 100 (max 99 keys per node)
 grove = pg.Grove(100)
 
-# Create intervals
-interval1 = pg.Interval(100, 200)  # [100, 200)
-interval2 = pg.Interval(150, 250)  # [150, 250)
-interval3 = pg.Interval(300, 400)  # [300, 400)
+# Create intervals — coordinates are closed [start, end] (both inclusive)
+interval1 = pg.Interval(100, 200)
+interval2 = pg.Interval(150, 250)
+interval3 = pg.Interval(300, 400)
 
 # Insert intervals into different chromosomes
 grove.insert("chr1", interval1)
 grove.insert("chr1", interval2)
 grove.insert("chr2", interval3)
 
-print(f"Total intervals: {grove.size()}")  # Output: Total intervals: 3
+print(f"Total intervals: {len(grove)}")  # Output: Total intervals: 3
 
 # Query for overlapping intervals
 query = pg.Interval(175, 225)
@@ -68,38 +68,23 @@ for key in results:
 ```python
 import pygenogrove as pg
 
-# Create a grove (default order is 3)
+# Create a grove (default order is 3; minimum is 3)
 grove = pg.Grove()
 
 # Create and insert intervals
 interval = pg.Interval(1000, 2000)
 key = grove.insert("chr1", interval)
 
-# Access interval properties
+# Access interval properties (read-only)
 print(f"Start: {interval.start}")  # Output: Start: 1000
 print(f"End: {interval.end}")      # Output: End: 2000
-
-# Modify intervals
-interval.start = 1100
-interval.end = 2100
 ```
 
-### Sorted Insertion (Optimized)
-
-For pre-sorted data, use `insert_sorted()` for better performance:
-
-```python
-import pygenogrove as pg
-
-grove = pg.Grove(100)
-
-# Insert sorted intervals (each must be > previous)
-grove.insert_sorted("chr1", pg.Interval(100, 200))
-grove.insert_sorted("chr1", pg.Interval(300, 400))
-grove.insert_sorted("chr1", pg.Interval(500, 600))
-```
-
-**Note**: `insert_sorted()` assumes each interval is greater than all existing intervals in that index. Using it incorrectly may corrupt the tree structure.
+**Important — do not mutate an inserted interval.** `Interval.start` and
+`Interval.end` are intentionally read-only, and `Interval.set_range(start, end)`
+must only be used on intervals you have NOT yet inserted (e.g. a query
+interval you want to reuse). Mutating a stored key silently corrupts B+ tree
+ordering — overlap queries will start returning wrong answers with no error.
 
 ### Querying Intervals
 
@@ -136,8 +121,8 @@ interval1 = pg.Interval(100, 200)
 interval2 = pg.Interval(150, 250)
 interval3 = pg.Interval(300, 400)
 
-print(pg.Interval.overlap(interval1, interval2))  # True (they overlap)
-print(pg.Interval.overlap(interval1, interval3))  # False (no overlap)
+print(pg.Interval.overlaps(interval1, interval2))  # True (they overlap)
+print(pg.Interval.overlaps(interval1, interval3))  # False (no overlap)
 ```
 
 ## API Reference
@@ -148,14 +133,15 @@ print(pg.Interval.overlap(interval1, interval3))  # False (no overlap)
 Interval(start: int, end: int)
 ```
 
-A genomic interval with start and end coordinates (0-based, half-open `[start, end)`).
+A genomic interval with closed `[start, end]` coordinates (0-based, both inclusive).
 
-**Attributes**:
+**Attributes** (read-only):
 - `start`: Start position (inclusive)
-- `end`: End position (exclusive)
+- `end`: End position (inclusive)
 
 **Methods**:
-- `Interval.overlap(a, b)`: Static method to check if two intervals overlap
+- `set_range(start, end)`: Atomically set both endpoints. Only safe on intervals not yet inserted into a Grove (mutating a stored key corrupts B+ tree ordering).
+- `Interval.overlaps(a, b)`: Static method to check if two intervals overlap
 
 ### Grove
 
@@ -166,13 +152,12 @@ Grove(order: int = 3)
 A B+ tree container for genomic intervals with multi-index support.
 
 **Parameters**:
-- `order`: Maximum branching factor (max keys per node = order - 1)
+- `order`: Maximum branching factor (max keys per node = order - 1). Minimum 3.
 
 **Methods**:
-- `size()`: Get total number of intervals across all indices
+- `len(grove)` / `size()` / `indexed_vertex_count()`: Number of indexed intervals across all indices
 - `get_order()`: Get the order (branching factor) of the tree
 - `insert(index: str, interval: Interval) -> Key`: Insert an interval at the specified index
-- `insert_sorted(index: str, interval: Interval) -> Key`: Insert pre-sorted interval (optimized)
 - `intersect(query: Interval) -> QueryResult`: Find overlapping intervals across all indices
 - `intersect(query: Interval, index: str) -> QueryResult`: Find overlapping intervals in specific index
 
@@ -202,22 +187,20 @@ This is an early development version. Currently exposed features:
 - Basic grove and interval operations
 - Insert and query functionality
 - Multi-index support (per chromosome)
-- Sorted insertion optimization
 
-**Not yet exposed**:
+**Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
 - Graph overlay operations
 - Genomic coordinates with strand information
 - File I/O (BED, GFF/GTF readers)
-- Bulk insertion operations
+- Bulk / sorted insertion (currently only available for groves with associated data)
 - Serialization/deserialization
 - Data associations (key-value pairs)
 
 ## Performance Tips
 
 1. **Choose appropriate order**: Higher order (e.g., 100-500) reduces tree height for large datasets
-2. **Use sorted insertion**: If your data is pre-sorted, use `insert_sorted()` for 10-20x speedup
-3. **Separate by chromosome**: Use index parameter to maintain separate trees per chromosome
-4. **Query specific indices**: Query specific chromosomes instead of all indices when possible
+2. **Separate by chromosome**: Use the index parameter to maintain separate trees per chromosome
+3. **Query specific indices**: Query specific chromosomes instead of all indices when possible
 
 ## License
 
