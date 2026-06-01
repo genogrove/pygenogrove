@@ -161,6 +161,20 @@ A B+ tree container for genomic intervals with multi-index support.
 - `intersect(query: Interval) -> QueryResult`: Find overlapping intervals across all indices
 - `intersect(query: Interval, index: str) -> QueryResult`: Find overlapping intervals in specific index
 
+**Graph overlay** (directed edges between keys):
+- `add_edge(source: Key, target: Key)`: Add a directed edge (raises `ValueError` if a key is `None`)
+- `remove_edge(source: Key, target: Key) -> bool`: Remove an edge; `True` if one was removed
+- `has_edge(source: Key, target: Key) -> bool`: Test whether an edge exists
+- `get_neighbors(source: Key) -> list[Key]`: Keys directly reachable from `source`
+- `out_degree(source: Key) -> int`: Number of outgoing edges from `source`
+- `edge_count() -> int`: Total number of edges in the overlay
+- `vertex_count_with_edges() -> int`: Number of keys with at least one outgoing edge
+- `add_external_key(interval: Interval) -> Key`: Add a key outside the index that can still participate in the graph (not returned by `intersect`)
+
+**Serialization** (zlib-compressed `.gg` binary):
+- `serialize(path: str)`: Write the grove (intervals + graph overlay) to `path`
+- `deserialize(path: str) -> Grove` *(static)*: Load a grove written by `serialize`
+
 ### Key
 
 Wrapper object for intervals stored in the grove. Returned by insert operations.
@@ -187,14 +201,15 @@ This is an early development version. Currently exposed features:
 - Basic grove and interval operations
 - Insert and query functionality
 - Multi-index support (per chromosome)
+- Graph overlay (directed edges, external keys)
+- Serialization / deserialization to compressed `.gg` files
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
-- Graph overlay operations
 - Genomic coordinates with strand information
 - File I/O (BED, GFF/GTF readers)
 - Bulk / sorted insertion (currently only available for groves with associated data)
-- Serialization/deserialization
 - Data associations (key-value pairs)
+- Edge metadata, `get_neighbors_if` / `link_if` (require a metadata-carrying grove)
 
 ## Performance Tips
 

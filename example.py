@@ -94,6 +94,27 @@ def main():
     print(f"  {interval_a} overlaps {interval_b}? {pg.Interval.overlaps(interval_a, interval_b)}")
     print(f"  {interval_a} overlaps {interval_c}? {pg.Interval.overlaps(interval_a, interval_c)}")
 
+    # Graph overlay: connect intervals with directed edges
+    print("\nBuilding a graph overlay (e.g. exon -> exon -> enhancer)...")
+    gene = pg.Grove(3)
+    exon1 = gene.insert("chr1", pg.Interval(1000, 1200))
+    exon2 = gene.insert("chr1", pg.Interval(1400, 1600))
+    enhancer = gene.add_external_key(pg.Interval(5000, 5500))  # not in the index
+
+    gene.add_edge(exon1, exon2)
+    gene.add_edge(exon2, enhancer)
+    print(f"  edges: {gene.edge_count()}, out_degree(exon1): {gene.out_degree(exon1)}")
+    print(f"  exon2 -> {[str(n.value) for n in gene.get_neighbors(exon2)]}")
+
+    # Serialize the connected grove and read it back
+    out_path = "example_gene.gg"
+    print(f"\nSerializing grove to {out_path} and reloading...")
+    gene.serialize(out_path)
+    reloaded = pg.Grove.deserialize(out_path)
+    src = list(reloaded.intersect(pg.Interval(1000, 1200), "chr1"))[0]
+    print(f"  reloaded size: {reloaded.size()}, edges: {reloaded.edge_count()}")
+    print(f"  reloaded exon1 -> {[str(n.value) for n in reloaded.get_neighbors(src)]}")
+
     print("\nExample completed successfully!")
 
 
