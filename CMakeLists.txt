@@ -19,6 +19,9 @@ FetchContent_MakeAvailable(pybind11)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(BUILD_CLI OFF CACHE BOOL "" FORCE)
 set(BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+# genogrove's static lib must be position-independent so it can be linked
+# into the pybind11 shared module (.so); otherwise ld rejects the relocation.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_subdirectory(external/genogrove)
 
 # Create Python module
