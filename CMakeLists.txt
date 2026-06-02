@@ -13,7 +13,12 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-# Add genogrove library
+# Add genogrove library — build it as a library only. Its test/CLI/benchmark
+# targets need generated headers (e.g. config/version.hpp) and extra deps we
+# don't use here, and would otherwise break the wheel build.
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(BUILD_CLI OFF CACHE BOOL "" FORCE)
+set(BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/genogrove)
 
 # Create Python module
