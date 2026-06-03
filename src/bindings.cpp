@@ -3,6 +3,9 @@
 #include <pybind11/functional.h>
 #include <pybind11/operators.h>
 
+#include <fstream>
+#include <stdexcept>
+
 #include <genogrove/data_type/interval.hpp>
 #include <genogrove/data_type/key.hpp>
 #include <genogrove/data_type/query_result.hpp>
@@ -160,6 +163,113 @@ PYBIND11_MODULE(pygenogrove, m) {
              py::arg("query"), py::arg("index"),
              R"pbdoc(
                  Find all intervals that overlap with the query in a specific index.
+             )pbdoc")
+
+        // ---- Graph overlay (directed edges between keys) ----
+        .def("add_edge",
+             [](ggs::grove<gdt::interval>& g,
+                gdt::key<gdt::interval>* source,
+                gdt::key<gdt::interval>* target) {
+                 g.add_edge(source, target);
+             },
+             py::arg("source"), py::arg("target"),
+             R"pbdoc(
+                 Add a directed edge from source to target.
+
+                 source and target must be Keys belonging to this Grove (returned
+                 by insert(), add_external_key(), or yielded by a QueryResult).
+                 Raises ValueError if either is None.
+             )pbdoc")
+        .def("remove_edge",
+             [](ggs::grove<gdt::interval>& g,
+                gdt::key<gdt::interval>* source,
+                gdt::key<gdt::interval>* target) {
+                 return g.remove_edge(source, target);
+             },
+             py::arg("source"), py::arg("target"),
+             "Remove the directed edge from source to target. Returns True if an "
+             "edge was removed, False if it did not exist.")
+        .def("has_edge",
+             [](const ggs::grove<gdt::interval>& g,
+                const gdt::key<gdt::interval>* source,
+                const gdt::key<gdt::interval>* target) {
+                 return g.has_edge(source, target);
+             },
+             py::arg("source"), py::arg("target"),
+             "Return True if a directed edge from source to target exists.")
+        .def("get_neighbors",
+             [](ggs::grove<gdt::interval>& g,
+                gdt::key<gdt::interval>* source) {
+                 return g.get_neighbors(source);
+             },
+             py::arg("source"),
+             py::return_value_policy::reference_internal,
+             R"pbdoc(
+                 Return the list of target Keys directly reachable from source.
+
+                 The returned Keys point into this Grove's storage and remain valid
+                 only while the Grove is alive.
+             )pbdoc")
+        .def("out_degree",
+             [](const ggs::grove<gdt::interval>& g,
+                const gdt::key<gdt::interval>* source) {
+                 return g.out_degree(source);
+             },
+             py::arg("source"),
+             "Number of outgoing edges from source.")
+        .def("edge_count",
+             &ggs::grove<gdt::interval>::edge_count,
+             "Total number of directed edges in the graph overlay.")
+        .def("vertex_count_with_edges",
+             &ggs::grove<gdt::interval>::vertex_count_with_edges,
+             "Number of keys that have at least one outgoing edge.")
+        .def("add_external_key",
+             [](ggs::grove<gdt::interval>& g, const gdt::interval& interval) {
+                 return g.add_external_key(interval);
+             },
+             py::arg("interval"),
+             py::return_value_policy::reference_internal,
+             R"pbdoc(
+                 Add a key that lives outside the B+ tree index but can participate
+                 in the graph overlay (e.g. an enhancer linked to indexed exons).
+
+                 The interval is copied into the Grove. Returns a stable Key that
+                 remains valid as long as the Grove is alive. External keys are not
+                 returned by intersect() queries.
+             )pbdoc")
+
+        // ---- Serialization (zlib-compressed .gg binary) ----
+        .def("serialize",
+             [](const ggs::grove<gdt::interval>& g, const std::string& path) {
+                 std::ofstream os(path, std::ios::binary);
+                 if (!os) {
+                     throw std::runtime_error(
+                         "Failed to open file for writing: " + path);
+                 }
+                 g.serialize(os);
+                 if (!os) {
+                     throw std::runtime_error(
+                         "Failed to write grove to file: " + path);
+                 }
+             },
+             py::arg("path"),
+             R"pbdoc(
+                 Serialize the Grove (intervals + graph overlay) to a
+                 zlib-compressed binary file at the given path.
+             )pbdoc")
+        .def_static("deserialize",
+             [](const std::string& path) {
+                 std::ifstream is(path, std::ios::binary);
+                 if (!is) {
+                     throw std::runtime_error(
+                         "Failed to open file for reading: " + path);
+                 }
+                 return ggs::grove<gdt::interval>::deserialize(is);
+             },
+             py::arg("path"),
+             R"pbdoc(
+                 Load a Grove previously written with serialize(). Returns a new
+                 Grove with the same intervals and graph overlay edges.
              )pbdoc");
 
     m.attr("__version__") = "0.1.0";

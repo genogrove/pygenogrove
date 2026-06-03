@@ -13,7 +13,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-# Add genogrove library
+# Add genogrove library — build it as a library only. Its test/CLI/benchmark
+# targets need generated headers (e.g. config/version.hpp) and extra deps we
+# don't use here, and would otherwise break the wheel build.
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(BUILD_CLI OFF CACHE BOOL "" FORCE)
+set(BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+# genogrove's static lib must be position-independent so it can be linked
+# into the pybind11 shared module (.so); otherwise ld rejects the relocation.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_subdirectory(external/genogrove)
 
 # Create Python module
@@ -27,3 +35,8 @@ target_include_directories(pygenogrove PRIVATE
 set_target_properties(pygenogrove PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+
+# Install the extension into the wheel root so `import pygenogrove` resolves.
+# scikit-build-core populates the wheel from the CMake install tree; without
+# this rule the module is built but never packaged, leaving it unimportable.
+install(TARGETS pygenogrove LIBRARY DESTINATION .)

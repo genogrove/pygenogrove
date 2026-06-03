@@ -1,0 +1,62 @@
+[build-system]
+requires = ["scikit-build-core>=0.3.3", "pybind11>=2.13.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pygenogrove"
+version = "0.1.0"
+description = "Python bindings for the genogrove C++ library - a specialized B+ tree for genomic intervals"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Richard A. Schaefer", email = "richard.schaefer@northwestern.edu" },
+    { name = "Rendong Yang", email = "rendong.yang@northwestern.edu" },
+    { name = "Yangyang Li", email = "yangyang.li@northwestern.edu" },
+]
+keywords = ["genomics", "bioinformatics", "intervals", "b+tree", "data-structures"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: C++",
+]
+
+[project.urls]
+Homepage = "https://github.com/genogrove/pygenogrove"
+Documentation = "https://genogrove.readthedocs.com"
+Repository = "https://github.com/genogrove/pygenogrove"
+Issues = "https://github.com/genogrove/pygenogrove/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "mypy>=1.0",
+    "pybind11-stubgen>=0.16.0",
+]
+
+[tool.scikit-build]
+cmake.minimum-version = "3.15"
+cmake.build-type = "Release"
+build-dir = "build/{wheel_tag}"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true

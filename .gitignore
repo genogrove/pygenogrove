@@ -150,4 +150,7 @@ dmypy.json
 # pyright
 .pyright/
 
+# Internal Claude Code config — not for the repo
+.claude/
+
 # End of https://www.toptal.com/developers/gitignore/api/cmake,macos,c++
