@@ -35,3 +35,8 @@ target_include_directories(pygenogrove PRIVATE
 set_target_properties(pygenogrove PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+
+# Install the extension into the wheel root so `import pygenogrove` resolves.
+# scikit-build-core populates the wheel from the CMake install tree; without
+# this rule the module is built but never packaged, leaving it unimportable.
+install(TARGETS pygenogrove LIBRARY DESTINATION .)

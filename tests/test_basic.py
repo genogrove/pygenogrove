@@ -8,15 +8,17 @@ import pytest
 
 
 def test_imports():
-    """Test that the module can be imported."""
-    try:
-        import pygenogrove
-        assert hasattr(pygenogrove, 'Interval')
-        assert hasattr(pygenogrove, 'Grove')
-        assert hasattr(pygenogrove, 'Key')
-        assert hasattr(pygenogrove, 'QueryResult')
-    except ImportError as e:
-        pytest.skip(f"Module not built yet: {e}")
+    """Test that the module can be imported.
+
+    This is a hard failure (not a skip) on purpose: if the compiled extension
+    is not installed/importable, the rest of the suite would otherwise pass by
+    silently skipping every test, hiding a broken build or packaging.
+    """
+    import pygenogrove
+    assert hasattr(pygenogrove, 'Interval')
+    assert hasattr(pygenogrove, 'Grove')
+    assert hasattr(pygenogrove, 'Key')
+    assert hasattr(pygenogrove, 'QueryResult')
 
 
 class TestInterval:
