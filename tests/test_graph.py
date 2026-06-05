@@ -229,6 +229,25 @@ class TestGraphOverlay:
         assert g.out_degree(first) == 1
         assert g.get_neighbors(first)[0].value.start == 100_000
 
+    def test_neighbor_key_keeps_grove_alive(self):
+        """A Key returned by get_neighbors keeps the Grove alive, so using it
+        after every other handle is dropped must stay safe (use-after-free
+        guard, not just a failed assertion)."""
+        import gc
+        pg = _pg()
+
+        g = pg.Grove(3)
+        a = g.insert("chr1", pg.Interval(100, 200))
+        b = g.insert("chr1", pg.Interval(300, 400))
+        g.add_edge(a, b)
+
+        nbr = g.get_neighbors(a)[0]
+        del g, a, b
+        gc.collect()
+
+        # The neighbor key kept the Grove alive.
+        assert nbr.value.start == 300
+
     def test_external_key_pointer_stability(self):
         """Many external keys keep stable identity for edge construction."""
         pg = _pg()

@@ -344,6 +344,25 @@ class TestKey:
         assert key.value.start == 100     # stored key is unchanged
         assert key.value.end == 200
 
+    def test_key_keeps_grove_alive(self):
+        """A Key holds its Grove alive: using it after the Grove handle is
+        dropped must stay safe (reference_internal => keep_alive<0,1>).
+        If this contract regressed it would be a use-after-free (crash),
+        not a failed assertion."""
+        pytest.importorskip("pygenogrove")
+        import gc
+        import pygenogrove as pg
+
+        grove = pg.Grove(3)
+        key = grove.insert("chr1", pg.Interval(100, 200))
+
+        del grove        # drop the only Python handle to the Grove
+        gc.collect()     # ...and force collection
+
+        # The Grove is kept alive by `key`, so this must not crash.
+        assert key.value.start == 100
+        assert key.value.end == 200
+
 
 class TestQueryResult:
     """Tests for QueryResult class."""
