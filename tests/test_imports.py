@@ -14,3 +14,15 @@ def test_imports():
     assert hasattr(pygenogrove, 'Grove')
     assert hasattr(pygenogrove, 'Key')
     assert hasattr(pygenogrove, 'QueryResult')
+
+
+def test_imports_bed_data_grove():
+    """The data-carrying grove for bed_entry and its value types are exposed."""
+    import pygenogrove
+    assert hasattr(pygenogrove, 'BedGrove')
+    assert hasattr(pygenogrove, 'BedKey')
+    assert hasattr(pygenogrove, 'BedQueryResult')
+    assert hasattr(pygenogrove, 'BedEntry')
+    assert hasattr(pygenogrove, 'BlockInfo')
+    assert hasattr(pygenogrove, 'ThickInfo')
+    assert hasattr(pygenogrove, 'RgbColor')

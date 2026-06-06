@@ -115,6 +115,33 @@ def main():
     print(f"  reloaded size: {reloaded.size()}, edges: {reloaded.edge_count()}")
     print(f"  reloaded exon1 -> {[str(n.value) for n in reloaded.get_neighbors(src)]}")
 
+    # Data-carrying grove: each interval carries an associated BED record
+    print("\nBuilding a BedGrove (intervals with associated BED data)...")
+    bed = pg.BedGrove(100)
+    genes = [
+        ("chr1", pg.Interval(1000, 1999), "BRCA1", 900, "+"),
+        ("chr1", pg.Interval(3000, 3999), "TP53", 850, "-"),
+    ]
+    for chrom, iv, name, score, strand in genes:
+        entry = pg.BedEntry(chrom, iv.start, iv.end + 1)  # BED end is half-open
+        entry.name = name
+        entry.score = score
+        entry.strand = strand
+        bed.insert(chrom, iv, entry)
+
+    print("  Querying chr1 with Interval(1500, 1600)...")
+    for hit in bed.intersect(pg.Interval(1500, 1600), "chr1"):
+        d = hit.data
+        print(f"    {hit.value} -> {d.name} (score={d.score}, strand={d.strand})")
+
+    bed_path = "example_genes.gg"
+    print(f"\n  Serializing BedGrove to {bed_path} and reloading...")
+    bed.serialize(bed_path)
+    bed_reloaded = pg.BedGrove.deserialize(bed_path)
+    hit = list(bed_reloaded.intersect(pg.Interval(1500, 1600), "chr1"))[0]
+    print(f"  reloaded payload survived round-trip: {hit.data.name} "
+          f"(score={hit.data.score})")
+
     print("\nExample completed successfully!")
 
 
