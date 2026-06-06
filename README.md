@@ -194,6 +194,70 @@ Result object containing matching intervals from a query.
 - `__len__()`: Number of results
 - `__iter__()`: Iterate over matching keys
 
+### BedGrove (interval grove with BED data)
+
+`BedGrove` is the data-carrying counterpart of `Grove`: each indexed interval
+also carries an associated `BedEntry` payload, so prebuilt `.gg` files that
+store BED records can be loaded, queried, and traversed from Python.
+
+```python
+import pygenogrove as pg
+
+g = pg.BedGrove(100)
+
+# insert(index, interval, data) — the interval is the key, BedEntry is the payload
+entry = pg.BedEntry("chr1", 1000, 2000)   # BED-native coords (0-based, half-open)
+entry.name = "BRCA1"
+entry.score = 900
+entry.strand = "+"
+key = g.insert("chr1", pg.Interval(1000, 1999), entry)
+
+# the returned key exposes both the interval value and the BED payload
+print(key.value.start, key.data.name)     # 1000 BRCA1
+
+for hit in g.intersect(pg.Interval(1500, 1600), "chr1"):
+    print(hit.data.name, hit.data.score)
+
+# serialize/deserialize preserves the BedEntry data
+g.serialize("genes.gg")
+reloaded = pg.BedGrove.deserialize("genes.gg")
+```
+
+`BedGrove` exposes the same surface as `Grove` (multi-index `insert`/`intersect`,
+the graph overlay, and `serialize`/`deserialize`), with two differences:
+- `insert(index: str, interval: Interval, data: BedEntry) -> BedKey` takes the BED payload.
+- `add_external_key(interval: Interval, data: BedEntry) -> BedKey` takes the payload too.
+
+**BedKey** is like `Key` but adds a `data` attribute:
+- `value`: the interval (returned by copy; do not rely on mutating it)
+- `data`: the associated `BedEntry` — a **live, mutable** reference (unlike `value`,
+  the payload is not part of the B+ tree ordering, so editing it in place is safe)
+
+**BedQueryResult** is the `BedGrove` analog of `QueryResult` (its keys are `BedKey`s).
+
+### BedEntry
+
+A single BED record. Coordinates are BED-native: 0-based, half-open `[start, end)`
+(distinct from the closed `[start, end]` of `Interval` used as the grove key).
+
+```python
+BedEntry(chrom: str, start: int, end: int)
+```
+
+**Attributes** (read/write):
+- `chrom` (str), `start` (int), `end` (int)
+- `name`: `Optional[str]` (BED4+)
+- `score`: `Optional[int]` (BED5+)
+- `strand`: `Optional[str]` — a single character (`'+'`, `'-'`, `'.'`); assigning an
+  empty or multi-character string raises `ValueError`, `None` clears it (BED6+)
+- `thickness`: `Optional[ThickInfo]` (BED7+)
+- `item_rgb`: `Optional[RgbColor]` (BED9+)
+- `blocks`: `Optional[BlockInfo]` (BED12)
+
+`ThickInfo(start, end)`, `RgbColor(red, green, blue)` (channels 0–255), and
+`BlockInfo(count, sizes, starts)` (with `list[int]` `sizes`/`starts`) are the
+supporting value types. List fields are returned/assigned by copy.
+
 ## Current Status
 
 This is an early development version. Currently exposed features:
@@ -203,12 +267,14 @@ This is an early development version. Currently exposed features:
 - Multi-index support (per chromosome)
 - Graph overlay (directed edges, external keys)
 - Serialization / deserialization to compressed `.gg` files
+- Associated data: the `BedEntry` value types and the data-carrying `BedGrove`
+  (`grove<interval, bed_entry>`)
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
 - Genomic coordinates with strand information
-- File I/O (BED, GFF/GTF readers)
-- Bulk / sorted insertion (currently only available for groves with associated data)
-- Data associations (key-value pairs)
+- BED/GFF data-carrying grove for `gff_entry`, and the `bed_reader` / `gff_reader`
+  file iterators (the `BedEntry` value type is exposed; reading them from a file is not)
+- Bulk / sorted insertion
 - Edge metadata, `get_neighbors_if` / `link_if` (require a metadata-carrying grove)
 
 ## Performance Tips
