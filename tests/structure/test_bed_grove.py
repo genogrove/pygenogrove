@@ -29,6 +29,17 @@ def test_default_order():
     assert pg.BedGrove().get_order() == 3
 
 
+def test_str_repr_use_class_name():
+    """__str__/__repr__ identify the grove by its Python class name, not 'Grove'."""
+    pg = _pg()
+    g = pg.BedGrove(7)
+    g.insert("chr1", pg.Interval(100, 200), pg.BedEntry("chr1", 100, 200))
+    assert str(g).startswith("BedGrove(")
+    rep = repr(g)
+    assert rep.startswith("BedGrove(")
+    assert "7" in rep and "1" in rep  # order and size
+
+
 def test_insert_carries_value_and_data():
     """insert(index, interval, data) returns a key exposing both .value and .data."""
     pg = _pg()

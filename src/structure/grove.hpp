@@ -55,12 +55,13 @@ void bind_grove(py::module_& m, const char* grove_name,
     )pbdoc")
         .def(py::init<>())
         .def(py::init<int>(), py::arg("order"))
-        .def("__str__", [](const grove_t& g) {
-            return std::string("Grove(size=") +
+        .def("__str__", [grove_name](const grove_t& g) {
+            return std::string(grove_name) + "(size=" +
                    std::to_string(g.indexed_vertex_count()) + ")";
         })
-        .def("__repr__", [](const grove_t& g) {
-            return std::string("Grove(order=") + std::to_string(g.get_order()) +
+        .def("__repr__", [grove_name](const grove_t& g) {
+            return std::string(grove_name) + "(order=" +
+                   std::to_string(g.get_order()) +
                    ", size=" + std::to_string(g.indexed_vertex_count()) + ")";
         })
         .def("__len__", &grove_t::indexed_vertex_count)
