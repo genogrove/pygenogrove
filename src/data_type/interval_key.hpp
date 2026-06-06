@@ -1,6 +1,9 @@
 /*
  * Binding for gdt::key<interval, DataT> — a key wrapping an interval plus an
- * optional associated-data payload. Mirrors genogrove data_type/key.hpp.
+ * optional associated-data payload. Mirrors genogrove data_type/key.hpp,
+ * fixed to the `interval` key type (named interval_key so other key types —
+ * numeric, genomic_coordinate, kmer — can get their own bindings later; see
+ * issue #1).
  *
  * One template covers both the dataless key (DataT = void) and data-carrying
  * keys; the `.data` accessor is only added when DataT is non-void.
@@ -18,7 +21,7 @@ namespace py = pybind11;
 namespace gdt = genogrove::data_type;
 
 template <typename DataT>
-void bind_key(py::module_& m, const char* name) {
+void bind_interval_key(py::module_& m, const char* name) {
     using key_t = gdt::key<gdt::interval, DataT>;
 
     auto cls = py::class_<key_t>(m, name, R"pbdoc(

@@ -9,7 +9,7 @@
 
 #include "data_type/interval.hpp"
 #include "io/bed_reader.hpp"
-#include "structure/grove.hpp"
+#include "structure/interval_grove.hpp"
 
 namespace py = pybind11;
 namespace gio = genogrove::io;
@@ -24,14 +24,14 @@ PYBIND11_MODULE(pygenogrove, m) {
     // Key type shared by every grove instantiation.
     bind_interval(m);
 
-    // Dataless grove: grove<interval> exposed as Grove / Key / QueryResult.
-    bind_grove<void>(m, "Grove", "Key", "QueryResult");
+    // Dataless interval grove: grove<interval> exposed as Grove / Key / QueryResult.
+    bind_interval_grove<void>(m, "Grove", "Key", "QueryResult");
 
     // BED value types, then the data-carrying grove<interval, bed_entry>
     // exposed as BedGrove / BedKey / BedQueryResult. BedEntry must be
     // registered before the grove references it.
     bind_bed_entry(m);
-    bind_grove<gio::bed_entry>(m, "BedGrove", "BedKey", "BedQueryResult");
+    bind_interval_grove<gio::bed_entry>(m, "BedGrove", "BedKey", "BedQueryResult");
 
     m.attr("__version__") = "0.1.0";
 }

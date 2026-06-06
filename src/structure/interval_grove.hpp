@@ -1,6 +1,8 @@
 /*
  * Binding for ggs::grove<interval, DataT> — the B+ tree container.
- * Mirrors genogrove structure/grove/grove.hpp.
+ * Mirrors genogrove structure/grove/grove.hpp, fixed to the `interval` key
+ * type (named interval_grove so other key types — numeric, genomic_coordinate,
+ * kmer — can get their own grove bindings later; see issue #1).
  *
  * A single template covers both the dataless grove (DataT = void, exposed as
  * Grove/Key/QueryResult) and data-carrying groves (e.g. DataT = bed_entry,
@@ -23,7 +25,7 @@
 #include <genogrove/data_type/key.hpp>
 #include <genogrove/structure/grove/grove.hpp>
 
-#include "../data_type/key.hpp"
+#include "../data_type/interval_key.hpp"
 #include "../data_type/query_result.hpp"
 
 namespace py = pybind11;
@@ -31,14 +33,14 @@ namespace ggs = genogrove::structure;
 namespace gdt = genogrove::data_type;
 
 template <typename DataT>
-void bind_grove(py::module_& m, const char* grove_name,
-                const char* key_name, const char* qr_name) {
+void bind_interval_grove(py::module_& m, const char* grove_name,
+                         const char* key_name, const char* qr_name) {
     using grove_t = ggs::grove<gdt::interval, DataT>;
     using key_t = gdt::key<gdt::interval, DataT>;
 
     // The grove's Key and QueryResult instantiations must be registered first,
     // since insert()/intersect() take and return them.
-    bind_key<DataT>(m, key_name);
+    bind_interval_key<DataT>(m, key_name);
     bind_query_result<DataT>(m, qr_name);
 
     auto cls = py::class_<grove_t>(m, grove_name, R"pbdoc(
