@@ -168,17 +168,31 @@ def test_invalid_line_raises_by_default(tmp_path):
 
 
 def test_skip_invalid_lines(tmp_path):
-    """With skip_invalid_lines=True, malformed lines are skipped."""
+    """With skip_invalid_lines=True, malformed (non-first) lines are skipped."""
     pg = _pg()
     path = _write(tmp_path / "bad.bed", [
         ("chr1", 1000, 2000),
         ("chr2", "NOTANUMBER", 3000),
         ("chr3", 4000, 5000),
     ])
-    entries = list(pg.BedReader(path, skip_invalid_lines=True))
+    reader = pg.BedReader(path, skip_invalid_lines=True)
+    entries = list(reader)
     assert [e.chrom for e in entries] == ["chr1", "chr3"]
-    assert pg.BedReader(path, skip_invalid_lines=True).get_error_message() == "" \
-        or True  # error message reflects last read (EOF), not skipped lines
+    # after a full pass the error message reflects the last read (clean EOF)
+    assert reader.get_error_message() == ""
+
+
+def test_invalid_first_line_raises_even_when_skipping(tmp_path):
+    """The first data record is validated when the reader is constructed, so a
+    malformed FIRST line raises immediately — even with skip_invalid_lines=True.
+    Mirrors genogrove validationInvalidCoordinates (constructor validates line 1).
+    """
+    pg = _pg()
+    path = _write(tmp_path / "badfirst.bed", [("chr1", "INVALID", 2000)])
+    with pytest.raises(RuntimeError):
+        pg.BedReader(path)
+    with pytest.raises(RuntimeError):
+        pg.BedReader(path, skip_invalid_lines=True)
 
 
 def test_file_not_found(tmp_path):

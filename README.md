@@ -340,7 +340,9 @@ GffReader(path: str, skip_invalid_lines: bool = False, validate_gtf: bool = Fals
 
 - A missing/unreadable `path` raises on construction.
 - With `skip_invalid_lines=False` (default) a malformed line raises `RuntimeError`
-  mid-iteration; with `True` such lines are skipped.
+  mid-iteration; with `True` such lines are skipped. The **first** data record is
+  validated when the reader is constructed, so a malformed first record raises
+  immediately regardless of this flag.
 - `GffReader(..., validate_gtf=True)` enforces the mandatory GTF2 attributes
   (`gene_id`, `transcript_id`).
 - Both expose `get_error_message()` and `get_current_line()` for diagnostics.

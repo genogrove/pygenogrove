@@ -136,8 +136,11 @@ inline void bind_bed_reader(py::module_& m) {
         path : str
             Path to the BED file. A missing/unreadable file raises an exception.
         skip_invalid_lines : bool, optional
-            If False (default), a malformed line raises RuntimeError mid-iteration.
-            If True, malformed lines are skipped silently.
+            Controls handling of malformed records *after the first*. If False
+            (default) such a line raises RuntimeError mid-iteration; if True it
+            is skipped silently. NOTE: the first data record is validated when
+            the reader is constructed, so a malformed first record raises
+            immediately at construction regardless of this flag.
     )pbdoc")
         .def(py::init([](const std::string& path, bool skip_invalid_lines) {
                  gio::bed_reader_options opts;

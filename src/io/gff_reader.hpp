@@ -117,8 +117,11 @@ inline void bind_gff_reader(py::module_& m) {
         path : str
             Path to the GFF/GTF file. A missing/unreadable file raises an exception.
         skip_invalid_lines : bool, optional
-            If False (default), a malformed line raises RuntimeError mid-iteration.
-            If True, malformed lines are skipped silently.
+            Controls handling of malformed records *after the first*. If False
+            (default) such a line raises RuntimeError mid-iteration; if True it
+            is skipped silently. NOTE: the first data record is validated when
+            the reader is constructed, so a malformed first record raises
+            immediately at construction regardless of this flag.
         validate_gtf : bool, optional
             If True, validate the mandatory GTF2 attributes (gene_id, transcript_id).
     )pbdoc")
