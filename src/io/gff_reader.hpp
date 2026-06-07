@@ -97,3 +97,54 @@ inline void bind_gff_entry(py::module_& m) {
                    ", type='" + e.type + "')";
         });
 }
+
+inline void bind_gff_reader(py::module_& m) {
+    // GffEntry must already be registered (bind_gff_entry) — GffReader yields it.
+    py::class_<gio::gff_reader>(m, "GffReader", R"pbdoc(
+        A single-pass iterator over the records of a GFF3/GTF file.
+
+        Iterate it directly to get GffEntry objects::
+
+            for entry in pygenogrove.GffReader("genes.gff3"):
+                ...
+
+        The GFF3 vs GTF format is auto-detected per record (see GffEntry.format).
+        Plain and BGZF/gzip-compressed (`.gz`) files are both accepted. The reader
+        owns an htslib file handle and is single-pass.
+
+        Parameters
+        ----------
+        path : str
+            Path to the GFF/GTF file. A missing/unreadable file raises an exception.
+        skip_invalid_lines : bool, optional
+            Controls handling of malformed records *after the first*. If False
+            (default) such a line raises RuntimeError mid-iteration; if True it
+            is skipped silently. NOTE: the first data record is validated when
+            the reader is constructed, so a malformed first record raises
+            immediately at construction regardless of this flag.
+        validate_gtf : bool, optional
+            If True, validate the mandatory GTF2 attributes (gene_id, transcript_id).
+    )pbdoc")
+        .def(py::init([](const std::string& path, bool skip_invalid_lines,
+                         bool validate_gtf) {
+                 gio::gff_reader_options opts;
+                 opts.skip_invalid_lines = skip_invalid_lines;
+                 opts.validate_gtf = validate_gtf;
+                 return std::make_unique<gio::gff_reader>(path, opts);
+             }),
+             py::arg("path"), py::arg("skip_invalid_lines") = false,
+             py::arg("validate_gtf") = false)
+        .def("__iter__", [](gio::gff_reader& r) -> gio::gff_reader& { return r; })
+        .def("__next__", [](gio::gff_reader& r) {
+            gio::gff_entry entry;
+            if (!r.read_next(entry)) {
+                throw py::stop_iteration();
+            }
+            return entry;
+        })
+        .def("get_error_message", &gio::gff_reader::get_error_message,
+             "Error message from the most recent read; empty on clean EOF.")
+        .def("get_current_line", &gio::gff_reader::get_current_line,
+             "1-based physical line number consumed so far (comments/blanks "
+             "count); 0 before the first read.");
+}

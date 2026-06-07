@@ -157,6 +157,22 @@ def main():
         print(f"    {d.type} gene_id={d.get_gene_id()} "
               f"exon#={d.get_exon_number()} attrs={dict(d.attributes)}")
 
+    # Reading a BED file with BedReader and loading it into a grove
+    print("\nReading a BED file into a BedGrove with BedReader...")
+    bed_file = "example_peaks.bed"
+    with open(bed_file, "w") as fh:
+        fh.write("chr1\t1000\t2000\tpeakA\t100\t+\n")
+        fh.write("chr1\t3000\t4000\tpeakB\t200\t-\n")
+        fh.write("chr2\t500\t900\tpeakC\t50\t.\n")
+
+    peaks = pg.BedGrove(256)
+    for e in pg.BedReader(bed_file):          # BED is 0-based half-open
+        peaks.insert(e.chrom, pg.Interval(e.start, e.end - 1), e)
+    print(f"  loaded {peaks.size()} peaks from {bed_file}")
+
+    overlaps = list(peaks.intersect(pg.Interval(1500, 1500), "chr1"))
+    print(f"  peak overlapping chr1:1500 -> {overlaps[0].data.name}")
+
     print("\nExample completed successfully!")
 
 

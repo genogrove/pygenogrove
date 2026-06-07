@@ -36,3 +36,10 @@ def test_imports_gff_data_grove():
     assert hasattr(pygenogrove, 'GffQueryResult')
     assert hasattr(pygenogrove, 'GffEntry')
     assert hasattr(pygenogrove, 'GffFormat')
+
+
+def test_imports_file_readers():
+    """The BED/GFF file readers are exposed."""
+    import pygenogrove
+    assert hasattr(pygenogrove, 'BedReader')
+    assert hasattr(pygenogrove, 'GffReader')
