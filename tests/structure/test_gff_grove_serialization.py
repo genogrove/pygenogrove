@@ -34,7 +34,8 @@ def test_minimal_round_trip(tmp_path):
     g = pg.GffGrove(4)
     g.insert("chr1", pg.Interval(100, 200), pg.GffEntry("chr1", 100, 200, "gene"))
 
-    out = _only(_roundtrip(pg, tmp_path, g), 150, 150)
+    restored = _roundtrip(pg, tmp_path, g)
+    out = _only(restored, 150, 150)
     assert out.seqid == "chr1"
     assert out.start == 100
     assert out.end == 200
@@ -64,7 +65,8 @@ def test_gff3_full_round_trip(tmp_path):
     g = pg.GffGrove(4)
     g.insert("chrX", pg.Interval(1000, 2000), e)
 
-    out = _only(_roundtrip(pg, tmp_path, g), 1500, 1500, "chrX")
+    restored = _roundtrip(pg, tmp_path, g)
+    out = _only(restored, 1500, 1500, "chrX")
     assert out.source == "ENSEMBL"
     assert out.score == 42.5
     assert out.strand == "-"
@@ -87,7 +89,8 @@ def test_gtf_round_trip(tmp_path):
     g = pg.GffGrove(4)
     g.insert("chr2", pg.Interval(500, 600), e)
 
-    out = _only(_roundtrip(pg, tmp_path, g), 550, 550, "chr2")
+    restored = _roundtrip(pg, tmp_path, g)
+    out = _only(restored, 550, 550, "chr2")
     assert out.format == pg.GffFormat.GTF
     assert out.is_gtf()
     assert not out.is_gff3()
@@ -103,7 +106,8 @@ def test_empty_attributes_map(tmp_path):
     g = pg.GffGrove(3)
     g.insert("chr1", pg.Interval(1, 10), e)
 
-    out = _only(_roundtrip(pg, tmp_path, g), 5, 5)
+    restored = _roundtrip(pg, tmp_path, g)
+    out = _only(restored, 5, 5)
     assert dict(out.attributes) == {}
     assert out.format == pg.GffFormat.GFF3
 
@@ -117,7 +121,8 @@ def test_preserves_embedded_nul_in_attributes(tmp_path):
     g = pg.GffGrove(3)
     g.insert("chr1", pg.Interval(5, 10), e)
 
-    out = _only(_roundtrip(pg, tmp_path, g), 7, 7)
+    restored = _roundtrip(pg, tmp_path, g)
+    out = _only(restored, 7, 7)
     attrs = dict(out.attributes)
     assert attrs == {"k\x00ey": "va\x00lue"}
     assert len(list(attrs.values())[0]) == 6
