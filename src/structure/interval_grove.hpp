@@ -130,16 +130,18 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
     }
 
     // ---- Queries (identical for both cases) ----
+    // keep_alive<0, 1>: the returned QueryResult (and the keys it yields) hold
+    // pointers into the grove's storage, so the grove must outlive the result.
     cls.def("intersect",
             py::overload_cast<const gdt::interval&>(&grove_t::intersect),
-            py::arg("query"),
+            py::arg("query"), py::keep_alive<0, 1>(),
             R"pbdoc(
                 Find all intervals that overlap with the query across all indices.
             )pbdoc")
        .def("intersect",
             py::overload_cast<const gdt::interval&, std::string_view>(
                 &grove_t::intersect),
-            py::arg("query"), py::arg("index"),
+            py::arg("query"), py::arg("index"), py::keep_alive<0, 1>(),
             R"pbdoc(
                 Find all intervals that overlap with the query in a specific index.
             )pbdoc")

@@ -1,12 +1,10 @@
 """
 Tests for the data-carrying grove BedGrove (grove<interval, bed_entry>).
 
-Mirrors the dataless grove tests (tests/structure/test_dataless_grove.py and
-tests/data_type/test_key.py), extended to cover the associated BedEntry data
-that BedGrove keys carry.
+Mirrors the dataless grove tests (tests/structure/test_dataless_grove.py),
+extended to cover the associated BedEntry data that BedGrove keys carry. The
+BedKey value/data/lifetime behavior lives in tests/data_type/test_bed_key.py.
 """
-
-import gc
 
 import pytest
 
@@ -54,35 +52,6 @@ def test_insert_carries_value_and_data():
     assert key.data.end == 201
 
 
-def test_value_is_a_copy():
-    """key.value returns a copy; mutating it cannot corrupt tree ordering."""
-    pg = _pg()
-    g = pg.BedGrove(3)
-    key = g.insert("chr1", pg.Interval(100, 200), pg.BedEntry("chr1", 100, 200))
-
-    snapshot = key.value
-    snapshot.set_range(0, 5)
-    assert key.value.start == 100
-    assert key.value.end == 200
-
-
-def test_data_is_a_live_mutable_reference():
-    """key.data is a live reference: mutating it persists in grove storage.
-
-    Unlike .value, the data payload is not part of the B+ tree ordering, so
-    in-place mutation is safe and intended.
-    """
-    pg = _pg()
-    g = pg.BedGrove(3)
-    key = g.insert("chr1", pg.Interval(100, 200), pg.BedEntry("chr1", 100, 200))
-
-    key.data.name = "BRCA1"
-    key.data.score = 42
-    # Re-read through a fresh accessor: the change stuck in storage.
-    assert key.data.name == "BRCA1"
-    assert key.data.score == 42
-
-
 def test_intersect_preserves_data():
     """Keys returned by intersect() carry the inserted BedEntry payload."""
     pg = _pg()
@@ -106,22 +75,6 @@ def test_multi_index_intersect_counts():
 
     assert len(g.intersect(pg.Interval(175, 225))) == 2          # chr1 + chr2
     assert len(g.intersect(pg.Interval(175, 225), "chr1")) == 1
-
-
-def test_keeps_grove_alive():
-    """A BedKey keeps its BedGrove alive (reference_internal => keep_alive).
-
-    A regression here would be a use-after-free (crash), not a failed assert.
-    """
-    pg = _pg()
-    g = pg.BedGrove(3)
-    key = g.insert("chr1", pg.Interval(100, 200), pg.BedEntry("chr1", 100, 200))
-
-    del g
-    gc.collect()
-
-    assert key.value.start == 100
-    assert key.data.chrom == "chr1"
 
 
 def test_graph_overlay_with_external_data_key():

@@ -26,3 +26,13 @@ def test_imports_bed_data_grove():
     assert hasattr(pygenogrove, 'BlockInfo')
     assert hasattr(pygenogrove, 'ThickInfo')
     assert hasattr(pygenogrove, 'RgbColor')
+
+
+def test_imports_gff_data_grove():
+    """The data-carrying grove for gff_entry and its value types are exposed."""
+    import pygenogrove
+    assert hasattr(pygenogrove, 'GffGrove')
+    assert hasattr(pygenogrove, 'GffKey')
+    assert hasattr(pygenogrove, 'GffQueryResult')
+    assert hasattr(pygenogrove, 'GffEntry')
+    assert hasattr(pygenogrove, 'GffFormat')
