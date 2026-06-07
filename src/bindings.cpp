@@ -9,6 +9,7 @@
 
 #include "data_type/interval.hpp"
 #include "io/bed_reader.hpp"
+#include "io/gff_reader.hpp"
 #include "structure/interval_grove.hpp"
 
 namespace py = pybind11;
@@ -32,6 +33,11 @@ PYBIND11_MODULE(pygenogrove, m) {
     // registered before the grove references it.
     bind_bed_entry(m);
     bind_interval_grove<gio::bed_entry>(m, "BedGrove", "BedKey", "BedQueryResult");
+
+    // GFF/GTF value types, then the data-carrying grove<interval, gff_entry>
+    // exposed as GffGrove / GffKey / GffQueryResult.
+    bind_gff_entry(m);
+    bind_interval_grove<gio::gff_entry>(m, "GffGrove", "GffKey", "GffQueryResult");
 
     m.attr("__version__") = "0.1.0";
 }

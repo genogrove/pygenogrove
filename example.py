@@ -142,6 +142,21 @@ def main():
     print(f"  reloaded payload survived round-trip: {hit.data.name} "
           f"(score={hit.data.score})")
 
+    # Data-carrying grove with GFF/GTF records (column-9 attributes)
+    print("\nBuilding a GffGrove (intervals with associated GFF/GTF data)...")
+    gff = pg.GffGrove(100)
+    exon = pg.GffEntry("chr1", 1000, 2000, "exon")  # GFF coords are 1-based inclusive
+    exon.source = "ensembl"
+    exon.strand = "+"
+    exon.attributes = {"gene_id": "ENSG1", "transcript_id": "ENST1", "exon_number": "1"}
+    gff.insert("chr1", pg.Interval(999, 1999), exon)
+
+    print("  Querying chr1 with Interval(1500, 1600)...")
+    for hit in gff.intersect(pg.Interval(1500, 1600), "chr1"):
+        d = hit.data
+        print(f"    {d.type} gene_id={d.get_gene_id()} "
+              f"exon#={d.get_exon_number()} attrs={dict(d.attributes)}")
+
     print("\nExample completed successfully!")
 
 

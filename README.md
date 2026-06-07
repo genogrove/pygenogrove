@@ -258,6 +258,57 @@ BedEntry(chrom: str, start: int, end: int)
 `BlockInfo(count, sizes, starts)` (with `list[int]` `sizes`/`starts`) are the
 supporting value types. List fields are returned/assigned by copy.
 
+### GffGrove (interval grove with GFF/GTF data)
+
+`GffGrove` is the same data-carrying grove for **GFF3/GTF** records — identical
+surface to `BedGrove`, with a `GffEntry` payload instead of `BedEntry`:
+
+```python
+import pygenogrove as pg
+
+g = pg.GffGrove(100)
+
+entry = pg.GffEntry("chr1", 1000, 2000, "gene")   # GFF-native coords (1-based, inclusive)
+entry.source = "ensembl"
+entry.strand = "+"
+entry.attributes = {"gene_id": "ENSG1", "gene_name": "BRCA1"}
+key = g.insert("chr1", pg.Interval(999, 1999), entry)
+
+print(key.data.type, key.data.get_gene_id())      # gene ENSG1
+
+for hit in g.intersect(pg.Interval(1500, 1600), "chr1"):
+    print(hit.data.type, dict(hit.data.attributes))
+
+g.serialize("genes.gg")
+reloaded = pg.GffGrove.deserialize("genes.gg")
+```
+
+`GffKey` mirrors `BedKey` (`value` is a copy, `data` is a live mutable `GffEntry`
+reference); `GffQueryResult` is the `GffGrove` analog of `QueryResult`.
+
+### GffEntry
+
+A single GFF3/GTF record. Coordinates are GFF-native: **1-based, both endpoints
+inclusive** (distinct from `Interval`'s 0-based closed and `BedEntry`'s 0-based
+half-open).
+
+```python
+GffEntry(seqid: str, start: int, end: int, type: str)
+```
+
+**Attributes** (read/write):
+- `seqid` (str), `source` (str), `type` (str), `start` (int), `end` (int)
+- `score`: `Optional[float]`
+- `strand`: `Optional[str]` — a single character (`'+'`, `'-'`, `'.'`, `'?'`); empty
+  or multi-character raises `ValueError`, `None` clears it
+- `phase`: `Optional[int]` (CDS phase 0/1/2)
+- `attributes`: `dict[str, str]` — the column-9 key/value pairs (returned/assigned by copy)
+- `format`: a `GffFormat` enum (`GFF3` / `GTF` / `UNKNOWN`)
+
+**Methods**: `is_gtf()`, `is_gff3()`, `get_attribute(key)`, and the GTF helpers
+`get_gene_id()`, `get_transcript_id()`, `get_exon_number()`, `get_gene_name()`,
+`get_gene_biotype()` (each returns `None` when the attribute is absent).
+
 ## Current Status
 
 This is an early development version. Currently exposed features:
@@ -267,13 +318,15 @@ This is an early development version. Currently exposed features:
 - Multi-index support (per chromosome)
 - Graph overlay (directed edges, external keys)
 - Serialization / deserialization to compressed `.gg` files
-- Associated data: the `BedEntry` value types and the data-carrying `BedGrove`
-  (`grove<interval, bed_entry>`)
+- Associated data: the `BedEntry` / `GffEntry` value types and the data-carrying
+  groves `BedGrove` (`grove<interval, bed_entry>`) and `GffGrove`
+  (`grove<interval, gff_entry>`)
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
-- Genomic coordinates with strand information
-- BED/GFF data-carrying grove for `gff_entry`, and the `bed_reader` / `gff_reader`
-  file iterators (the `BedEntry` value type is exposed; reading them from a file is not)
+- Genomic coordinates with strand information, and other key types — numeric, kmer
+  ([#7](https://github.com/genogrove/pygenogrove/issues/7))
+- The `bed_reader` / `gff_reader` file iterators (the `BedEntry` / `GffEntry` value
+  types are exposed; reading them from a file is not)
 - Bulk / sorted insertion
 - Edge metadata, `get_neighbors_if` / `link_if` (require a metadata-carrying grove)
 
