@@ -116,3 +116,46 @@ inline void bind_bed_entry(py::module_& m) {
                    std::to_string(e.end) + ")";
         });
 }
+
+inline void bind_bed_reader(py::module_& m) {
+    // BedEntry must already be registered (bind_bed_entry) — BedReader yields it.
+    py::class_<gio::bed_reader>(m, "BedReader", R"pbdoc(
+        A single-pass iterator over the records of a BED file.
+
+        Iterate it directly to get BedEntry objects::
+
+            for entry in pygenogrove.BedReader("peaks.bed"):
+                ...
+
+        Plain and BGZF/gzip-compressed (`.gz`) files are both accepted (the
+        format is auto-detected). The reader owns an htslib file handle and is
+        single-pass — it cannot be restarted or iterated twice.
+
+        Parameters
+        ----------
+        path : str
+            Path to the BED file. A missing/unreadable file raises an exception.
+        skip_invalid_lines : bool, optional
+            If False (default), a malformed line raises RuntimeError mid-iteration.
+            If True, malformed lines are skipped silently.
+    )pbdoc")
+        .def(py::init([](const std::string& path, bool skip_invalid_lines) {
+                 gio::bed_reader_options opts;
+                 opts.skip_invalid_lines = skip_invalid_lines;
+                 return std::make_unique<gio::bed_reader>(path, opts);
+             }),
+             py::arg("path"), py::arg("skip_invalid_lines") = false)
+        .def("__iter__", [](gio::bed_reader& r) -> gio::bed_reader& { return r; })
+        .def("__next__", [](gio::bed_reader& r) {
+            gio::bed_entry entry;
+            if (!r.read_next(entry)) {
+                throw py::stop_iteration();
+            }
+            return entry;
+        })
+        .def("get_error_message", &gio::bed_reader::get_error_message,
+             "Error message from the most recent read; empty on clean EOF.")
+        .def("get_current_line", &gio::bed_reader::get_current_line,
+             "1-based physical line number consumed so far (comments/blanks "
+             "count); 0 before the first read.");
+}

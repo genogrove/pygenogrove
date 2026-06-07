@@ -309,6 +309,48 @@ GffEntry(seqid: str, start: int, end: int, type: str)
 `get_gene_id()`, `get_transcript_id()`, `get_exon_number()`, `get_gene_name()`,
 `get_gene_biotype()` (each returns `None` when the attribute is absent).
 
+### BedReader / GffReader (file iterators)
+
+`BedReader` and `GffReader` are single-pass iterators over BED and GFF3/GTF
+files. Iterate them to get `BedEntry` / `GffEntry` records. Plain and
+gzip/BGZF-compressed (`.gz`) files are both accepted (auto-detected).
+
+```python
+import pygenogrove as pg
+
+# read records one at a time
+for entry in pg.BedReader("peaks.bed"):
+    print(entry.chrom, entry.start, entry.end, entry.name)
+
+# the common workflow: load a file into a grove (converting to the grove's
+# closed [start, end] interval key)
+g = pg.BedGrove(256)
+for e in pg.BedReader("peaks.bed"):           # BED is 0-based half-open
+    g.insert(e.chrom, pg.Interval(e.start, e.end - 1), e)
+
+gff = pg.GffGrove(256)
+for e in pg.GffReader("genes.gff3"):          # GFF is 1-based inclusive
+    gff.insert(e.seqid, pg.Interval(e.start - 1, e.end - 1), e)
+```
+
+```python
+BedReader(path: str, skip_invalid_lines: bool = False)
+GffReader(path: str, skip_invalid_lines: bool = False, validate_gtf: bool = False)
+```
+
+- A missing/unreadable `path` raises on construction.
+- With `skip_invalid_lines=False` (default) a malformed line raises `RuntimeError`
+  mid-iteration; with `True` such lines are skipped.
+- `GffReader(..., validate_gtf=True)` enforces the mandatory GTF2 attributes
+  (`gene_id`, `transcript_id`).
+- Both expose `get_error_message()` and `get_current_line()` for diagnostics.
+- The readers are **single-pass** — they own an htslib file handle and cannot be
+  restarted or iterated twice.
+
+> **Coordinate systems** — `Interval` is 0-based closed `[start, end]`; `BedEntry`
+> is 0-based half-open `[start, end)`; `GffEntry` is 1-based inclusive `[start, end]`.
+> Convert deliberately when building grove keys, as shown above.
+
 ## Current Status
 
 This is an early development version. Currently exposed features:
@@ -321,12 +363,13 @@ This is an early development version. Currently exposed features:
 - Associated data: the `BedEntry` / `GffEntry` value types and the data-carrying
   groves `BedGrove` (`grove<interval, bed_entry>`) and `GffGrove`
   (`grove<interval, gff_entry>`)
+- File readers: `BedReader` and `GffReader` (single-pass iterators over BED /
+  GFF3 / GTF files, including `.gz`)
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
 - Genomic coordinates with strand information, and other key types — numeric, kmer
   ([#7](https://github.com/genogrove/pygenogrove/issues/7))
-- The `bed_reader` / `gff_reader` file iterators (the `BedEntry` / `GffEntry` value
-  types are exposed; reading them from a file is not)
+- BAM/SAM and FASTA readers
 - Bulk / sorted insertion
 - Edge metadata, `get_neighbors_if` / `link_if` (require a metadata-carrying grove)
 

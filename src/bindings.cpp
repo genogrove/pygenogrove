@@ -30,14 +30,16 @@ PYBIND11_MODULE(pygenogrove, m) {
 
     // BED value types, then the data-carrying grove<interval, bed_entry>
     // exposed as BedGrove / BedKey / BedQueryResult. BedEntry must be
-    // registered before the grove references it.
+    // registered before the grove references it. BedReader yields BedEntry.
     bind_bed_entry(m);
     bind_interval_grove<gio::bed_entry>(m, "BedGrove", "BedKey", "BedQueryResult");
+    bind_bed_reader(m);
 
     // GFF/GTF value types, then the data-carrying grove<interval, gff_entry>
-    // exposed as GffGrove / GffKey / GffQueryResult.
+    // exposed as GffGrove / GffKey / GffQueryResult. GffReader yields GffEntry.
     bind_gff_entry(m);
     bind_interval_grove<gio::gff_entry>(m, "GffGrove", "GffKey", "GffQueryResult");
+    bind_gff_reader(m);
 
     m.attr("__version__") = "0.1.0";
 }
