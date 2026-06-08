@@ -1,6 +1,7 @@
 /*
- * Binding for gdt::flanking_query_result<interval, DataT> — the result of
+ * Binding for gdt::flanking_query_result<KeyT, DataT> — the result of
  * Grove.flanking(). Mirrors genogrove data_type/flanking_query_result.hpp.
+ * Generic over the key type KeyT.
  *
  * Holds the nearest non-overlapping key on each side of a query (predecessor /
  * successor); either may be None. The keys point into grove storage.
@@ -9,15 +10,14 @@
 
 #include <pybind11/pybind11.h>
 
-#include <genogrove/data_type/interval.hpp>
 #include <genogrove/data_type/flanking_query_result.hpp>
 
 namespace py = pybind11;
 namespace gdt = genogrove::data_type;
 
-template <typename DataT>
+template <typename KeyT, typename DataT>
 void bind_flanking_query_result(py::module_& m, const char* name) {
-    using fqr_t = gdt::flanking_query_result<gdt::interval, DataT>;
+    using fqr_t = gdt::flanking_query_result<KeyT, DataT>;
 
     py::class_<fqr_t>(m, name, R"pbdoc(
         Result of a Grove.flanking() query: the nearest non-overlapping keys on

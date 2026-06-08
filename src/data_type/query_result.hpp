@@ -1,21 +1,21 @@
 /*
- * Binding for gdt::query_result<interval, DataT> — the container returned by
- * Grove.intersect(). Mirrors genogrove data_type/query_result.hpp.
+ * Binding for gdt::query_result<KeyT, DataT> — the container returned by
+ * Grove.intersect(). Mirrors genogrove data_type/query_result.hpp. Generic over
+ * the key type KeyT (instantiated per concrete key type from the grove binding).
  */
 #pragma once
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include <genogrove/data_type/interval.hpp>
 #include <genogrove/data_type/query_result.hpp>
 
 namespace py = pybind11;
 namespace gdt = genogrove::data_type;
 
-template <typename DataT>
+template <typename KeyT, typename DataT>
 void bind_query_result(py::module_& m, const char* name) {
-    using qr_t = gdt::query_result<gdt::interval, DataT>;
+    using qr_t = gdt::query_result<KeyT, DataT>;
 
     py::class_<qr_t>(m, name, R"pbdoc(
         Result of an intersect() query: the query interval plus the matching keys.
