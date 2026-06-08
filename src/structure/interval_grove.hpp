@@ -29,6 +29,7 @@
 
 #include "../data_type/interval_key.hpp"
 #include "../data_type/query_result.hpp"
+#include "../io/entry_interval.hpp"
 
 namespace py = pybind11;
 namespace ggs = genogrove::structure;
@@ -185,6 +186,57 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
                     interval must be greater than every existing interval in the
                     index. Violating this corrupts B+ tree ordering.
                 )pbdoc");
+
+        // ---- Entry-deriving OVERLOADS of insert / insert_bulk: pass a file
+        //      entry (or a list of them) and the Interval key is derived from
+        //      the entry's native coordinates, so you never hand-convert
+        //      (BED 0-based half-open, GFF 1-based inclusive). pybind resolves
+        //      these against the explicit (interval, data) forms by signature.
+        //      Only enabled for entry types with a known conversion. ----
+        if constexpr (has_entry_interval<DataT>) {
+            cls.def("insert",
+                    [](grove_t& g, const std::string& index, DataT entry) {
+                        gdt::interval iv = interval_from_entry(entry);
+                        return g.insert_data(index, iv, std::move(entry));
+                    },
+                    py::arg("index"), py::arg("entry"),
+                    py::return_value_policy::reference_internal,
+                    R"pbdoc(
+                        insert(index, entry) -> Key
+
+                        Overload that takes a single file entry and derives the
+                        Interval key from its native coordinates (BED half-open
+                        [s, e) -> [s, e-1]; GFF 1-based [s, e] -> [s-1, e-1]).
+                        The entry keeps its native coordinates as the payload.
+                    )pbdoc");
+
+            cls.def("insert_bulk",
+                    [](grove_t& g, const std::string& index,
+                       std::vector<DataT> entries, bool presorted) {
+                        std::vector<std::pair<gdt::interval, DataT>> items;
+                        items.reserve(entries.size());
+                        for (auto& entry : entries) {
+                            gdt::interval iv = interval_from_entry(entry);
+                            items.emplace_back(iv, std::move(entry));
+                        }
+                        if (presorted) {
+                            return g.insert_data(index, items, ggs::sorted,
+                                                 ggs::bulk);
+                        }
+                        return g.insert_data(index, std::move(items), ggs::bulk);
+                    },
+                    py::arg("index"), py::arg("entries"),
+                    py::arg("presorted") = false,
+                    py::return_value_policy::reference_internal,
+                    R"pbdoc(
+                        insert_bulk(index, entries, presorted=False) -> list[Key]
+
+                        Overload that takes a list of bare file entries (instead
+                        of (Interval, data) tuples) and derives each Interval key
+                        from the entry's native coordinates. Same append
+                        precondition as the explicit form.
+                    )pbdoc");
+        }
     }
 
     // ---- Queries (identical for both cases) ----

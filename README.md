@@ -227,17 +227,24 @@ reloaded = pg.BedGrove.deserialize("genes.gg")
 the graph overlay, and `serialize`/`deserialize`), with these differences:
 - `insert(index: str, interval: Interval, data: BedEntry) -> BedKey` takes the BED payload.
 - `add_external_key(interval: Interval, data: BedEntry) -> BedKey` takes the payload too.
+- **Entry-deriving inserts** (no hand-conversion of coordinates):
+  - `insert(index, entry) -> BedKey` — a 2-argument overload: pass a bare
+    `BedEntry` and the `Interval` key is derived from its native coordinates
+    (BED's half-open `[s, e)` → closed `[s, e-1]`; GFF's 1-based `[s, e]` →
+    `[s-1, e-1]`). This is the foolproof way to load records from a reader.
+  - `insert_bulk(index, entries, presorted=False) -> list[BedKey]` — same idea
+    for a whole list of bare entries.
 - **Fast-path inserts** (data-carrying groves only):
   - `insert_sorted(index, interval, data) -> BedKey` — single insert on the
     rightmost-append path (skips tree traversal).
   - `insert_bulk(index, items, presorted=False) -> list[BedKey]` — insert many
-    `(Interval, BedEntry)` records at once (10–20× faster for large datasets;
-    an empty index is built bottom-up in O(n)). With `presorted=True` the records
-    are assumed already sorted by interval (skips the internal sort).
+    explicit `(Interval, BedEntry)` records at once (10–20× faster for large
+    datasets; an empty index is built bottom-up in O(n)). `presorted=True`
+    assumes the records are already sorted by interval (skips the internal sort).
   - **Precondition:** sorted/bulk inserts require ascending intervals, and when
     appending to a non-empty index every new interval must be greater than all
     existing ones. Violating this corrupts B+ tree ordering — use plain `insert`
-    if unsure. (`GffGrove` has the same two methods.)
+    if unsure. (`GffGrove` has all the same methods.)
 
 **BedKey** is like `Key` but adds a `data` attribute:
 - `value`: the interval (returned by copy; do not rely on mutating it)
@@ -333,15 +340,20 @@ import pygenogrove as pg
 for entry in pg.BedReader("peaks.bed"):
     print(entry.chrom, entry.start, entry.end, entry.name)
 
-# the common workflow: load a file into a grove (converting to the grove's
-# closed [start, end] interval key)
+# the common workflow: load a file into a grove. The 2-argument insert derives
+# the grove's 0-based closed Interval key from each entry's native coordinates,
+# so you don't hand-convert (BED half-open, GFF 1-based) yourself.
 g = pg.BedGrove(256)
-for e in pg.BedReader("peaks.bed"):           # BED is 0-based half-open
-    g.insert(e.chrom, pg.Interval(e.start, e.end - 1), e)
+for e in pg.BedReader("peaks.bed"):
+    g.insert(e.chrom, e)
 
 gff = pg.GffGrove(256)
-for e in pg.GffReader("genes.gff3"):          # GFF is 1-based inclusive
-    gff.insert(e.seqid, pg.Interval(e.start - 1, e.end - 1), e)
+for e in pg.GffReader("genes.gff3"):
+    gff.insert(e.seqid, e)
+
+# bulk-load one chromosome at a time (insert_bulk is per-index):
+g2 = pg.BedGrove(256)
+g2.insert_bulk("chr1", [e for e in pg.BedReader("peaks.bed") if e.chrom == "chr1"])
 ```
 
 ```python
@@ -378,7 +390,9 @@ This is an early development version. Currently exposed features:
   (`grove<interval, gff_entry>`)
 - File readers: `BedReader` and `GffReader` (single-pass iterators over BED /
   GFF3 / GTF files, including `.gz`)
-- Fast-path inserts on data-carrying groves: `insert_sorted` and `insert_bulk`
+- Fast-path inserts on data-carrying groves: `insert_sorted` / `insert_bulk`, plus
+  entry-deriving `insert(index, entry)` / `insert_bulk(index, entries)` overloads
+  that compute the key from a BED/GFF record's native coordinates
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
 - Genomic coordinates with strand information, and other key types — numeric, kmer

@@ -149,7 +149,7 @@ def main():
     exon.source = "ensembl"
     exon.strand = "+"
     exon.attributes = {"gene_id": "ENSG1", "transcript_id": "ENST1", "exon_number": "1"}
-    gff.insert("chr1", pg.Interval(999, 1999), exon)
+    gff.insert("chr1", exon)  # 2-arg insert derives Interval(999, 1999) from the GFF coords
 
     print("  Querying chr1 with Interval(1500, 1600)...")
     for hit in gff.intersect(pg.Interval(1500, 1600), "chr1"):
@@ -166,21 +166,20 @@ def main():
         fh.write("chr2\t500\t900\tpeakC\t50\t.\n")
 
     peaks = pg.BedGrove(256)
-    for e in pg.BedReader(bed_file):          # BED is 0-based half-open
-        peaks.insert(e.chrom, pg.Interval(e.start, e.end - 1), e)
+    for e in pg.BedReader(bed_file):
+        peaks.insert(e.chrom, e)              # 2-arg insert derives the key from BED coords
     print(f"  loaded {peaks.size()} peaks from {bed_file}")
 
     overlaps = list(peaks.intersect(pg.Interval(1500, 1500), "chr1"))
     print(f"  peak overlapping chr1:1500 -> {overlaps[0].data.name}")
 
-    # Bulk insert: load many sorted records into a data-carrying grove at once
+    # Bulk insert: load many sorted records into a data-carrying grove at once.
+    # Passing bare entries lets insert_bulk derive each Interval key from the
+    # entry's own coordinates.
     print("\nBulk-loading sorted records into a BedGrove (insert_bulk)...")
     big = pg.BedGrove(256)
-    records = []
-    for i in range(1000):
-        s = i * 100
-        records.append((pg.Interval(s, s + 50), pg.BedEntry("chr1", s, s + 50)))
-    keys = big.insert_bulk("chr1", records, presorted=True)  # 10-20x faster than a loop
+    entries = [pg.BedEntry("chr1", i * 100, i * 100 + 50) for i in range(1000)]
+    keys = big.insert_bulk("chr1", entries, presorted=True)  # 10-20x faster than a loop
     print(f"  bulk-inserted {len(keys)} records; grove size = {big.size()}")
 
     print("\nExample completed successfully!")
