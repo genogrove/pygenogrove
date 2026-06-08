@@ -160,6 +160,17 @@ A B+ tree container for genomic intervals with multi-index support.
 - `insert(index: str, interval: Interval) -> Key`: Insert an interval at the specified index
 - `intersect(query: Interval) -> QueryResult`: Find overlapping intervals across all indices
 - `intersect(query: Interval, index: str) -> QueryResult`: Find overlapping intervals in specific index
+- `flanking(query: Interval, index: str) -> FlankingResult`: Find the nearest **non-overlapping** keys on either side of the query (predecessor / successor)
+
+**FlankingResult** (returned by `flanking`):
+- `predecessor`: the closest key entirely before the query (a `Key`), or `None`
+- `successor`: the closest key entirely after the query (a `Key`), or `None`
+
+Keys overlapping the query are excluded; for nested intervals the predecessor is
+the one with the largest end (smallest gap). Compute the gap distance from the
+returned key, e.g. `query.start - result.predecessor.value.end - 1` (closed
+coordinates). `BedGrove`/`GffGrove` expose `flanking` too (their results' keys
+carry `.data`).
 
 **Graph overlay** (directed edges between keys):
 - `add_edge(source: Key, target: Key)`: Add a directed edge (raises `ValueError` if a key is `None`)
@@ -385,6 +396,7 @@ This is an early development version. Currently exposed features:
 - Multi-index support (per chromosome)
 - Graph overlay (directed edges, external keys)
 - Serialization / deserialization to compressed `.gg` files
+- Nearest-neighbour queries: `flanking()` (predecessor / successor)
 - Associated data: the `BedEntry` / `GffEntry` value types and the data-carrying
   groves `BedGrove` (`grove<interval, bed_entry>`) and `GffGrove`
   (`grove<interval, gff_entry>`)

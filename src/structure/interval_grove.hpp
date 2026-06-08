@@ -29,6 +29,7 @@
 
 #include "../data_type/interval_key.hpp"
 #include "../data_type/query_result.hpp"
+#include "../data_type/flanking_query_result.hpp"
 #include "../io/entry_interval.hpp"
 
 namespace py = pybind11;
@@ -37,14 +38,16 @@ namespace gdt = genogrove::data_type;
 
 template <typename DataT>
 void bind_interval_grove(py::module_& m, const char* grove_name,
-                         const char* key_name, const char* qr_name) {
+                         const char* key_name, const char* qr_name,
+                         const char* fr_name) {
     using grove_t = ggs::grove<gdt::interval, DataT>;
     using key_t = gdt::key<gdt::interval, DataT>;
 
-    // The grove's Key and QueryResult instantiations must be registered first,
-    // since insert()/intersect() take and return them.
+    // The grove's Key, QueryResult and FlankingResult instantiations must be
+    // registered first, since insert()/intersect()/flanking() use them.
     bind_interval_key<DataT>(m, key_name);
     bind_query_result<DataT>(m, qr_name);
+    bind_flanking_query_result<DataT>(m, fr_name);
 
     auto cls = py::class_<grove_t>(m, grove_name, R"pbdoc(
         A B+ tree container for efficient genomic interval storage and querying.
@@ -255,6 +258,25 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
             R"pbdoc(
                 Find all intervals that overlap with the query in a specific index.
             )pbdoc")
+
+        // ---- Flanking (nearest non-overlapping neighbours) ----
+        .def("flanking",
+             [](const grove_t& g, const gdt::interval& query,
+                const std::string& index) {
+                 return g.flanking(query, index);
+             },
+             py::arg("query"), py::arg("index"), py::keep_alive<0, 1>(),
+             R"pbdoc(
+                 Find the nearest non-overlapping keys on either side of the query
+                 within an index (the predecessor and successor).
+
+                 Returns a FlankingResult with `.predecessor` / `.successor`, each
+                 a Key or None. Keys that overlap the query are excluded; for
+                 nested intervals the predecessor is the one with the largest end
+                 (smallest gap), not the sort-order maximum. Compute the gap
+                 distance from the returned key, e.g.
+                 `query.start - result.predecessor.value.end - 1`.
+             )pbdoc")
 
         // ---- Graph overlay (directed edges between keys) ----
         .def("add_edge",
