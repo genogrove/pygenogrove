@@ -14,6 +14,7 @@ def test_imports():
     assert hasattr(pygenogrove, 'Grove')
     assert hasattr(pygenogrove, 'Key')
     assert hasattr(pygenogrove, 'QueryResult')
+    assert hasattr(pygenogrove, 'FlankingResult')
 
 
 def test_imports_bed_data_grove():
@@ -22,6 +23,7 @@ def test_imports_bed_data_grove():
     assert hasattr(pygenogrove, 'BedGrove')
     assert hasattr(pygenogrove, 'BedKey')
     assert hasattr(pygenogrove, 'BedQueryResult')
+    assert hasattr(pygenogrove, 'BedFlankingResult')
     assert hasattr(pygenogrove, 'BedEntry')
     assert hasattr(pygenogrove, 'BlockInfo')
     assert hasattr(pygenogrove, 'ThickInfo')
@@ -34,6 +36,7 @@ def test_imports_gff_data_grove():
     assert hasattr(pygenogrove, 'GffGrove')
     assert hasattr(pygenogrove, 'GffKey')
     assert hasattr(pygenogrove, 'GffQueryResult')
+    assert hasattr(pygenogrove, 'GffFlankingResult')
     assert hasattr(pygenogrove, 'GffEntry')
     assert hasattr(pygenogrove, 'GffFormat')
 

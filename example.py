@@ -182,6 +182,18 @@ def main():
     keys = big.insert_bulk("chr1", entries, presorted=True)  # 10-20x faster than a loop
     print(f"  bulk-inserted {len(keys)} records; grove size = {big.size()}")
 
+    # Nearest-neighbour (flanking) query: closest features on either side of a gap
+    print("\nFinding the nearest non-overlapping neighbours (flanking)...")
+    nn = peaks.flanking(pg.Interval(2100, 2200), "chr1")   # a gap with no peak
+    if nn.predecessor is not None:
+        pred = nn.predecessor
+        gap = 2100 - pred.value.end - 1
+        print(f"  nearest upstream: {pred.data.name} ({pred.value}), gap={gap}")
+    if nn.successor is not None:
+        succ = nn.successor
+        gap = succ.value.start - 2200 - 1
+        print(f"  nearest downstream: {succ.data.name} ({succ.value}), gap={gap}")
+
     print("\nExample completed successfully!")
 
 
