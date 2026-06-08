@@ -181,7 +181,7 @@ def test_bulk_on_gff_grove():
     assert len(keys) == 20
     assert g.size() == 20
     assert [k.value.start for k in keys] == [i * 100 for i in range(20)]
-    assert [k.get_attribute("idx") for k in keys] == [str(i) for i in range(20)]
+    assert [k.data.get_attribute("idx") for k in keys] == [str(i) for i in range(20)]
 
 
 def test_dataless_grove_has_no_bulk():
