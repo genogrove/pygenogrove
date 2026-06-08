@@ -20,6 +20,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 #include <genogrove/data_type/interval.hpp>
 #include <genogrove/data_type/key.hpp>
@@ -27,6 +29,7 @@
 
 #include "../data_type/interval_key.hpp"
 #include "../data_type/query_result.hpp"
+#include "../io/entry_interval.hpp"
 
 namespace py = pybind11;
 namespace ggs = genogrove::structure;
@@ -127,6 +130,113 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
                         Stable reference to the inserted key. Its .data payload
                         is freely mutable; its .value (interval) is not.
                 )pbdoc");
+
+        // ---- Sorted / bulk insertion (fast paths; non-void data only) ----
+        cls.def("insert_sorted",
+                [](grove_t& g, const std::string& index,
+                   const gdt::interval& interval, DataT data) {
+                    return g.insert_data(index, interval, std::move(data),
+                                         ggs::sorted);
+                },
+                py::arg("index"), py::arg("interval"), py::arg("data"),
+                py::return_value_policy::reference_internal,
+                R"pbdoc(
+                    Insert one (interval, data) record on the optimized sorted
+                    path (rightmost-append, no tree traversal).
+
+                    PRECONDITION: the interval must be greater than every interval
+                    already present in this index. Insert in ascending order.
+                    Violating this corrupts B+ tree ordering (queries silently
+                    return wrong results). Use plain insert() if unsure.
+                )pbdoc");
+
+        cls.def("insert_bulk",
+                [](grove_t& g, const std::string& index,
+                   std::vector<std::pair<gdt::interval, DataT>> items,
+                   bool presorted) {
+                    if (presorted) {
+                        return g.insert_data(index, items, ggs::sorted, ggs::bulk);
+                    }
+                    return g.insert_data(index, std::move(items), ggs::bulk);
+                },
+                py::arg("index"), py::arg("items"), py::arg("presorted") = false,
+                py::return_value_policy::reference_internal,
+                R"pbdoc(
+                    Bulk-insert many (interval, data) records at once. 10-20x
+                    faster than repeated insert() for large datasets — an empty
+                    index is built bottom-up in O(n); a non-empty index appends.
+
+                    Parameters
+                    ----------
+                    index : str
+                        The index name (e.g., chromosome name).
+                    items : list[tuple[Interval, object]]
+                        The (interval, data) records to insert.
+                    presorted : bool, optional
+                        If False (default) the records are sorted by interval
+                        first. If True, they are assumed already sorted ascending
+                        (skips the sort — fastest).
+
+                    Returns
+                    -------
+                    list[Key]
+                        Stable key handles, in insertion (sorted) order.
+
+                    PRECONDITION (appending to a non-empty index): every inserted
+                    interval must be greater than every existing interval in the
+                    index. Violating this corrupts B+ tree ordering.
+                )pbdoc");
+
+        // ---- Entry-deriving OVERLOADS of insert / insert_bulk: pass a file
+        //      entry (or a list of them) and the Interval key is derived from
+        //      the entry's native coordinates, so you never hand-convert
+        //      (BED 0-based half-open, GFF 1-based inclusive). pybind resolves
+        //      these against the explicit (interval, data) forms by signature.
+        //      Only enabled for entry types with a known conversion. ----
+        if constexpr (has_entry_interval<DataT>) {
+            cls.def("insert",
+                    [](grove_t& g, const std::string& index, DataT entry) {
+                        gdt::interval iv = interval_from_entry(entry);
+                        return g.insert_data(index, iv, std::move(entry));
+                    },
+                    py::arg("index"), py::arg("entry"),
+                    py::return_value_policy::reference_internal,
+                    R"pbdoc(
+                        insert(index, entry) -> Key
+
+                        Overload that takes a single file entry and derives the
+                        Interval key from its native coordinates (BED half-open
+                        [s, e) -> [s, e-1]; GFF 1-based [s, e] -> [s-1, e-1]).
+                        The entry keeps its native coordinates as the payload.
+                    )pbdoc");
+
+            cls.def("insert_bulk",
+                    [](grove_t& g, const std::string& index,
+                       std::vector<DataT> entries, bool presorted) {
+                        std::vector<std::pair<gdt::interval, DataT>> items;
+                        items.reserve(entries.size());
+                        for (auto& entry : entries) {
+                            gdt::interval iv = interval_from_entry(entry);
+                            items.emplace_back(iv, std::move(entry));
+                        }
+                        if (presorted) {
+                            return g.insert_data(index, items, ggs::sorted,
+                                                 ggs::bulk);
+                        }
+                        return g.insert_data(index, std::move(items), ggs::bulk);
+                    },
+                    py::arg("index"), py::arg("entries"),
+                    py::arg("presorted") = false,
+                    py::return_value_policy::reference_internal,
+                    R"pbdoc(
+                        insert_bulk(index, entries, presorted=False) -> list[Key]
+
+                        Overload that takes a list of bare file entries (instead
+                        of (Interval, data) tuples) and derives each Interval key
+                        from the entry's native coordinates. Same append
+                        precondition as the explicit form.
+                    )pbdoc");
+        }
     }
 
     // ---- Queries (identical for both cases) ----
