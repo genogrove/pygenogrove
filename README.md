@@ -224,9 +224,20 @@ reloaded = pg.BedGrove.deserialize("genes.gg")
 ```
 
 `BedGrove` exposes the same surface as `Grove` (multi-index `insert`/`intersect`,
-the graph overlay, and `serialize`/`deserialize`), with two differences:
+the graph overlay, and `serialize`/`deserialize`), with these differences:
 - `insert(index: str, interval: Interval, data: BedEntry) -> BedKey` takes the BED payload.
 - `add_external_key(interval: Interval, data: BedEntry) -> BedKey` takes the payload too.
+- **Fast-path inserts** (data-carrying groves only):
+  - `insert_sorted(index, interval, data) -> BedKey` — single insert on the
+    rightmost-append path (skips tree traversal).
+  - `insert_bulk(index, items, presorted=False) -> list[BedKey]` — insert many
+    `(Interval, BedEntry)` records at once (10–20× faster for large datasets;
+    an empty index is built bottom-up in O(n)). With `presorted=True` the records
+    are assumed already sorted by interval (skips the internal sort).
+  - **Precondition:** sorted/bulk inserts require ascending intervals, and when
+    appending to a non-empty index every new interval must be greater than all
+    existing ones. Violating this corrupts B+ tree ordering — use plain `insert`
+    if unsure. (`GffGrove` has the same two methods.)
 
 **BedKey** is like `Key` but adds a `data` attribute:
 - `value`: the interval (returned by copy; do not rely on mutating it)
@@ -367,12 +378,12 @@ This is an early development version. Currently exposed features:
   (`grove<interval, gff_entry>`)
 - File readers: `BedReader` and `GffReader` (single-pass iterators over BED /
   GFF3 / GTF files, including `.gz`)
+- Fast-path inserts on data-carrying groves: `insert_sorted` and `insert_bulk`
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
 - Genomic coordinates with strand information, and other key types — numeric, kmer
   ([#7](https://github.com/genogrove/pygenogrove/issues/7))
 - BAM/SAM and FASTA readers
-- Bulk / sorted insertion
 - Edge metadata, `get_neighbors_if` / `link_if` (require a metadata-carrying grove)
 
 ## Performance Tips

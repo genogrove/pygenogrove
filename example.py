@@ -173,6 +173,16 @@ def main():
     overlaps = list(peaks.intersect(pg.Interval(1500, 1500), "chr1"))
     print(f"  peak overlapping chr1:1500 -> {overlaps[0].data.name}")
 
+    # Bulk insert: load many sorted records into a data-carrying grove at once
+    print("\nBulk-loading sorted records into a BedGrove (insert_bulk)...")
+    big = pg.BedGrove(256)
+    records = []
+    for i in range(1000):
+        s = i * 100
+        records.append((pg.Interval(s, s + 50), pg.BedEntry("chr1", s, s + 50)))
+    keys = big.insert_bulk("chr1", records, presorted=True)  # 10-20x faster than a loop
+    print(f"  bulk-inserted {len(keys)} records; grove size = {big.size()}")
+
     print("\nExample completed successfully!")
 
 

@@ -20,6 +20,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 #include <genogrove/data_type/interval.hpp>
 #include <genogrove/data_type/key.hpp>
@@ -126,6 +128,62 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
                     Key
                         Stable reference to the inserted key. Its .data payload
                         is freely mutable; its .value (interval) is not.
+                )pbdoc");
+
+        // ---- Sorted / bulk insertion (fast paths; non-void data only) ----
+        cls.def("insert_sorted",
+                [](grove_t& g, const std::string& index,
+                   const gdt::interval& interval, DataT data) {
+                    return g.insert_data(index, interval, std::move(data),
+                                         ggs::sorted);
+                },
+                py::arg("index"), py::arg("interval"), py::arg("data"),
+                py::return_value_policy::reference_internal,
+                R"pbdoc(
+                    Insert one (interval, data) record on the optimized sorted
+                    path (rightmost-append, no tree traversal).
+
+                    PRECONDITION: the interval must be greater than every interval
+                    already present in this index. Insert in ascending order.
+                    Violating this corrupts B+ tree ordering (queries silently
+                    return wrong results). Use plain insert() if unsure.
+                )pbdoc");
+
+        cls.def("insert_bulk",
+                [](grove_t& g, const std::string& index,
+                   std::vector<std::pair<gdt::interval, DataT>> items,
+                   bool presorted) {
+                    if (presorted) {
+                        return g.insert_data(index, items, ggs::sorted, ggs::bulk);
+                    }
+                    return g.insert_data(index, std::move(items), ggs::bulk);
+                },
+                py::arg("index"), py::arg("items"), py::arg("presorted") = false,
+                py::return_value_policy::reference_internal,
+                R"pbdoc(
+                    Bulk-insert many (interval, data) records at once. 10-20x
+                    faster than repeated insert() for large datasets — an empty
+                    index is built bottom-up in O(n); a non-empty index appends.
+
+                    Parameters
+                    ----------
+                    index : str
+                        The index name (e.g., chromosome name).
+                    items : list[tuple[Interval, object]]
+                        The (interval, data) records to insert.
+                    presorted : bool, optional
+                        If False (default) the records are sorted by interval
+                        first. If True, they are assumed already sorted ascending
+                        (skips the sort — fastest).
+
+                    Returns
+                    -------
+                    list[Key]
+                        Stable key handles, in insertion (sorted) order.
+
+                    PRECONDITION (appending to a non-empty index): every inserted
+                    interval must be greater than every existing interval in the
+                    index. Violating this corrupts B+ tree ordering.
                 )pbdoc");
     }
 
