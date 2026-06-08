@@ -7,6 +7,8 @@ numeric cases there need the genomic_coordinate / numeric key types, not yet
 bound.)
 """
 
+import gc
+
 import pytest
 
 
@@ -120,6 +122,27 @@ def test_multi_leaf_tree_picks_global_nearest():
     assert r.successor is not None
     assert r.predecessor.value.end == 420
     assert r.successor.value.start == 500
+
+
+def test_flanking_keys_keep_grove_alive():
+    """Keys returned by flanking() keep the grove alive via the chain
+    key -> FlankingResult -> grove (keep_alive on flanking() + reference_internal
+    on .predecessor/.successor). A regression would be a use-after-free (crash),
+    not a failed assertion. Mirrors test_query_result.py::test_keys_keep_grove_alive."""
+    pg = _pg()
+    g = pg.Grove(8)
+    g.insert("chr1", pg.Interval(100, 200))
+    g.insert("chr1", pg.Interval(500, 600))
+
+    r = g.flanking(pg.Interval(300, 400), "chr1")
+    pred = r.predecessor
+    succ = r.successor
+
+    del g, r            # drop the grove and the result; only the keys remain
+    gc.collect()
+
+    assert pred.value == pg.Interval(100, 200)
+    assert succ.value == pg.Interval(500, 600)
 
 
 def test_flanking_carries_data_on_bed_grove():
