@@ -131,5 +131,26 @@ def test_explicit_pair_bulk_still_works():
     assert [k.value.start for k in keys] == [i * 100 for i in range(10)]
 
 
+def test_malformed_bed_entry_raises():
+    """A BED entry with end <= start has no closed-Interval representation and
+    fails fast with a clear error rather than producing a junk interval."""
+    pg = _pg()
+    g = pg.BedGrove(8)
+    with pytest.raises((ValueError, RuntimeError)):
+        g.insert("chr1", pg.BedEntry("chr1", 5, 0))     # inverted
+    with pytest.raises((ValueError, RuntimeError)):
+        g.insert("chr1", pg.BedEntry("chr1", 5, 5))     # empty (zero-length)
+
+
+def test_malformed_gff_entry_raises():
+    """A GFF entry with end < start (or start == 0) fails fast."""
+    pg = _pg()
+    g = pg.GffGrove(8)
+    with pytest.raises((ValueError, RuntimeError)):
+        g.insert("chr1", pg.GffEntry("chr1", 5, 1, "gene"))    # end < start
+    with pytest.raises((ValueError, RuntimeError)):
+        g.insert("chr1", pg.GffEntry("chr1", 0, 100, "gene"))  # start 0 (not 1-based)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
