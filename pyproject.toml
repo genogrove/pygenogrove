@@ -48,6 +48,31 @@ cmake.minimum-version = "3.15"
 cmake.build-type = "Release"
 build-dir = "build/{wheel_tag}"
 
+# The genogrove submodule is part of the build (add_subdirectory), so its
+# sources must ship in the sdist for a `pip install` from source to compile.
+sdist.include = ["external/genogrove/**"]
+
+[tool.cibuildwheel]
+# Match the CI test matrix; no PyPy, no musllinux (htslib isn't provisioned there).
+build = "cp39-* cp310-* cp311-* cp312-*"
+skip = "*musllinux*"
+build-verbosity = 1
+# Smoke-test every built wheel: it imports and reports both versions.
+test-command = "python -c \"import pygenogrove; print(pygenogrove.__version__, pygenogrove.__genogrove_version__)\""
+
+[tool.cibuildwheel.linux]
+# manylinux_2_28 (AlmaLinux 8) ships gcc 12 — needed for the C++20 build.
+manylinux-x86_64-image = "manylinux_2_28"
+# Build htslib from source into /usr/local so genogrove can link it; auditwheel
+# then bundles libhts into the repaired wheel.
+before-all = "bash {project}/.github/scripts/install-htslib-linux.sh"
+environment = { PKG_CONFIG_PATH = "/usr/local/lib/pkgconfig", LD_LIBRARY_PATH = "/usr/local/lib" }
+
+[tool.cibuildwheel.macos]
+# Homebrew htslib; delocate bundles it into the wheel.
+before-all = "brew install htslib"
+environment = { PKG_CONFIG_PATH = "$(brew --prefix)/lib/pkgconfig" }
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
