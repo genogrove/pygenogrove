@@ -7,6 +7,8 @@
  */
 #include <pybind11/pybind11.h>
 
+#include <genogrove/config/version.hpp>
+
 #include "data_type/interval.hpp"
 #include "io/bed_reader.hpp"
 #include "io/gff_reader.hpp"
@@ -14,6 +16,14 @@
 
 namespace py = pybind11;
 namespace gio = genogrove::io;
+
+// Stringify-and-join genogrove's integer version macros into "MAJOR.MINOR.PATCH".
+#define PYGENOGROVE_STR2(x) #x
+#define PYGENOGROVE_STR(x) PYGENOGROVE_STR2(x)
+#define PYGENOGROVE_GENOGROVE_VERSION                                          \
+    PYGENOGROVE_STR(genogrove_VERSION_MAJOR)                                   \
+    "." PYGENOGROVE_STR(genogrove_VERSION_MINOR) "." PYGENOGROVE_STR(          \
+        genogrove_VERSION_PATCH)
 
 PYBIND11_MODULE(pygenogrove, m) {
     m.doc() = R"pbdoc(
@@ -45,5 +55,9 @@ PYBIND11_MODULE(pygenogrove, m) {
                                               "GffQueryResult", "GffFlankingResult");
     bind_gff_reader(m);
 
-    m.attr("__version__") = "0.1.0";
+    // __version__ is single-sourced from pyproject.toml via CMake; __genogrove_version__
+    // reports the genogrove the wheel was built against (independent SemVer — the two
+    // version lines move on their own cadence).
+    m.attr("__version__") = PYGENOGROVE_VERSION;
+    m.attr("__genogrove_version__") = PYGENOGROVE_GENOGROVE_VERSION;
 }
