@@ -4,6 +4,17 @@ project(pygenogrove)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Single source of truth for the package version: pyproject.toml. scikit-build-core
+# passes it in as SKBUILD_PROJECT_VERSION, which we forward to the module as a
+# compile definition (see target_compile_definitions below) so the version lives
+# in exactly one place. A plain `cmake` dev build (no scikit-build-core) gets a
+# clearly-non-release marker instead of a stale hardcoded number.
+if(DEFINED SKBUILD_PROJECT_VERSION)
+    set(PYGENOGROVE_VERSION "${SKBUILD_PROJECT_VERSION}")
+else()
+    set(PYGENOGROVE_VERSION "0.0.0+local")
+endif()
+
 # Fetch pybind11
 include(FetchContent)
 FetchContent_Declare(
@@ -29,6 +40,15 @@ pybind11_add_module(pygenogrove src/bindings.cpp)
 target_link_libraries(pygenogrove PRIVATE genogrove)
 target_include_directories(pygenogrove PRIVATE
     ${CMAKE_SOURCE_DIR}/external/genogrove/include
+    # genogrove's version macros live in a header it generates at configure time
+    # into its own binary dir; expose it so bindings.cpp can report which
+    # genogrove it was built against (pygenogrove.__genogrove_version__).
+    ${genogrove_BINARY_DIR}/include
+)
+
+# PYGENOGROVE_VERSION -> pygenogrove.__version__ (single-sourced from pyproject.toml).
+target_compile_definitions(pygenogrove PRIVATE
+    PYGENOGROVE_VERSION="${PYGENOGROVE_VERSION}"
 )
 
 # Set output directory
