@@ -1,14 +1,14 @@
 /*
- * Binding for ggs::grove<interval, DataT> — the B+ tree container.
- * Mirrors genogrove structure/grove/grove.hpp, fixed to the `interval` key
- * type (named interval_grove so other key types — numeric, genomic_coordinate,
- * kmer — can get their own grove bindings later; see issue #1).
+ * Binding for ggs::grove<KeyT, DataT> — the B+ tree container. Mirrors genogrove
+ * structure/grove/grove.hpp. Generic over the key type KeyT (interval,
+ * genomic_coordinate, …): instantiated per concrete key type from bindings.cpp,
+ * producing a distinct Python class each time (Grove, GenomicCoordinateGrove, …).
  *
- * A single template covers both the dataless grove (DataT = void, exposed as
- * Grove/Key/QueryResult) and data-carrying groves (e.g. DataT = bed_entry,
- * exposed as BedGrove/BedKey/BedQueryResult). The only differences between the
- * two are the insert / add_external_key signatures (which gain a data argument)
- * and the Key.data accessor; these are switched with `if constexpr`.
+ * A single template covers the dataless grove (DataT = void, e.g. Grove) and
+ * data-carrying groves (e.g. DataT = bed_entry → BedGrove). The differences are
+ * the insert / add_external_key signatures (which gain a data argument), the
+ * Key.data accessor, and the interval-only entry-deriving insert overloads;
+ * these are switched with `if constexpr`.
  */
 #pragma once
 
