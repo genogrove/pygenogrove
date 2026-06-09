@@ -1,14 +1,14 @@
 /*
- * Binding for ggs::grove<interval, DataT> — the B+ tree container.
- * Mirrors genogrove structure/grove/grove.hpp, fixed to the `interval` key
- * type (named interval_grove so other key types — numeric, genomic_coordinate,
- * kmer — can get their own grove bindings later; see issue #1).
+ * Binding for ggs::grove<KeyT, DataT> — the B+ tree container. Mirrors genogrove
+ * structure/grove/grove.hpp. Generic over the key type KeyT (interval,
+ * genomic_coordinate, …): instantiated per concrete key type from bindings.cpp,
+ * producing a distinct Python class each time (Grove, GenomicCoordinateGrove, …).
  *
- * A single template covers both the dataless grove (DataT = void, exposed as
- * Grove/Key/QueryResult) and data-carrying groves (e.g. DataT = bed_entry,
- * exposed as BedGrove/BedKey/BedQueryResult). The only differences between the
- * two are the insert / add_external_key signatures (which gain a data argument)
- * and the Key.data accessor; these are switched with `if constexpr`.
+ * A single template covers the dataless grove (DataT = void, e.g. Grove) and
+ * data-carrying groves (e.g. DataT = bed_entry → BedGrove). The differences are
+ * the insert / add_external_key signatures (which gain a data argument), the
+ * Key.data accessor, and the interval-only entry-deriving insert overloads;
+ * these are switched with `if constexpr`.
  */
 #pragma once
 
@@ -27,7 +27,7 @@
 #include <genogrove/data_type/key.hpp>
 #include <genogrove/structure/grove/grove.hpp>
 
-#include "../data_type/interval_key.hpp"
+#include "../data_type/key.hpp"
 #include "../data_type/query_result.hpp"
 #include "../data_type/flanking_query_result.hpp"
 #include "../io/entry_interval.hpp"
@@ -36,18 +36,18 @@ namespace py = pybind11;
 namespace ggs = genogrove::structure;
 namespace gdt = genogrove::data_type;
 
-template <typename DataT>
-void bind_interval_grove(py::module_& m, const char* grove_name,
-                         const char* key_name, const char* qr_name,
-                         const char* fr_name) {
-    using grove_t = ggs::grove<gdt::interval, DataT>;
-    using key_t = gdt::key<gdt::interval, DataT>;
+template <typename KeyT, typename DataT>
+void bind_grove(py::module_& m, const char* grove_name,
+                const char* key_name, const char* qr_name,
+                const char* fr_name) {
+    using grove_t = ggs::grove<KeyT, DataT>;
+    using key_t = gdt::key<KeyT, DataT>;
 
     // The grove's Key, QueryResult and FlankingResult instantiations must be
     // registered first, since insert()/intersect()/flanking() use them.
-    bind_interval_key<DataT>(m, key_name);
-    bind_query_result<DataT>(m, qr_name);
-    bind_flanking_query_result<DataT>(m, fr_name);
+    bind_key<KeyT, DataT>(m, key_name);
+    bind_query_result<KeyT, DataT>(m, qr_name);
+    bind_flanking_query_result<KeyT, DataT>(m, fr_name);
 
     auto cls = py::class_<grove_t>(m, grove_name, R"pbdoc(
         A B+ tree container for efficient genomic interval storage and querying.
@@ -84,7 +84,7 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
     if constexpr (std::is_void_v<DataT>) {
         cls.def("insert",
                 [](grove_t& g, const std::string& index,
-                   const gdt::interval& interval) {
+                   const KeyT& interval) {
                     key_t key(interval);
                     return g.insert(index, key);
                 },
@@ -109,7 +109,7 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
     } else {
         cls.def("insert",
                 [](grove_t& g, const std::string& index,
-                   const gdt::interval& interval, DataT data) {
+                   const KeyT& interval, DataT data) {
                     return g.insert_data(index, interval, std::move(data));
                 },
                 py::arg("index"), py::arg("interval"), py::arg("data"),
@@ -137,7 +137,7 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
         // ---- Sorted / bulk insertion (fast paths; non-void data only) ----
         cls.def("insert_sorted",
                 [](grove_t& g, const std::string& index,
-                   const gdt::interval& interval, DataT data) {
+                   const KeyT& interval, DataT data) {
                     return g.insert_data(index, interval, std::move(data),
                                          ggs::sorted);
                 },
@@ -155,7 +155,7 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
 
         cls.def("insert_bulk",
                 [](grove_t& g, const std::string& index,
-                   std::vector<std::pair<gdt::interval, DataT>> items,
+                   std::vector<std::pair<KeyT, DataT>> items,
                    bool presorted) {
                     if (presorted) {
                         return g.insert_data(index, items, ggs::sorted, ggs::bulk);
@@ -195,11 +195,13 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
         //      the entry's native coordinates, so you never hand-convert
         //      (BED 0-based half-open, GFF 1-based inclusive). pybind resolves
         //      these against the explicit (interval, data) forms by signature.
-        //      Only enabled for entry types with a known conversion. ----
-        if constexpr (has_entry_interval<DataT>) {
+        //      Only for the interval key type (the conversion yields an interval)
+        //      and entry data types with a known conversion. ----
+        if constexpr (std::is_same_v<KeyT, gdt::interval> &&
+                      has_entry_interval<DataT>) {
             cls.def("insert",
                     [](grove_t& g, const std::string& index, DataT entry) {
-                        gdt::interval iv = interval_from_entry(entry);
+                        KeyT iv = interval_from_entry(entry);
                         return g.insert_data(index, iv, std::move(entry));
                     },
                     py::arg("index"), py::arg("entry"),
@@ -216,10 +218,10 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
             cls.def("insert_bulk",
                     [](grove_t& g, const std::string& index,
                        std::vector<DataT> entries, bool presorted) {
-                        std::vector<std::pair<gdt::interval, DataT>> items;
+                        std::vector<std::pair<KeyT, DataT>> items;
                         items.reserve(entries.size());
                         for (auto& entry : entries) {
-                            gdt::interval iv = interval_from_entry(entry);
+                            KeyT iv = interval_from_entry(entry);
                             items.emplace_back(iv, std::move(entry));
                         }
                         if (presorted) {
@@ -246,13 +248,13 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
     // keep_alive<0, 1>: the returned QueryResult (and the keys it yields) hold
     // pointers into the grove's storage, so the grove must outlive the result.
     cls.def("intersect",
-            py::overload_cast<const gdt::interval&>(&grove_t::intersect),
+            py::overload_cast<const KeyT&>(&grove_t::intersect),
             py::arg("query"), py::keep_alive<0, 1>(),
             R"pbdoc(
                 Find all intervals that overlap with the query across all indices.
             )pbdoc")
        .def("intersect",
-            py::overload_cast<const gdt::interval&, std::string_view>(
+            py::overload_cast<const KeyT&, std::string_view>(
                 &grove_t::intersect),
             py::arg("query"), py::arg("index"), py::keep_alive<0, 1>(),
             R"pbdoc(
@@ -261,7 +263,7 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
 
         // ---- Flanking (nearest non-overlapping neighbours) ----
         .def("flanking",
-             [](const grove_t& g, const gdt::interval& query,
+             [](const grove_t& g, const KeyT& query,
                 const std::string& index) {
                  return g.flanking(query, index);
              },
@@ -330,7 +332,7 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
     // ---- External (graph-only) key — gains a data argument when non-void ----
     if constexpr (std::is_void_v<DataT>) {
         cls.def("add_external_key",
-                [](grove_t& g, const gdt::interval& interval) {
+                [](grove_t& g, const KeyT& interval) {
                     return g.add_external_key(interval);
                 },
                 py::arg("interval"),
@@ -346,7 +348,7 @@ void bind_interval_grove(py::module_& m, const char* grove_name,
                 )pbdoc");
     } else {
         cls.def("add_external_key",
-                [](grove_t& g, const gdt::interval& interval, DataT data) {
+                [](grove_t& g, const KeyT& interval, DataT data) {
                     return g.add_external_key(interval, std::move(data));
                 },
                 py::arg("interval"), py::arg("data"),
