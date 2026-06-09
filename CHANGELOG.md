@@ -23,3 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **`intersect()` result lifetime** — the `QueryResult` returned by `Grove.intersect()` (and the keys it yields) now keep the grove alive via `keep_alive<0,1>`. Previously a key or `.data`/`.value` reference materialized from an intersect result could outlive the grove, a latent use-after-free affecting every grove instantiation ([#8](https://github.com/genogrove/pygenogrove/pull/8)).
+
+### Refactored
+
+- **Generalized the grove binding templates over the key type** — `bind_grove<KeyT, DataT>` (and `bind_key` / `bind_query_result` / `bind_flanking_query_result`) replace the interval-hardcoded versions, so additional key types can be added by instantiation rather than near-duplicate headers; the now-generic `interval_key.hpp` / `interval_grove.hpp` were renamed to `key.hpp` / `grove.hpp`. No change to the Python API ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#12](https://github.com/genogrove/pygenogrove/pull/12)).
