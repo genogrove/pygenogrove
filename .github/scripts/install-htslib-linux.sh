@@ -12,6 +12,11 @@
 set -euo pipefail
 
 HTSLIB_VERSION="${HTSLIB_VERSION:-1.21}"
+# SHA256 of the official htslib-${HTSLIB_VERSION}.tar.bz2 release asset. Pinned so
+# the download is verified before extraction (supply-chain guard in the publish
+# path). Keep in sync with HTSLIB_VERSION — re-verify against the samtools release
+# when bumping. An override of HTSLIB_VERSION without HTSLIB_SHA256 fails closed.
+HTSLIB_SHA256="${HTSLIB_SHA256:-84b510e735f4963641f26fd88c8abdee81ff4cb62168310ae716636aac0f1823}"
 
 # Build deps for htslib (+ the compression/network backends it links).
 dnf install -y \
@@ -20,6 +25,8 @@ dnf install -y \
 
 curl -fsSL -o /tmp/htslib.tar.bz2 \
     "https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2"
+# Verify the tarball against the pinned checksum; abort (no extraction) on mismatch.
+echo "${HTSLIB_SHA256}  /tmp/htslib.tar.bz2" | sha256sum -c -
 mkdir -p /tmp/htslib
 tar -xjf /tmp/htslib.tar.bz2 -C /tmp/htslib --strip-components=1
 
