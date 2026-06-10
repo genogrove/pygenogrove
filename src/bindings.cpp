@@ -9,6 +9,7 @@
 
 #include <genogrove/config/version.hpp>
 
+#include "data_type/genomic_coordinate.hpp"
 #include "data_type/interval.hpp"
 #include "io/bed_reader.hpp"
 #include "io/gff_reader.hpp"
@@ -39,6 +40,15 @@ PYBIND11_MODULE(pygenogrove, m) {
     // QueryResult / FlankingResult.
     bind_grove<gdt::interval, void>(m, "Grove", "Key", "QueryResult",
                                     "FlankingResult");
+
+    // GenomicCoordinate key value type (stranded interval), then the dataless
+    // grove<genomic_coordinate> exposed as GenomicCoordinateGrove /
+    // GenomicCoordinateKey / GenomicCoordinateQueryResult /
+    // GenomicCoordinateFlankingResult. Overlap is strand-aware ('*' = wildcard).
+    bind_genomic_coordinate(m);
+    bind_grove<gdt::genomic_coordinate, void>(
+        m, "GenomicCoordinateGrove", "GenomicCoordinateKey",
+        "GenomicCoordinateQueryResult", "GenomicCoordinateFlankingResult");
 
     // BED value types, then the data-carrying grove<interval, bed_entry>
     // exposed as BedGrove / BedKey / BedQueryResult / BedFlankingResult. BedEntry

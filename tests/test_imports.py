@@ -17,6 +17,16 @@ def test_imports():
     assert hasattr(pygenogrove, 'FlankingResult')
 
 
+def test_imports_genomic_coordinate_grove():
+    """The stranded genomic-coordinate grove and its value type are exposed."""
+    import pygenogrove
+    assert hasattr(pygenogrove, 'GenomicCoordinate')
+    assert hasattr(pygenogrove, 'GenomicCoordinateGrove')
+    assert hasattr(pygenogrove, 'GenomicCoordinateKey')
+    assert hasattr(pygenogrove, 'GenomicCoordinateQueryResult')
+    assert hasattr(pygenogrove, 'GenomicCoordinateFlankingResult')
+
+
 def test_imports_bed_data_grove():
     """The data-carrying grove for bed_entry and its value types are exposed."""
     import pygenogrove
