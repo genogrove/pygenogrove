@@ -71,21 +71,12 @@ environment = { PKG_CONFIG_PATH = "/usr/local/lib/pkgconfig", LD_LIBRARY_PATH = 
 [tool.cibuildwheel.macos]
 # Homebrew htslib; delocate bundles it into the wheel.
 before-all = "brew install htslib"
-# MACOSX_DEPLOYMENT_TARGET=13.3 (x86_64 default below): genogrove uses
-# std::format, whose libc++ implementation (and the std::to_chars it relies on)
-# is only available on macOS >= 13.3. cibuildwheel otherwise defaults to a much
-# lower target (11.0 arm64 / 10.9 x86_64), which makes std::format unavailable
-# and the genogrove build fails to compile.
-environment = { PKG_CONFIG_PATH = "$(brew --prefix)/lib/pkgconfig", MACOSX_DEPLOYMENT_TARGET = "13.3" }
-
-# arm64 wheels build on the macos-14 runner, whose Homebrew bottles (libhts,
-# liblzma, libdeflate) target macOS 14.0 — delocate refuses to bundle a 14.0
-# dylib into a 13.3 wheel. So arm64 must target 14.0. (The x86_64 wheel builds
-# on the macos-13 runner, whose SDK can't target 14.0, so it keeps 13.3.)
-[[tool.cibuildwheel.overrides]]
-select = "*-macosx_arm64"
-inherit.environment = "append"
-environment = { MACOSX_DEPLOYMENT_TARGET = "14.0" }
+# arm64-only macOS wheels (built on the macos-14 runner; no Intel macOS — see
+# release.yml). Target 14.0: the runner's Homebrew bottles (libhts, liblzma,
+# libdeflate) target macOS 14.0, so delocate won't bundle them into a lower
+# target. (genogrove also needs >= 13.3 regardless, for std::format /
+# std::to_chars in libc++.)
+environment = { PKG_CONFIG_PATH = "$(brew --prefix)/lib/pkgconfig", MACOSX_DEPLOYMENT_TARGET = "14.0" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
