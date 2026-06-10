@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-10
+
 ### Added
 
 - **Stranded `GenomicCoordinate` key type and `GenomicCoordinateGrove`** — `grove<genomic_coordinate>` exposed as `GenomicCoordinateGrove` / `GenomicCoordinateKey` / `GenomicCoordinateQueryResult` / `GenomicCoordinateFlankingResult`, plus the `GenomicCoordinate` value type (ctor `(strand, start, end)`; `strand`/`start`/`end`; `set_range`/`set_strand`; `overlaps`; comparisons). Overlap is **strand-aware** — equal strands match, `'*'` is a wildcard matching any strand, `'.'` is a concrete unstranded value — and sorting is coordinate-first (start → end → strand, `* < . < + < -`). Dataless grove only; reuses the generic `bind_grove<KeyT, DataT>` template, so insert / strand-aware intersect / flanking / graph overlay / serialization all come for free ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#15](https://github.com/genogrove/pygenogrove/pull/15)).
