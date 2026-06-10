@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **PyPI release pipeline** — tagged releases now build manylinux + macOS (x86_64/arm64) wheels for CPython 3.9–3.12 and an sdist via cibuildwheel, then publish to PyPI through OIDC Trusted Publishing (no API tokens). htslib is provisioned and bundled into each wheel (built from source on manylinux, Homebrew on macOS), so `pip install pygenogrove` works without a system htslib ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#14](https://github.com/genogrove/pygenogrove/pull/14)).
+- **PyPI release pipeline** — tagged releases now build manylinux + macOS (x86_64/arm64) wheels for CPython 3.9–3.12 and an sdist via cibuildwheel, then publish to PyPI through OIDC Trusted Publishing (no API tokens). htslib is provisioned and bundled into each wheel (built from source on manylinux, Homebrew on macOS), so `pip install pygenogrove` works without a system htslib. **macOS wheels require macOS 13.3+** (the bound genogrove library uses `std::format`, available in libc++ only on 13.3+) ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#14](https://github.com/genogrove/pygenogrove/pull/14), [#16](https://github.com/genogrove/pygenogrove/pull/16)).
 
 ## [0.1.0] - 2026-06-09
 
