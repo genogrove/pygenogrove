@@ -71,7 +71,12 @@ environment = { PKG_CONFIG_PATH = "/usr/local/lib/pkgconfig", LD_LIBRARY_PATH = 
 [tool.cibuildwheel.macos]
 # Homebrew htslib; delocate bundles it into the wheel.
 before-all = "brew install htslib"
-environment = { PKG_CONFIG_PATH = "$(brew --prefix)/lib/pkgconfig" }
+# MACOSX_DEPLOYMENT_TARGET=13.3: genogrove uses std::format, whose libc++
+# implementation (and the std::to_chars it relies on) is only available on
+# macOS >= 13.3. cibuildwheel otherwise defaults to a much lower target
+# (11.0 arm64 / 10.9 x86_64), which makes std::format unavailable and the
+# genogrove build fails to compile. macOS wheels therefore require 13.3+.
+environment = { PKG_CONFIG_PATH = "$(brew --prefix)/lib/pkgconfig", MACOSX_DEPLOYMENT_TARGET = "13.3" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
