@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-11
+
 ### Added
 
 - **`StringRegistry`** — genogrove's `registry<std::string>` exposed as a process-wide string-interning singleton: `instance()`, `intern(value) -> int` (idempotent/deduplicated), `find(value) -> int | None`, `get(id) -> str` (`IndexError` on invalid id), `contains`, `size`/`__len__`, `empty`, `clear`, static `reset`, `null_id`, and `serialize(path)` / static `deserialize(path)`. Bound via a generic `bind_registry<Key, Tag, Payload>` template (mirrors genogrove's typed-per-instantiation registry, each with its own id space); only the string instantiation is exposed for now ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#22](https://github.com/genogrove/pygenogrove/pull/22)).
