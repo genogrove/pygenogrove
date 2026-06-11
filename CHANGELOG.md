@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-11
+
+> **⚠️ BREAKING** — `genomic_coordinate` is now the standard key type and `Grove`
+> stores arbitrary JSON payloads. The `Interval` value type and the
+> interval-keyed groves are removed. Code that used `pg.Interval(...)` /
+> interval-keyed `Grove`/`BedGrove`/`GffGrove` must migrate to
+> `pg.GenomicCoordinate(strand, start, end)` (plain intervals are
+> `GenomicCoordinate('.', start, end)`).
+
+### Changed
+
+- **`Grove` is now `grove<genomic_coordinate, json>` — the universal, strand-aware grove.** Keys are `GenomicCoordinate`; the payload is any JSON-serializable Python object (dict / list / scalar / `None`), stored per key with `insert(index, coord, data=None)` and returned transparently via `key.data` (no user-facing `json` import). Each key may carry a different shape — no schema. It serializes to a `.gg` whose payload is JSON text, so a C++ `grove<genomic_coordinate, std::string>` can still read the file ([#1](https://github.com/genogrove/pygenogrove/issues/1)).
+- **`BedGrove` / `GffGrove` are now genomic-coordinate keyed** (`grove<genomic_coordinate, bed_entry/gff_entry>`), kept for typed C++ `.gg` interop + the GTF helper accessors. The entry-deriving `insert(index, entry)` now derives a **stranded** coordinate from the BED6/GFF strand column (absent strand → `'.'`).
+
+### Removed
+
+- **The `Interval` value type and all interval-keyed groves**, plus the verbose `GenomicCoordinate*Grove` / `GenomicCoordinateGrove` names — `genomic_coordinate` is the one key type and the names collapse to `Grove`/`BedGrove`/`GffGrove`. Unstranded intervals are `GenomicCoordinate('.', start, end)`.
+
 ## [0.3.0] - 2026-06-11
 
 ### Added
