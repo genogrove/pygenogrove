@@ -197,14 +197,14 @@ void bind_grove(py::module_& m, const char* grove_name,
         //      the entry's native coordinates, so you never hand-convert
         //      (BED 0-based half-open, GFF 1-based inclusive). pybind resolves
         //      these against the explicit (interval, data) forms by signature.
-        //      Only for the interval key type (the conversion yields an interval)
-        //      and entry data types with a known conversion. ----
-        if constexpr (std::is_same_v<KeyT, gdt::interval> &&
-                      has_entry_interval<DataT>) {
+        //      Only for the genomic_coordinate key type (the conversion yields a
+        //      stranded coordinate) and entry data types with a known conversion. ----
+        if constexpr (std::is_same_v<KeyT, gdt::genomic_coordinate> &&
+                      has_entry_coordinate<DataT>) {
             cls.def("insert",
                     [](grove_t& g, const std::string& index, DataT entry) {
-                        KeyT iv = interval_from_entry(entry);
-                        return g.insert_data(index, iv, std::move(entry));
+                        KeyT k = genomic_coordinate_from_entry(entry);
+                        return g.insert_data(index, k, std::move(entry));
                     },
                     py::arg("index"), py::arg("entry"),
                     py::return_value_policy::reference_internal,
@@ -212,9 +212,11 @@ void bind_grove(py::module_& m, const char* grove_name,
                         insert(index, entry) -> Key
 
                         Overload that takes a single file entry and derives the
-                        Interval key from its native coordinates (BED half-open
-                        [s, e) -> [s, e-1]; GFF 1-based [s, e] -> [s-1, e-1]).
-                        The entry keeps its native coordinates as the payload.
+                        GenomicCoordinate key from its native coordinates + strand
+                        (BED half-open [s, e) -> [s, e-1]; GFF 1-based [s, e] ->
+                        [s-1, e-1]; strand from the BED6/GFF strand column, or '.'
+                        if absent). The entry keeps its native coordinates as the
+                        payload.
                     )pbdoc");
 
             cls.def("insert_bulk",
@@ -223,8 +225,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                         std::vector<std::pair<KeyT, DataT>> items;
                         items.reserve(entries.size());
                         for (auto& entry : entries) {
-                            KeyT iv = interval_from_entry(entry);
-                            items.emplace_back(iv, std::move(entry));
+                            KeyT k = genomic_coordinate_from_entry(entry);
+                            items.emplace_back(k, std::move(entry));
                         }
                         if (presorted) {
                             return g.insert_data(index, items, ggs::sorted,
@@ -239,9 +241,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                         insert_bulk(index, entries, presorted=False) -> list[Key]
 
                         Overload that takes a list of bare file entries (instead
-                        of (Interval, data) tuples) and derives each Interval key
-                        from the entry's native coordinates. Same append
-                        precondition as the explicit form.
+                        of (GenomicCoordinate, data) tuples) and derives each
+                        GenomicCoordinate key from the entry's native coordinates
+                        + strand. Same append precondition as the explicit form.
                     )pbdoc");
         }
     }

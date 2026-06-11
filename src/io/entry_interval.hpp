@@ -14,9 +14,11 @@
 #pragma once
 
 #include <concepts>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
+#include <genogrove/data_type/genomic_coordinate.hpp>
 #include <genogrove/data_type/interval.hpp>
 #include <genogrove/io/bed_reader.hpp>
 #include <genogrove/io/gff_reader.hpp>
@@ -56,4 +58,37 @@ inline gdt::interval interval_from_entry(const gio::gff_entry& e) {
 template <typename T>
 concept has_entry_interval = requires(const T& e) {
     { interval_from_entry(e) } -> std::same_as<gdt::interval>;
+};
+
+// ---------------------------------------------------------------------------
+// genomic_coordinate (stranded) key derivation — the grove's standard key.
+// Reuses interval_from_entry for the (validated) coordinate conversion and
+// layers the strand on top: a BED6/GFF strand column maps straight through;
+// a missing strand or GFF '?' becomes '.' (unstranded). genomic_coordinate's
+// own ctor only accepts '+','-','.','*', so anything else normalizes to '.'.
+inline char strand_char_from_entry(std::optional<char> strand) {
+    if (strand && (*strand == '+' || *strand == '-' || *strand == '.' ||
+                   *strand == '*')) {
+        return *strand;
+    }
+    return '.';
+}
+
+inline gdt::genomic_coordinate genomic_coordinate_from_entry(const gio::bed_entry& e) {
+    gdt::interval iv = interval_from_entry(e);
+    return gdt::genomic_coordinate(strand_char_from_entry(e.strand),
+                                   iv.get_start(), iv.get_end());
+}
+
+inline gdt::genomic_coordinate genomic_coordinate_from_entry(const gio::gff_entry& e) {
+    gdt::interval iv = interval_from_entry(e);
+    return gdt::genomic_coordinate(strand_char_from_entry(e.strand),
+                                   iv.get_start(), iv.get_end());
+}
+
+// True for data types that can derive a genomic_coordinate key. Gates the
+// entry-deriving insert overloads on the (now standard) genomic_coordinate grove.
+template <typename T>
+concept has_entry_coordinate = requires(const T& e) {
+    { genomic_coordinate_from_entry(e) } -> std::same_as<gdt::genomic_coordinate>;
 };
