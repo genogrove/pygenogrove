@@ -23,7 +23,7 @@ def _roundtrip(pg, tmp_path, grove):
 
 def _only(grove, lo, hi, index="chr1"):
     import pygenogrove as pg
-    hits = list(grove.intersect(pg.Interval(lo, hi), index))
+    hits = list(grove.intersect(pg.GenomicCoordinate(".", lo, hi), index))
     assert len(hits) == 1
     return hits[0].data
 
@@ -32,7 +32,7 @@ def test_minimal_round_trip(tmp_path):
     """No optionals; empty attributes; UNKNOWN format — all round-trip absent."""
     pg = _pg()
     g = pg.GffGrove(4)
-    g.insert("chr1", pg.Interval(100, 200), pg.GffEntry("chr1", 100, 200, "gene"))
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), pg.GffEntry("chr1", 100, 200, "gene"))
 
     restored = _roundtrip(pg, tmp_path, g)
     out = _only(restored, 150, 150)
@@ -63,7 +63,7 @@ def test_gff3_full_round_trip(tmp_path):
         "gene_id": "ENSG00001",
     }
     g = pg.GffGrove(4)
-    g.insert("chrX", pg.Interval(1000, 2000), e)
+    g.insert("chrX", pg.GenomicCoordinate(".", 1000, 2000), e)
 
     restored = _roundtrip(pg, tmp_path, g)
     out = _only(restored, 1500, 1500, "chrX")
@@ -87,7 +87,7 @@ def test_gtf_round_trip(tmp_path):
     e.phase = 0
     e.attributes = {"gene_id": "G1", "transcript_id": "T1"}
     g = pg.GffGrove(4)
-    g.insert("chr2", pg.Interval(500, 600), e)
+    g.insert("chr2", pg.GenomicCoordinate(".", 500, 600), e)
 
     restored = _roundtrip(pg, tmp_path, g)
     out = _only(restored, 550, 550, "chr2")
@@ -104,7 +104,7 @@ def test_empty_attributes_map(tmp_path):
     e = pg.GffEntry("chr1", 1, 10, "region")
     e.format = pg.GffFormat.GFF3
     g = pg.GffGrove(3)
-    g.insert("chr1", pg.Interval(1, 10), e)
+    g.insert("chr1", pg.GenomicCoordinate(".", 1, 10), e)
 
     restored = _roundtrip(pg, tmp_path, g)
     out = _only(restored, 5, 5)
@@ -119,7 +119,7 @@ def test_preserves_embedded_nul_in_attributes(tmp_path):
     e = pg.GffEntry("chr1", 5, 10, "feature")
     e.attributes = {"k\x00ey": "va\x00lue"}
     g = pg.GffGrove(3)
-    g.insert("chr1", pg.Interval(5, 10), e)
+    g.insert("chr1", pg.GenomicCoordinate(".", 5, 10), e)
 
     restored = _roundtrip(pg, tmp_path, g)
     out = _only(restored, 7, 7)
@@ -142,8 +142,8 @@ def test_grove_round_trip(tmp_path):
     e2.format = pg.GffFormat.GFF3
     e2.attributes = {"Parent": "gene1"}
 
-    g.insert("chr1", pg.Interval(100, 200), e1)
-    g.insert("chr1", pg.Interval(300, 400), e2)
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), e1)
+    g.insert("chr1", pg.GenomicCoordinate(".", 300, 400), e2)
 
     restored = _roundtrip(pg, tmp_path, g)
 
@@ -161,19 +161,19 @@ def test_roundtrip_preserves_edges_and_external_data(tmp_path):
     """Edges + external GffEntry keys survive the round-trip."""
     pg = _pg()
     g = pg.GffGrove(3)
-    exon = g.insert("chr1", pg.Interval(1000, 1200),
+    exon = g.insert("chr1", pg.GenomicCoordinate(".", 1000, 1200),
                     pg.GffEntry("chr1", 1000, 1200, "exon"))
-    enh = g.add_external_key(pg.Interval(5000, 5500),
+    enh = g.add_external_key(pg.GenomicCoordinate(".", 5000, 5500),
                              pg.GffEntry("chr1", 5000, 5500, "enhancer"))
     g.add_edge(exon, enh)
 
     restored = _roundtrip(pg, tmp_path, g)
     assert restored.edge_count() == 1
-    src = list(restored.intersect(pg.Interval(1000, 1200), "chr1"))[0]
+    src = list(restored.intersect(pg.GenomicCoordinate(".", 1000, 1200), "chr1"))[0]
     neighbors = restored.get_neighbors(src)
     assert len(neighbors) == 1
     assert neighbors[0].data.type == "enhancer"
-    assert len(restored.intersect(pg.Interval(5000, 5500))) == 0
+    assert len(restored.intersect(pg.GenomicCoordinate(".", 5000, 5500))) == 0
 
 
 def test_roundtrip_empty_gff_grove(tmp_path):

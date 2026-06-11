@@ -19,7 +19,7 @@ def _pg():
 def test_empty_grove_returns_none():
     pg = _pg()
     g = pg.Grove(8)
-    r = g.flanking(pg.Interval(100, 200), "chr1")
+    r = g.flanking(pg.GenomicCoordinate(".", 100, 200), "chr1")
     assert r.predecessor is None
     assert r.successor is None
 
@@ -27,8 +27,8 @@ def test_empty_grove_returns_none():
 def test_missing_index_returns_none():
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(50, 60))
-    r = g.flanking(pg.Interval(100, 200), "chr2")
+    g.insert("chr1", pg.GenomicCoordinate(".", 50, 60))
+    r = g.flanking(pg.GenomicCoordinate(".", 100, 200), "chr2")
     assert r.predecessor is None
     assert r.successor is None
 
@@ -36,53 +36,53 @@ def test_missing_index_returns_none():
 def test_query_before_all_keys_only_successor():
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(500, 600))
-    r = g.flanking(pg.Interval(100, 200), "chr1")
+    g.insert("chr1", pg.GenomicCoordinate(".", 500, 600))
+    r = g.flanking(pg.GenomicCoordinate(".", 100, 200), "chr1")
     assert r.predecessor is None
-    assert r.successor.value == pg.Interval(500, 600)
+    assert r.successor.value == pg.GenomicCoordinate(".", 500, 600)
 
 
 def test_query_after_all_keys_only_predecessor():
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(100, 200))
-    r = g.flanking(pg.Interval(500, 600), "chr1")
-    assert r.predecessor.value == pg.Interval(100, 200)
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    r = g.flanking(pg.GenomicCoordinate(".", 500, 600), "chr1")
+    assert r.predecessor.value == pg.GenomicCoordinate(".", 100, 200)
     assert r.successor is None
 
 
 def test_query_bracketed_by_two_keys():
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(100, 200))
-    g.insert("chr1", pg.Interval(500, 600))
-    r = g.flanking(pg.Interval(300, 400), "chr1")
-    assert r.predecessor.value == pg.Interval(100, 200)
-    assert r.successor.value == pg.Interval(500, 600)
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    g.insert("chr1", pg.GenomicCoordinate(".", 500, 600))
+    r = g.flanking(pg.GenomicCoordinate(".", 300, 400), "chr1")
+    assert r.predecessor.value == pg.GenomicCoordinate(".", 100, 200)
+    assert r.successor.value == pg.GenomicCoordinate(".", 500, 600)
 
 
 def test_overlapping_keys_are_skipped():
     """A key overlapping the query is never a flanking neighbour."""
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(50, 60))      # far predecessor
-    g.insert("chr1", pg.Interval(100, 350))    # overlaps query -> skipped
-    g.insert("chr1", pg.Interval(500, 600))    # far successor
-    r = g.flanking(pg.Interval(300, 400), "chr1")
-    assert r.predecessor.value == pg.Interval(50, 60)
-    assert r.successor.value == pg.Interval(500, 600)
+    g.insert("chr1", pg.GenomicCoordinate(".", 50, 60))      # far predecessor
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 350))    # overlaps query -> skipped
+    g.insert("chr1", pg.GenomicCoordinate(".", 500, 600))    # far successor
+    r = g.flanking(pg.GenomicCoordinate(".", 300, 400), "chr1")
+    assert r.predecessor.value == pg.GenomicCoordinate(".", 50, 60)
+    assert r.successor.value == pg.GenomicCoordinate(".", 500, 600)
 
 
 def test_abutting_keys_have_zero_gap():
     """Closed-coordinate abutting keys (gap 0) are valid flanking neighbours."""
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(50, 99))      # ends at 99, abuts query start 100
-    g.insert("chr1", pg.Interval(201, 300))    # starts at 201, abuts query end 200
-    q = pg.Interval(100, 200)
+    g.insert("chr1", pg.GenomicCoordinate(".", 50, 99))      # ends at 99, abuts query start 100
+    g.insert("chr1", pg.GenomicCoordinate(".", 201, 300))    # starts at 201, abuts query end 200
+    q = pg.GenomicCoordinate(".", 100, 200)
     r = g.flanking(q, "chr1")
-    assert r.predecessor.value == pg.Interval(50, 99)
-    assert r.successor.value == pg.Interval(201, 300)
+    assert r.predecessor.value == pg.GenomicCoordinate(".", 50, 99)
+    assert r.successor.value == pg.GenomicCoordinate(".", 201, 300)
     # gap distances (closed coords) are exactly zero
     assert q.start - r.predecessor.value.end - 1 == 0
     assert r.successor.value.start - q.end - 1 == 0
@@ -91,11 +91,11 @@ def test_abutting_keys_have_zero_gap():
 def test_chooses_closest_predecessor_among_many():
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(0, 10))
-    g.insert("chr1", pg.Interval(20, 30))
-    g.insert("chr1", pg.Interval(40, 50))      # closest to query
-    r = g.flanking(pg.Interval(100, 200), "chr1")
-    assert r.predecessor.value == pg.Interval(40, 50)
+    g.insert("chr1", pg.GenomicCoordinate(".", 0, 10))
+    g.insert("chr1", pg.GenomicCoordinate(".", 20, 30))
+    g.insert("chr1", pg.GenomicCoordinate(".", 40, 50))      # closest to query
+    r = g.flanking(pg.GenomicCoordinate(".", 100, 200), "chr1")
+    assert r.predecessor.value == pg.GenomicCoordinate(".", 40, 50)
     assert r.successor is None
 
 
@@ -104,10 +104,10 @@ def test_nested_intervals_pick_closest_end():
     largest end (smallest gap), not the sort-order maximum."""
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(50, 100))     # outer — larger end, closer
-    g.insert("chr1", pg.Interval(80, 90))      # inner — larger sort key, farther
-    r = g.flanking(pg.Interval(200, 300), "chr1")
-    assert r.predecessor.value == pg.Interval(50, 100)
+    g.insert("chr1", pg.GenomicCoordinate(".", 50, 100))     # outer — larger end, closer
+    g.insert("chr1", pg.GenomicCoordinate(".", 80, 90))      # inner — larger sort key, farther
+    r = g.flanking(pg.GenomicCoordinate(".", 200, 300), "chr1")
+    assert r.predecessor.value == pg.GenomicCoordinate(".", 50, 100)
 
 
 def test_multi_leaf_tree_picks_global_nearest():
@@ -116,8 +116,8 @@ def test_multi_leaf_tree_picks_global_nearest():
     pg = _pg()
     g = pg.Grove(4)
     for i in range(16):
-        g.insert("chr1", pg.Interval(i * 100, i * 100 + 20))
-    r = g.flanking(pg.Interval(440, 460), "chr1")   # gap between [400,420] and [500,520]
+        g.insert("chr1", pg.GenomicCoordinate(".", i * 100, i * 100 + 20))
+    r = g.flanking(pg.GenomicCoordinate(".", 440, 460), "chr1")   # gap between [400,420] and [500,520]
     assert r.predecessor is not None
     assert r.successor is not None
     assert r.predecessor.value.end == 420
@@ -131,18 +131,18 @@ def test_flanking_keys_keep_grove_alive():
     not a failed assertion. Mirrors test_query_result.py::test_keys_keep_grove_alive."""
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(100, 200))
-    g.insert("chr1", pg.Interval(500, 600))
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    g.insert("chr1", pg.GenomicCoordinate(".", 500, 600))
 
-    r = g.flanking(pg.Interval(300, 400), "chr1")
+    r = g.flanking(pg.GenomicCoordinate(".", 300, 400), "chr1")
     pred = r.predecessor
     succ = r.successor
 
     del g, r            # drop the grove and the result; only the keys remain
     gc.collect()
 
-    assert pred.value == pg.Interval(100, 200)
-    assert succ.value == pg.Interval(500, 600)
+    assert pred.value == pg.GenomicCoordinate(".", 100, 200)
+    assert succ.value == pg.GenomicCoordinate(".", 500, 600)
 
 
 def test_flanking_carries_data_on_bed_grove():
@@ -156,7 +156,7 @@ def test_flanking_carries_data_on_bed_grove():
     g.insert("chr1", up)        # entry-deriving insert
     g.insert("chr1", down)
 
-    r = g.flanking(pg.Interval(300, 400), "chr1")
+    r = g.flanking(pg.GenomicCoordinate(".", 300, 400), "chr1")
     assert r.predecessor.data.name == "upstream"
     assert r.successor.data.name == "downstream"
 
@@ -169,19 +169,19 @@ def test_flanking_predicate_filters_candidates():
     """The is_compatible predicate excludes non-matching keys as neighbours."""
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(100, 200))
-    g.insert("chr1", pg.Interval(300, 400))
-    g.insert("chr1", pg.Interval(500, 600))
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    g.insert("chr1", pg.GenomicCoordinate(".", 300, 400))
+    g.insert("chr1", pg.GenomicCoordinate(".", 500, 600))
 
-    q = pg.Interval(420, 430)
+    q = pg.GenomicCoordinate(".", 420, 430)
     # Without a predicate: predecessor 300-400, successor 500-600.
     base = g.flanking(q, "chr1")
-    assert base.predecessor.value == pg.Interval(300, 400)
-    assert base.successor.value == pg.Interval(500, 600)
+    assert base.predecessor.value == pg.GenomicCoordinate(".", 300, 400)
+    assert base.successor.value == pg.GenomicCoordinate(".", 500, 600)
 
     # Predicate keeps only keys starting below 250 -> 100-200 is the only match.
     r = g.flanking(q, "chr1", lambda cand, query: cand.start < 250)
-    assert r.predecessor.value == pg.Interval(100, 200)
+    assert r.predecessor.value == pg.GenomicCoordinate(".", 100, 200)
     assert r.successor is None
 
 
@@ -189,10 +189,10 @@ def test_flanking_always_true_predicate_matches_no_predicate():
     """An always-True predicate is equivalent to the no-predicate overload."""
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(100, 200))
-    g.insert("chr1", pg.Interval(500, 600))
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    g.insert("chr1", pg.GenomicCoordinate(".", 500, 600))
 
-    q = pg.Interval(300, 400)
+    q = pg.GenomicCoordinate(".", 300, 400)
     base = g.flanking(q, "chr1")
     filt = g.flanking(q, "chr1", lambda cand, query: True)
     assert filt.predecessor.value == base.predecessor.value
@@ -203,9 +203,9 @@ def test_flanking_predicate_exception_propagates():
     """An exception raised inside the predicate surfaces in Python."""
     pg = _pg()
     g = pg.Grove(8)
-    g.insert("chr1", pg.Interval(100, 200))
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
     with pytest.raises(ValueError):
-        g.flanking(pg.Interval(300, 400), "chr1", _raise_boom)
+        g.flanking(pg.GenomicCoordinate(".", 300, 400), "chr1", _raise_boom)
 
 
 if __name__ == "__main__":

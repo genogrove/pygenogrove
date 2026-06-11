@@ -19,7 +19,7 @@ def test_str():
     """Key has a non-empty string representation."""
     pg = _pg()
     grove = pg.Grove(3)
-    key = grove.insert("chr1", pg.Interval(100, 200))
+    key = grove.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
     assert isinstance(str(key), str)
     assert str(key) != ""
 
@@ -28,7 +28,7 @@ def test_value_is_a_copy():
     """key.value returns a copy; mutating it must not affect stored ordering."""
     pg = _pg()
     grove = pg.Grove(3)
-    key = grove.insert("chr1", pg.Interval(100, 200))
+    key = grove.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
 
     snapshot = key.value
     snapshot.set_range(0, 5)          # mutate the returned copy
@@ -43,7 +43,7 @@ def test_keeps_grove_alive():
     not a failed assertion."""
     pg = _pg()
     grove = pg.Grove(3)
-    key = grove.insert("chr1", pg.Interval(100, 200))
+    key = grove.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
 
     del grove        # drop the only Python handle to the Grove
     gc.collect()     # ...and force collection

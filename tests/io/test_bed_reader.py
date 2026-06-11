@@ -237,10 +237,10 @@ def test_build_grove_from_reader(tmp_path):
     ])
     g = pg.BedGrove(64)
     for e in pg.BedReader(path):
-        g.insert(e.chrom, pg.Interval(e.start, e.end - 1), e)
+        g.insert(e.chrom, pg.GenomicCoordinate(".", e.start, e.end - 1), e)
 
     assert g.size() == 2
-    hits = list(g.intersect(pg.Interval(1500, 1500), "chr1"))
+    hits = list(g.intersect(pg.GenomicCoordinate(".", 1500, 1500), "chr1"))
     assert len(hits) == 1
     assert hits[0].data.name == "geneA"
 

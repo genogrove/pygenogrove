@@ -22,8 +22,8 @@ def test_roundtrip_preserves_bed_data(tmp_path):
     e1.name = "gene1"
     e1.score = 500
     e1.strand = "+"
-    g.insert("chr1", pg.Interval(100, 200), e1)
-    g.insert("chr1", pg.Interval(300, 400), pg.BedEntry("chr1", 300, 401))
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), e1)
+    g.insert("chr1", pg.GenomicCoordinate(".", 300, 400), pg.BedEntry("chr1", 300, 401))
 
     path = str(tmp_path / "bed.gg")
     g.serialize(path)
@@ -32,7 +32,7 @@ def test_roundtrip_preserves_bed_data(tmp_path):
     assert loaded.size() == 2
     assert loaded.get_order() == 4
 
-    hits = list(loaded.intersect(pg.Interval(100, 200), "chr1"))
+    hits = list(loaded.intersect(pg.GenomicCoordinate(".", 100, 200), "chr1"))
     assert len(hits) == 1
     data = hits[0].data
     assert data.chrom == "chr1"
@@ -49,13 +49,13 @@ def test_roundtrip_preserves_block_info(tmp_path):
     g = pg.BedGrove(3)
     entry = pg.BedEntry("chr1", 1000, 1500)
     entry.blocks = pg.BlockInfo(2, [100, 200], [0, 300])
-    g.insert("chr1", pg.Interval(1000, 1499), entry)
+    g.insert("chr1", pg.GenomicCoordinate(".", 1000, 1499), entry)
 
     path = str(tmp_path / "blocks.gg")
     g.serialize(path)
 
     loaded = pg.BedGrove.deserialize(path)
-    hit = list(loaded.intersect(pg.Interval(1000, 1499), "chr1"))[0]
+    hit = list(loaded.intersect(pg.GenomicCoordinate(".", 1000, 1499), "chr1"))[0]
     assert hit.data.blocks is not None
     assert hit.data.blocks.count == 2
     assert list(hit.data.blocks.sizes) == [100, 200]
@@ -66,8 +66,8 @@ def test_roundtrip_preserves_edges_and_external_data(tmp_path):
     pg = _pg()
 
     g = pg.BedGrove(3)
-    exon = g.insert("chr1", pg.Interval(1000, 1200), pg.BedEntry("chr1", 1000, 1200))
-    enhancer = g.add_external_key(pg.Interval(5000, 5500),
+    exon = g.insert("chr1", pg.GenomicCoordinate(".", 1000, 1200), pg.BedEntry("chr1", 1000, 1200))
+    enhancer = g.add_external_key(pg.GenomicCoordinate(".", 5000, 5500),
                                   pg.BedEntry("chr1", 5000, 5500))
     g.add_edge(exon, enhancer)
 
@@ -77,14 +77,14 @@ def test_roundtrip_preserves_edges_and_external_data(tmp_path):
     loaded = pg.BedGrove.deserialize(path)
     assert loaded.edge_count() == 1
 
-    src = list(loaded.intersect(pg.Interval(1000, 1200), "chr1"))[0]
+    src = list(loaded.intersect(pg.GenomicCoordinate(".", 1000, 1200), "chr1"))[0]
     neighbors = loaded.get_neighbors(src)
     assert len(neighbors) == 1
     assert neighbors[0].value.start == 5000
     assert neighbors[0].data.start == 5000
 
     # External key still excluded from spatial queries after reload.
-    assert len(loaded.intersect(pg.Interval(5000, 5500))) == 0
+    assert len(loaded.intersect(pg.GenomicCoordinate(".", 5000, 5500))) == 0
     assert loaded.size() == 1
 
 

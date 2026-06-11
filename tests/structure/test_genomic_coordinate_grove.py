@@ -1,11 +1,11 @@
 """
-Tests for the dataless genomic-coordinate grove (grove<genomic_coordinate>),
-exposed as GenomicCoordinateGrove / GenomicCoordinateKey / ...QueryResult /
-...FlankingResult.
+Strand-aware behaviour of the standard Grove (grove<genomic_coordinate, ...>),
+exercised here without a payload (data defaults to None).
 
 Mirrors genogrove/tests/structure/genomic_coordinate_grove_test.cpp over the
 bound surface: strand-aware intersect (matching / wildcard / unstranded),
-flanking, and a serialization round-trip that preserves strand.
+flanking, and a serialization round-trip that preserves strand. JSON-payload
+behaviour is covered in test_object_grove.py.
 """
 
 import gc
@@ -23,7 +23,7 @@ def _gc(pg, strand, start, end):
 
 def test_creation_and_insert():
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     assert g.get_order() == 8
     assert g.size() == 0
 
@@ -35,7 +35,7 @@ def test_creation_and_insert():
 
 def test_strand_specific_query_matches_only_same_strand():
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     g.insert("chr1", _gc(pg, "+", 100, 200))
     g.insert("chr1", _gc(pg, "-", 100, 200))
     g.insert("chr1", _gc(pg, ".", 100, 200))
@@ -47,7 +47,7 @@ def test_strand_specific_query_matches_only_same_strand():
 
 def test_wildcard_query_finds_all_strands():
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     g.insert("chr1", _gc(pg, "+", 100, 200))
     g.insert("chr1", _gc(pg, "-", 100, 200))
     g.insert("chr1", _gc(pg, ".", 100, 200))
@@ -59,7 +59,7 @@ def test_wildcard_query_finds_all_strands():
 
 def test_unstranded_query_finds_only_unstranded():
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     g.insert("chr1", _gc(pg, "+", 100, 200))
     g.insert("chr1", _gc(pg, ".", 100, 200))
 
@@ -70,7 +70,7 @@ def test_unstranded_query_finds_only_unstranded():
 
 def test_no_overlap_different_strands():
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     g.insert("chr1", _gc(pg, "+", 100, 200))
 
     results = g.intersect(_gc(pg, "-", 150, 160), "chr1")
@@ -79,7 +79,7 @@ def test_no_overlap_different_strands():
 
 def test_no_spatial_overlap():
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     g.insert("chr1", _gc(pg, "+", 100, 200))
 
     results = g.intersect(_gc(pg, "+", 300, 400), "chr1")
@@ -88,7 +88,7 @@ def test_no_spatial_overlap():
 
 def test_flanking_bracketed_by_two_keys():
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     g.insert("chr1", _gc(pg, "+", 100, 200))
     g.insert("chr1", _gc(pg, "+", 500, 600))
 
@@ -99,7 +99,7 @@ def test_flanking_bracketed_by_two_keys():
 
 def test_flanking_empty_grove_returns_none():
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     r = g.flanking(_gc(pg, "+", 100, 200), "chr1")
     assert r.predecessor is None
     assert r.successor is None
@@ -108,7 +108,7 @@ def test_flanking_empty_grove_returns_none():
 def test_strand_filtered_flanking_skips_other_strand():
     """The is_compatible predicate finds the nearest *same-strand* neighbour."""
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     g.insert("chr1", _gc(pg, "+", 100, 200))   # same strand, farther
     g.insert("chr1", _gc(pg, "-", 300, 400))   # other strand, nearer
     q = _gc(pg, "+", 500, 510)
@@ -126,7 +126,7 @@ def test_strand_filtered_flanking_skips_other_strand():
 
 def test_strand_filtered_flanking_both_sides():
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     g.insert("chr1", _gc(pg, "+", 100, 200))
     g.insert("chr1", _gc(pg, "-", 350, 450))   # opposite strand, between
     g.insert("chr1", _gc(pg, "+", 600, 700))
@@ -139,7 +139,7 @@ def test_strand_filtered_flanking_both_sides():
 
 def test_serialization_roundtrip_preserves_strand(tmp_path):
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     g.insert("chr1", _gc(pg, "+", 100, 200))
     g.insert("chr1", _gc(pg, "-", 300, 400))
     g.insert("chr2", _gc(pg, ".", 150, 250))
@@ -147,7 +147,7 @@ def test_serialization_roundtrip_preserves_strand(tmp_path):
     path = str(tmp_path / "coords.gg")
     g.serialize(path)
 
-    loaded = pg.GenomicCoordinateGrove.deserialize(path)
+    loaded = pg.Grove.deserialize(path)
     assert loaded.size() == 3
     assert loaded.get_order() == 8
 
@@ -161,7 +161,7 @@ def test_serialization_roundtrip_preserves_strand(tmp_path):
 def test_keys_keep_grove_alive():
     """A key materialized from a query keeps the grove alive (keep_alive)."""
     pg = _pg()
-    g = pg.GenomicCoordinateGrove(8)
+    g = pg.Grove(8)
     g.insert("chr1", _gc(pg, "+", 100, 200))
     results = g.intersect(_gc(pg, "+", 150, 160), "chr1")
     keys = list(results)

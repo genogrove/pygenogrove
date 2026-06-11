@@ -19,6 +19,11 @@
 namespace py = pybind11;
 namespace gio = genogrove::io;
 
+// The universal Grove's JSON payload defaults to None (an absent payload), so
+// dataless inserts can be written `g.insert(index, coord)`.
+template <>
+inline constexpr bool grove_data_optional<pygg::json_value> = true;
+
 // Stringify-and-join genogrove's integer version macros into "MAJOR.MINOR.PATCH".
 #define PYGENOGROVE_STR2(x) #x
 #define PYGENOGROVE_STR(x) PYGENOGROVE_STR2(x)

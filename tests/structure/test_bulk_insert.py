@@ -31,7 +31,7 @@ def _items(pg, n, start=0, step=100):
         s = start + i * step
         e = pg.BedEntry("chr1", s, s + 51)
         e.name = f"f{i}"
-        out.append((pg.Interval(s, s + 50), e))
+        out.append((pg.GenomicCoordinate(".", s, s + 50), e))
     return out
 
 
@@ -44,7 +44,7 @@ def test_insert_sorted_single():
     assert len(keys) == 30
     assert g.size() == 30
     assert [k.data.name for k in keys] == [f"f{i}" for i in range(30)]
-    assert len(list(g.intersect(pg.Interval(0, 30 * 100), "chr1"))) == 30
+    assert len(list(g.intersect(pg.GenomicCoordinate(".", 0, 30 * 100), "chr1"))) == 30
 
 
 def test_insert_bulk_presorted():
@@ -60,7 +60,7 @@ def test_insert_bulk_presorted():
     assert g.size() == 50
     assert [k.value.start for k in keys] == [i * 100 for i in range(50)]
     assert [k.data.name for k in keys] == [f"f{i}" for i in range(50)]
-    assert len(list(g.intersect(pg.Interval(0, 50 * 100), "chr1"))) == 50
+    assert len(list(g.intersect(pg.GenomicCoordinate(".", 0, 50 * 100), "chr1"))) == 50
 
 
 def test_insert_bulk_sorts_unsorted_input():
@@ -77,7 +77,7 @@ def test_insert_bulk_sorts_unsorted_input():
     assert [k.value.start for k in keys] == [i * 100 for i in range(40)]
     # crucially: each interval still carries ITS OWN data after the sort
     assert [k.data.name for k in keys] == [f"f{i}" for i in range(40)]
-    assert len(list(g.intersect(pg.Interval(0, 40 * 100), "chr1"))) == 40
+    assert len(list(g.intersect(pg.GenomicCoordinate(".", 0, 40 * 100), "chr1"))) == 40
 
 
 def test_presorted_flag_is_honored():
@@ -135,7 +135,7 @@ def test_bulk_equivalent_to_individual_insert():
     g_bulk.insert_bulk("chr1", items, presorted=True)
 
     assert g_one.size() == g_bulk.size() == 40
-    q = pg.Interval(550, 2550)
+    q = pg.GenomicCoordinate(".", 550, 2550)
     names_one = sorted(k.data.name for k in g_one.intersect(q, "chr1"))
     names_bulk = sorted(k.data.name for k in g_bulk.intersect(q, "chr1"))
     assert names_one == names_bulk
@@ -162,9 +162,9 @@ def test_bulk_append_to_nonempty_index():
     assert g.size() == 20
     assert [k.value.start for k in batch2] == [5000 + i * 100 for i in range(10)]
     assert [k.data.name for k in batch2] == [f"f{i}" for i in range(10)]
-    assert len(list(g.intersect(pg.Interval(5000, 5050), "chr1"))) == 1
+    assert len(list(g.intersect(pg.GenomicCoordinate(".", 5000, 5050), "chr1"))) == 1
     # the first batch survives the append
-    assert len(list(g.intersect(pg.Interval(0, 950), "chr1"))) == 10
+    assert len(list(g.intersect(pg.GenomicCoordinate(".", 0, 950), "chr1"))) == 10
 
 
 def test_bulk_on_gff_grove():
@@ -175,7 +175,7 @@ def test_bulk_on_gff_grove():
     for i in range(20):
         e = pg.GffEntry("chr1", i * 100 + 1, i * 100 + 51, "gene")
         e.attributes = {"idx": str(i)}
-        items.append((pg.Interval(i * 100, i * 100 + 50), e))
+        items.append((pg.GenomicCoordinate(".", i * 100, i * 100 + 50), e))
     keys = g.insert_bulk("chr1", items, presorted=True)
 
     assert len(keys) == 20

@@ -18,7 +18,7 @@ def _pg():
 
 def _key(pg):
     g = pg.BedGrove(3)
-    return g, g.insert("chr1", pg.Interval(100, 200),
+    return g, g.insert("chr1", pg.GenomicCoordinate(".", 100, 200),
                        pg.BedEntry("chr1", 100, 200))
 
 
@@ -63,7 +63,7 @@ def test_keeps_grove_alive():
     """
     pg = _pg()
     g = pg.BedGrove(3)
-    key = g.insert("chr1", pg.Interval(100, 200), pg.BedEntry("chr1", 100, 200))
+    key = g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), pg.BedEntry("chr1", 100, 200))
 
     del g
     gc.collect()

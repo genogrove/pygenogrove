@@ -31,7 +31,7 @@ def test_str_repr_use_class_name():
     """__str__/__repr__ identify the grove by its Python class name, not 'Grove'."""
     pg = _pg()
     g = pg.BedGrove(7)
-    g.insert("chr1", pg.Interval(100, 200), pg.BedEntry("chr1", 100, 200))
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), pg.BedEntry("chr1", 100, 200))
     assert str(g).startswith("BedGrove(")
     rep = repr(g)
     assert rep.startswith("BedGrove(")
@@ -42,7 +42,7 @@ def test_insert_carries_value_and_data():
     """insert(index, interval, data) returns a key exposing both .value and .data."""
     pg = _pg()
     g = pg.BedGrove(100)
-    key = g.insert("chr1", pg.Interval(100, 200), pg.BedEntry("chr1", 100, 201))
+    key = g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), pg.BedEntry("chr1", 100, 201))
 
     assert g.size() == 1
     assert key.value.start == 100
@@ -56,10 +56,10 @@ def test_intersect_preserves_data():
     """Keys returned by intersect() carry the inserted BedEntry payload."""
     pg = _pg()
     g = pg.BedGrove(100)
-    g.insert("chr1", pg.Interval(100, 200), pg.BedEntry("chr1", 100, 201))
-    g.insert("chr1", pg.Interval(300, 400), pg.BedEntry("chr1", 300, 401))
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), pg.BedEntry("chr1", 100, 201))
+    g.insert("chr1", pg.GenomicCoordinate(".", 300, 400), pg.BedEntry("chr1", 300, 401))
 
-    hits = list(g.intersect(pg.Interval(150, 350), "chr1"))
+    hits = list(g.intersect(pg.GenomicCoordinate(".", 150, 350), "chr1"))
     assert len(hits) == 2
     starts = sorted(k.data.start for k in hits)
     assert starts == [100, 300]
@@ -69,20 +69,20 @@ def test_multi_index_intersect_counts():
     """intersect with/without an index mirrors the dataless grove semantics."""
     pg = _pg()
     g = pg.BedGrove(100)
-    g.insert("chr1", pg.Interval(100, 200), pg.BedEntry("chr1", 100, 200))
-    g.insert("chr2", pg.Interval(150, 250), pg.BedEntry("chr2", 150, 250))
-    g.insert("chr3", pg.Interval(300, 400), pg.BedEntry("chr3", 300, 400))
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), pg.BedEntry("chr1", 100, 200))
+    g.insert("chr2", pg.GenomicCoordinate(".", 150, 250), pg.BedEntry("chr2", 150, 250))
+    g.insert("chr3", pg.GenomicCoordinate(".", 300, 400), pg.BedEntry("chr3", 300, 400))
 
-    assert len(g.intersect(pg.Interval(175, 225))) == 2          # chr1 + chr2
-    assert len(g.intersect(pg.Interval(175, 225), "chr1")) == 1
+    assert len(g.intersect(pg.GenomicCoordinate(".", 175, 225))) == 2          # chr1 + chr2
+    assert len(g.intersect(pg.GenomicCoordinate(".", 175, 225), "chr1")) == 1
 
 
 def test_graph_overlay_with_external_data_key():
     """Graph overlay works on BedGrove, incl. add_external_key(interval, data)."""
     pg = _pg()
     g = pg.BedGrove(5)
-    exon = g.insert("chr1", pg.Interval(1000, 1200), pg.BedEntry("chr1", 1000, 1200))
-    enhancer = g.add_external_key(pg.Interval(5000, 5500),
+    exon = g.insert("chr1", pg.GenomicCoordinate(".", 1000, 1200), pg.BedEntry("chr1", 1000, 1200))
+    enhancer = g.add_external_key(pg.GenomicCoordinate(".", 5000, 5500),
                                   pg.BedEntry("chr1", 5000, 5500))
     g.add_edge(exon, enhancer)
 
@@ -97,7 +97,7 @@ def test_graph_overlay_with_external_data_key():
     assert neighbors[0].data.start == 5000
 
     # External keys are excluded from spatial queries.
-    assert len(g.intersect(pg.Interval(5000, 5500))) == 0
+    assert len(g.intersect(pg.GenomicCoordinate(".", 5000, 5500))) == 0
 
 
 if __name__ == "__main__":

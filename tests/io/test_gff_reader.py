@@ -194,10 +194,10 @@ def test_build_grove_from_reader(tmp_path):
     pg = _pg()
     g = pg.GffGrove(64)
     for e in pg.GffReader(_write(tmp_path / "a.gff3", GFF3)):
-        g.insert(e.seqid, pg.Interval(e.start - 1, e.end - 1), e)
+        g.insert(e.seqid, pg.GenomicCoordinate(".", e.start - 1, e.end - 1), e)
 
     assert g.size() == 4
-    hits = list(g.intersect(pg.Interval(1200, 1200), "chr1"))   # inside gene + exon
+    hits = list(g.intersect(pg.GenomicCoordinate(".", 1200, 1200), "chr1"))   # inside gene + exon
     types = sorted(h.data.type for h in hits)
     assert types == ["exon", "gene"]
 
