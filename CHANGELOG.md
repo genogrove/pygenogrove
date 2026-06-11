@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Predicate-filtered `flanking()`** — a `flanking(query, index, is_compatible)` overload that takes a Python `bool(candidate, query)` callable applied at each leaf candidate, so only matching keys are considered as neighbours. Available on every grove; the canonical use is strand-aware nearest neighbours on a `GenomicCoordinateGrove` (e.g. `g.flanking(q, "chr1", lambda c, q: c.strand == q.strand)` for the nearest same-strand key). The GIL is held across the query (the predicate calls back into Python), and predicate exceptions propagate to Python ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#20](https://github.com/genogrove/pygenogrove/pull/20)).
+
 ## [0.2.0] - 2026-06-10
 
 ### Added
