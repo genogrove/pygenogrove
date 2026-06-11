@@ -359,7 +359,51 @@ void bind_grove(py::module_& m, const char* grove_name,
         .def("edge_count", &grove_t::edge_count,
              "Total number of directed edges in the graph overlay.")
         .def("vertex_count_with_edges", &grove_t::vertex_count_with_edges,
-             "Number of keys that have at least one outgoing edge.");
+             "Number of keys that have at least one outgoing edge.")
+
+        // ---- Vertex / storage counts ----
+        .def("vertex_count", &grove_t::vertex_count,
+             "Total number of keys in the grove: indexed (B+ tree) plus external "
+             "(graph-only) keys, including isolated ones with no edges.")
+        .def("external_vertex_count", &grove_t::external_vertex_count,
+             "Number of external (graph-only) keys — those added with "
+             "add_external_key(), not indexed in any B+ tree.")
+        .def("key_storage_size", &grove_t::key_storage_size,
+             R"pbdoc(
+                 Total slots in the indexed-key storage: live leaf data keys +
+                 internal B+ tree separator keys + dead slots left behind by
+                 remove_key(). Grows across insert/remove cycles until compact()
+                 reclaims the dead slots — so it is >= indexed_vertex_count().
+             )pbdoc");
+
+    // ---- Key removal + storage compaction ----
+    cls.def("remove_key",
+            [](grove_t& g, const std::string& index, key_t* key) {
+                return g.remove_key(index, key);
+            },
+            py::arg("index"), py::arg("key").none(true),
+            R"pbdoc(
+                Remove a key from the index's B+ tree, rebalancing as needed.
+
+                Returns True if the key was found and removed, False otherwise
+                (including a None key or an unknown index). All graph edges
+                touching the key (incoming and outgoing) are also removed. The key
+                remains in storage as a dead slot (not freed) — other Keys keep
+                their pointers; only compact() reclaims the slot (and invalidates
+                pointers — see its warning).
+            )pbdoc")
+       .def("compact", &grove_t::compact,
+            R"pbdoc(
+                Reclaim the dead storage slots left by remove_key() (storage
+                shrinks to exactly the live key count).
+
+                WARNING: this INVALIDATES every Key previously returned for this
+                grove's indexed keys (by insert(), insert_bulk(), or yielded from
+                intersect()/flanking()) — they become dangling and must NOT be
+                used afterward (doing so is undefined behaviour). After compact(),
+                re-discover keys via a fresh intersect()/flanking() query. Keys
+                from add_external_key() are NOT affected.
+            )pbdoc");
 
     // ---- External (graph-only) key — gains a data argument when non-void ----
     if constexpr (std::is_void_v<DataT>) {
