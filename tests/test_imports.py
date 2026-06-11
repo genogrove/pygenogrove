@@ -62,3 +62,15 @@ def test_imports_string_registry():
     """The string interning registry singleton is exposed."""
     import pygenogrove
     assert hasattr(pygenogrove, 'StringRegistry')
+
+
+def test_imports_genomic_coordinate_data_groves():
+    """The strand-aware data-carrying groves (BED/GFF payloads) are exposed."""
+    import pygenogrove
+    for name in (
+        'GenomicCoordinateBedGrove', 'GenomicCoordinateBedKey',
+        'GenomicCoordinateBedQueryResult', 'GenomicCoordinateBedFlankingResult',
+        'GenomicCoordinateGffGrove', 'GenomicCoordinateGffKey',
+        'GenomicCoordinateGffQueryResult', 'GenomicCoordinateGffFlankingResult',
+    ):
+        assert hasattr(pygenogrove, name), name

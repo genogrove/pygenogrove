@@ -57,6 +57,12 @@ PYBIND11_MODULE(pygenogrove, m) {
     bind_bed_entry(m);
     bind_grove<gdt::interval, gio::bed_entry>(m, "BedGrove", "BedKey",
                                               "BedQueryResult", "BedFlankingResult");
+    // Strand-aware data-carrying grove: grove<genomic_coordinate, bed_entry>.
+    // No entry-deriving insert (that's gated to interval keys); construct the
+    // GenomicCoordinate explicitly and insert it with a BedEntry payload.
+    bind_grove<gdt::genomic_coordinate, gio::bed_entry>(
+        m, "GenomicCoordinateBedGrove", "GenomicCoordinateBedKey",
+        "GenomicCoordinateBedQueryResult", "GenomicCoordinateBedFlankingResult");
     bind_bed_reader(m);
 
     // GFF/GTF value types, then the data-carrying grove<interval, gff_entry>
@@ -64,6 +70,10 @@ PYBIND11_MODULE(pygenogrove, m) {
     bind_gff_entry(m);
     bind_grove<gdt::interval, gio::gff_entry>(m, "GffGrove", "GffKey",
                                               "GffQueryResult", "GffFlankingResult");
+    // Strand-aware data-carrying grove: grove<genomic_coordinate, gff_entry>.
+    bind_grove<gdt::genomic_coordinate, gio::gff_entry>(
+        m, "GenomicCoordinateGffGrove", "GenomicCoordinateGffKey",
+        "GenomicCoordinateGffQueryResult", "GenomicCoordinateGffFlankingResult");
     bind_gff_reader(m);
 
     // String interning registry: registry<std::string> exposed as StringRegistry
