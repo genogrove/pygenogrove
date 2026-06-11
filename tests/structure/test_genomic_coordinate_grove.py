@@ -105,6 +105,38 @@ def test_flanking_empty_grove_returns_none():
     assert r.successor is None
 
 
+def test_strand_filtered_flanking_skips_other_strand():
+    """The is_compatible predicate finds the nearest *same-strand* neighbour."""
+    pg = _pg()
+    g = pg.GenomicCoordinateGrove(8)
+    g.insert("chr1", _gc(pg, "+", 100, 200))   # same strand, farther
+    g.insert("chr1", _gc(pg, "-", 300, 400))   # other strand, nearer
+    q = _gc(pg, "+", 500, 510)
+
+    # Without the predicate, the nearer '-' key is the predecessor (strand is
+    # not part of the predecessor's distance ranking, only overlap exclusion).
+    base = g.flanking(q, "chr1")
+    assert base.predecessor.value == _gc(pg, "-", 300, 400)
+
+    # Same-strand predicate: the '-' key is filtered out, leaving the '+' key.
+    same_strand = g.flanking(q, "chr1", lambda c, query: c.strand == query.strand)
+    assert same_strand.predecessor.value == _gc(pg, "+", 100, 200)
+    assert same_strand.successor is None
+
+
+def test_strand_filtered_flanking_both_sides():
+    pg = _pg()
+    g = pg.GenomicCoordinateGrove(8)
+    g.insert("chr1", _gc(pg, "+", 100, 200))
+    g.insert("chr1", _gc(pg, "-", 350, 450))   # opposite strand, between
+    g.insert("chr1", _gc(pg, "+", 600, 700))
+    q = _gc(pg, "+", 300, 310)
+
+    r = g.flanking(q, "chr1", lambda c, query: c.strand == query.strand)
+    assert r.predecessor.value == _gc(pg, "+", 100, 200)
+    assert r.successor.value == _gc(pg, "+", 600, 700)
+
+
 def test_serialization_roundtrip_preserves_strand(tmp_path):
     pg = _pg()
     g = pg.GenomicCoordinateGrove(8)

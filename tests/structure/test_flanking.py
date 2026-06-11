@@ -161,5 +161,52 @@ def test_flanking_carries_data_on_bed_grove():
     assert r.successor.data.name == "downstream"
 
 
+def _raise_boom(candidate, query):
+    raise ValueError("boom")
+
+
+def test_flanking_predicate_filters_candidates():
+    """The is_compatible predicate excludes non-matching keys as neighbours."""
+    pg = _pg()
+    g = pg.Grove(8)
+    g.insert("chr1", pg.Interval(100, 200))
+    g.insert("chr1", pg.Interval(300, 400))
+    g.insert("chr1", pg.Interval(500, 600))
+
+    q = pg.Interval(420, 430)
+    # Without a predicate: predecessor 300-400, successor 500-600.
+    base = g.flanking(q, "chr1")
+    assert base.predecessor.value == pg.Interval(300, 400)
+    assert base.successor.value == pg.Interval(500, 600)
+
+    # Predicate keeps only keys starting below 250 -> 100-200 is the only match.
+    r = g.flanking(q, "chr1", lambda cand, query: cand.start < 250)
+    assert r.predecessor.value == pg.Interval(100, 200)
+    assert r.successor is None
+
+
+def test_flanking_always_true_predicate_matches_no_predicate():
+    """An always-True predicate is equivalent to the no-predicate overload."""
+    pg = _pg()
+    g = pg.Grove(8)
+    g.insert("chr1", pg.Interval(100, 200))
+    g.insert("chr1", pg.Interval(500, 600))
+
+    q = pg.Interval(300, 400)
+    base = g.flanking(q, "chr1")
+    filt = g.flanking(q, "chr1", lambda cand, query: True)
+    assert filt.predecessor.value == base.predecessor.value
+    assert filt.successor.value == base.successor.value
+
+
+def test_flanking_predicate_exception_propagates():
+    """An exception raised inside the predicate surfaces in Python."""
+    pg = _pg()
+    g = pg.Grove(8)
+    g.insert("chr1", pg.Interval(100, 200))
+    with pytest.raises(ValueError):
+        g.flanking(pg.Interval(300, 400), "chr1", _raise_boom)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

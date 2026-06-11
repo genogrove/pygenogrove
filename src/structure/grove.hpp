@@ -12,9 +12,11 @@
  */
 #pragma once
 
+#include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <functional>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -278,6 +280,36 @@ void bind_grove(py::module_& m, const char* grove_name,
                  (smallest gap), not the sort-order maximum. Compute the gap
                  distance from the returned key, e.g.
                  `query.start - result.predecessor.value.end - 1`.
+             )pbdoc")
+        .def("flanking",
+             [](const grove_t& g, const KeyT& query, const std::string& index,
+                std::function<bool(const KeyT&, const KeyT&)> is_compatible) {
+                 // The predicate calls back into Python, so the GIL must be held
+                 // for the whole query — do NOT release it here.
+                 return g.flanking(query, index, std::move(is_compatible));
+             },
+             py::arg("query"), py::arg("index"), py::arg("is_compatible"),
+             py::keep_alive<0, 1>(),
+             R"pbdoc(
+                 flanking(query, index, is_compatible) -> FlankingResult
+
+                 Predicate-filtered flanking: like flanking(query, index), but only
+                 candidate keys for which `is_compatible(candidate, query)` returns
+                 True are considered as neighbours. `candidate` and `query` are key
+                 values (e.g. GenomicCoordinate); the predicate is applied at every
+                 leaf candidate before the overlap/distance checks.
+
+                 The canonical use is strand-aware neighbours on a
+                 GenomicCoordinateGrove — the nearest non-overlapping key on the
+                 same strand:
+
+                     g.flanking(q, "chr1",
+                                lambda cand, q: cand.strand == q.strand)
+
+                 (Internal-node pruning ignores the predicate, so subtrees holding
+                 only incompatible keys are still traversed and filtered at the
+                 leaves — correct, just not pruned. Exceptions raised by the
+                 predicate propagate out.)
              )pbdoc")
 
         // ---- Graph overlay (directed edges between keys) ----
