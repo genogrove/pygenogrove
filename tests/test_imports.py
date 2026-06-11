@@ -56,3 +56,9 @@ def test_imports_file_readers():
     import pygenogrove
     assert hasattr(pygenogrove, 'BedReader')
     assert hasattr(pygenogrove, 'GffReader')
+
+
+def test_imports_string_registry():
+    """The string interning registry singleton is exposed."""
+    import pygenogrove
+    assert hasattr(pygenogrove, 'StringRegistry')
