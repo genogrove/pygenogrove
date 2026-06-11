@@ -11,6 +11,7 @@
 
 #include "data_type/genomic_coordinate.hpp"
 #include "data_type/interval.hpp"
+#include "data_type/registry.hpp"
 #include "io/bed_reader.hpp"
 #include "io/gff_reader.hpp"
 #include "structure/grove.hpp"
@@ -64,6 +65,11 @@ PYBIND11_MODULE(pygenogrove, m) {
     bind_grove<gdt::interval, gio::gff_entry>(m, "GffGrove", "GffKey",
                                               "GffQueryResult", "GffFlankingResult");
     bind_gff_reader(m);
+
+    // String interning registry: registry<std::string> exposed as StringRegistry
+    // (a process-wide singleton, key == payload). Tagged / key->payload registry
+    // variants are additional bind_registry<...> instantiations, not yet exposed.
+    bind_registry<std::string>(m, "StringRegistry");
 
     // __version__ is single-sourced from pyproject.toml via CMake; __genogrove_version__
     // reports the genogrove the wheel was built against (independent SemVer — the two
