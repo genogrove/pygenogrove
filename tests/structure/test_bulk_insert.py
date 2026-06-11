@@ -184,12 +184,18 @@ def test_bulk_on_gff_grove():
     assert [k.data.get_attribute("idx") for k in keys] == [str(i) for i in range(20)]
 
 
-def test_dataless_grove_has_no_bulk():
-    """Bulk/sorted insert require associated data — the dataless Grove lacks them."""
+def test_grove_supports_bulk_with_json_payload():
+    """The universal Grove carries data, so it has sorted/bulk insert too."""
     pg = _pg()
     g = pg.Grove(8)
-    assert not hasattr(g, "insert_bulk")
-    assert not hasattr(g, "insert_sorted")
+    assert hasattr(g, "insert_bulk")
+    assert hasattr(g, "insert_sorted")
+
+    items = [(pg.GenomicCoordinate(".", i * 10, i * 10 + 5), {"i": i}) for i in range(5)]
+    keys = g.insert_bulk("chr1", items)
+    assert len(keys) == 5
+    res = g.intersect(pg.GenomicCoordinate(".", 0, 1000), "chr1")
+    assert sorted(k.data["i"] for k in res) == [0, 1, 2, 3, 4]
 
 
 if __name__ == "__main__":
