@@ -141,15 +141,24 @@ carry `.data`).
 - `add_external_key(key: GenomicCoordinate, data=None) -> Key`: Add a key outside the index that can still participate in the graph (not returned by `intersect`)
 
 **Serialization** (zlib-compressed `.gg` binary):
-- `serialize(path: str)`: Write the grove (intervals + graph overlay) to `path`
+- `serialize(path: str)`: Write the grove (coordinates + payloads + graph overlay) to `path`
 - `deserialize(path: str) -> Grove` *(static)*: Load a grove written by `serialize`
+
+**Removal / storage**:
+- `remove_key(index: str, key: Key) -> bool`: Remove a key (and its graph edges); `True` if found. `None`/unknown index → `False`
+- `compact()`: Reclaim dead slots left by `remove_key()`. ⚠️ Invalidates every previously-returned indexed `Key` — re-discover via a fresh query afterward
+- `vertex_count()` / `external_vertex_count()` / `key_storage_size()`: counts (indexed + external; external-only; total storage slots incl. dead)
 
 ### Key
 
-Wrapper object for intervals stored in the grove. Returned by insert operations.
+Wrapper object for a coordinate stored in the grove. Returned by insert operations
+and yielded by query results. Keeps its `Grove` alive.
 
 **Attributes**:
-- `value`: The interval value of this key
+- `value`: the `GenomicCoordinate` (returned by copy — mutating it cannot corrupt ordering)
+- `data`: the payload. On the universal `Grove` this is the JSON value you stored
+  (dict / list / scalar / `None`), returned as a freshly decoded copy each access.
+  On the typed `BedKey`/`GffKey` it is a live, mutable reference to the record.
 
 ### QueryResult
 
@@ -163,18 +172,20 @@ Result object containing matching intervals from a query.
 - `__len__()`: Number of results
 - `__iter__()`: Iterate over matching keys
 
-### BedGrove (interval grove with BED data)
+### BedGrove (typed BED grove)
 
-`BedGrove` is the data-carrying counterpart of `Grove`: each indexed interval
-also carries an associated `BedEntry` payload, so prebuilt `.gg` files that
-store BED records can be loaded, queried, and traversed from Python.
+`BedGrove` (`grove<genomic_coordinate, bed_entry>`) is the **typed** alternative
+to the schemaless `Grove`: instead of a JSON payload, each key carries a
+structured `BedEntry`. Use it when you want a guaranteed BED schema and full
+interop with typed C++ `.gg` files (prebuilt BED groves load/save with their
+records intact, and the GTF-style helpers are available on `GffGrove`).
 
 ```python
 import pygenogrove as pg
 
 g = pg.BedGrove(100)
 
-# insert(index, interval, data) — the interval is the key, BedEntry is the payload
+# insert(index, coord, data) — the GenomicCoordinate is the key, BedEntry is the payload
 entry = pg.BedEntry("chr1", 1000, 2000)   # BED-native coords (0-based, half-open)
 entry.name = "BRCA1"
 entry.score = 900
@@ -245,10 +256,11 @@ BedEntry(chrom: str, start: int, end: int)
 `BlockInfo(count, sizes, starts)` (with `list[int]` `sizes`/`starts`) are the
 supporting value types. List fields are returned/assigned by copy.
 
-### GffGrove (interval grove with GFF/GTF data)
+### GffGrove (typed GFF/GTF grove)
 
-`GffGrove` is the same data-carrying grove for **GFF3/GTF** records — identical
-surface to `BedGrove`, with a `GffEntry` payload instead of `BedEntry`:
+`GffGrove` (`grove<genomic_coordinate, gff_entry>`) is the same typed grove for
+**GFF3/GTF** records — identical surface to `BedGrove`, with a `GffEntry` payload
+instead of `BedEntry`:
 
 ```python
 import pygenogrove as pg
@@ -345,28 +357,39 @@ GffReader(path: str, skip_invalid_lines: bool = False, validate_gtf: bool = Fals
 > is 0-based half-open `[start, end)`; `GffEntry` is 1-based inclusive `[start, end]`.
 > Convert deliberately when building grove keys, as shown above.
 
+### StringRegistry
+
+A process-wide singleton that interns strings into small, stable integer ids
+(deduplicated) — handy for chromosome names, sources, gene ids, etc.
+
+```python
+import pygenogrove as pg
+r = pg.StringRegistry.instance()
+a = r.intern("chr1")     # 0
+r.intern("chr1")         # 0  (deduplicated)
+r.get(a)                 # "chr1"
+r.find("chr2")           # None
+r.serialize("names.gg")  # also: StringRegistry.deserialize(path), reset(), null_id
+```
+
 ## Current Status
 
-This is an early development version. Currently exposed features:
+Currently exposed features:
 
-- Basic grove and interval operations
-- Insert and query functionality
-- Multi-index support (per chromosome)
+- **Strand-aware coordinates** — `GenomicCoordinate` is the standard key (`'+'` / `'-'` / `'.'` / `'*'`); overlap and flanking are strand-aware
+- **Universal `Grove`** (`grove<genomic_coordinate, json>`) storing arbitrary JSON payloads (dict / list / scalar / `None`), or no payload at all
+- Insert / query, multi-index support (per chromosome)
 - Graph overlay (directed edges, external keys)
-- Serialization / deserialization to compressed `.gg` files
-- Nearest-neighbour queries: `flanking()` (predecessor / successor)
-- Associated data: the `BedEntry` / `GffEntry` value types and the data-carrying
-  groves `BedGrove` (`grove<interval, bed_entry>`) and `GffGrove`
-  (`grove<interval, gff_entry>`)
-- File readers: `BedReader` and `GffReader` (single-pass iterators over BED /
-  GFF3 / GTF files, including `.gz`)
-- Fast-path inserts on data-carrying groves: `insert_sorted` / `insert_bulk`, plus
-  entry-deriving `insert(index, entry)` / `insert_bulk(index, entries)` overloads
-  that compute the key from a BED/GFF record's native coordinates
+- Key removal + storage compaction: `remove_key()`, `compact()`, `vertex_count()` / `external_vertex_count()` / `key_storage_size()`
+- Serialization / deserialization to compressed `.gg` files (the JSON Grove's `.gg` is readable by a C++ `grove<genomic_coordinate, std::string>`)
+- Nearest-neighbour queries: `flanking()` (predecessor / successor), incl. a predicate-filtered overload (e.g. same-strand neighbours)
+- **Typed** data groves for C++ interop: `BedGrove` (`grove<genomic_coordinate, bed_entry>`) and `GffGrove` (`grove<genomic_coordinate, gff_entry>`), with the `BedEntry` / `GffEntry` value types
+- File readers: `BedReader` and `GffReader` (single-pass iterators over BED / GFF3 / GTF files, including `.gz`)
+- Fast-path inserts on the typed groves: `insert_sorted` / `insert_bulk`, plus entry-deriving `insert(index, entry)` / `insert_bulk(index, entries)` that derive a **stranded** key from a BED/GFF record's native coordinates
+- `StringRegistry` — string interning singleton
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
-- Genomic coordinates with strand information, and other key types — numeric, kmer
-  ([#7](https://github.com/genogrove/pygenogrove/issues/7))
+- Other key types — `numeric`, `kmer` ([#7](https://github.com/genogrove/pygenogrove/issues/7))
 - BAM/SAM and FASTA readers
 - Edge metadata, `get_neighbors_if` / `link_if` (require a metadata-carrying grove)
 
