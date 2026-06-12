@@ -38,13 +38,15 @@ void bind_key(py::module_& m, const char* name) {
             "corrupt the grove's B+ tree ordering)")
         .def("__str__", [](const key_t& k) { return k.to_string(); });
 
-    if constexpr (!std::is_void_v<DataT>) {
-        cls.def_property_readonly(
-            "data",
-            [](key_t& k) -> DataT& { return k.get_data(); },
-            py::return_value_policy::reference_internal,
-            "The associated data payload — a live, mutable reference into grove "
-            "storage. Unlike .value, the data is not part of the B+ tree "
-            "ordering, so mutating it in place is safe.");
-    }
+    // Every grove carries a payload (the universal Grove's is JSON; BedKey/GffKey
+    // carry a typed record), so .data is always present.
+    cls.def_property_readonly(
+        "data",
+        [](key_t& k) -> DataT& { return k.get_data(); },
+        py::return_value_policy::reference_internal,
+        "The associated data payload (not part of B+ tree ordering). On the typed "
+        "BedKey/GffKey it is a live, mutable reference into grove storage "
+        "(mutating it in place is safe). On the universal Grove the payload is "
+        "JSON, so .data returns a freshly decoded copy each access — mutating that "
+        "copy does not persist; re-insert to change it.");
 }

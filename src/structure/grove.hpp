@@ -1,14 +1,15 @@
 /*
  * Binding for ggs::grove<KeyT, DataT> — the B+ tree container. Mirrors genogrove
- * structure/grove/grove.hpp. Generic over the key type KeyT (interval,
- * genomic_coordinate, …): instantiated per concrete key type from bindings.cpp,
- * producing a distinct Python class each time (Grove, GenomicCoordinateGrove, …).
+ * structure/grove/grove.hpp. Generic over the key type KeyT and a (non-void)
+ * data payload DataT: instantiated per concrete (KeyT, DataT) from bindings.cpp,
+ * producing a distinct Python class each time (Grove = grove<genomic_coordinate,
+ * json_value>, BedGrove = grove<genomic_coordinate, bed_entry>, …).
  *
- * A single template covers the dataless grove (DataT = void, e.g. Grove) and
- * data-carrying groves (e.g. DataT = bed_entry → BedGrove). The differences are
- * the insert / add_external_key signatures (which gain a data argument), the
- * Key.data accessor, and the interval-only entry-deriving insert overloads;
- * these are switched with `if constexpr`.
+ * Every grove carries a payload. Two payload-dependent variations are switched
+ * with `if constexpr`: the insert/add_external_key `data` argument defaults to
+ * None for the JSON payload (grove_data_optional), and the entry-deriving
+ * insert(index, entry) overloads exist only for the genomic_coordinate key with
+ * a derivable entry type.
  */
 #pragma once
 
@@ -89,33 +90,8 @@ void bind_grove(py::module_& m, const char* grove_name,
         .def("get_order", &grove_t::get_order,
              "Get the order (branching factor) of the B+ tree");
 
-    // ---- Insert (data argument only present when DataT is non-void) ----
-    if constexpr (std::is_void_v<DataT>) {
-        cls.def("insert",
-                [](grove_t& g, const std::string& index,
-                   const KeyT& interval) {
-                    key_t key(interval);
-                    return g.insert(index, key);
-                },
-                py::arg("index"), py::arg("interval"),
-                py::return_value_policy::reference_internal,
-                R"pbdoc(
-                    Insert an interval into the grove at the specified index.
-
-                    Parameters
-                    ----------
-                    index : str
-                        The index name (e.g., chromosome name like "chr1")
-                    interval : Interval
-                        The interval to insert (copied into the grove)
-
-                    Returns
-                    -------
-                    Key
-                        Stable reference to the inserted key. Remains valid as
-                        long as the Grove is alive.
-                )pbdoc");
-    } else {
+    // ---- Insert (every grove carries a data payload) ----
+    {
         auto insert_fn = [](grove_t& g, const std::string& index,
                             const KeyT& key, DataT data) {
             return g.insert_data(index, key, std::move(data));
@@ -421,24 +397,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                 from add_external_key() are NOT affected.
             )pbdoc");
 
-    // ---- External (graph-only) key — gains a data argument when non-void ----
-    if constexpr (std::is_void_v<DataT>) {
-        cls.def("add_external_key",
-                [](grove_t& g, const KeyT& interval) {
-                    return g.add_external_key(interval);
-                },
-                py::arg("interval"),
-                py::return_value_policy::reference_internal,
-                R"pbdoc(
-                    Add a key that lives outside the B+ tree index but can
-                    participate in the graph overlay (e.g. an enhancer linked to
-                    indexed exons).
-
-                    The interval is copied into the Grove. Returns a stable Key
-                    that remains valid as long as the Grove is alive. External
-                    keys are not returned by intersect() queries.
-                )pbdoc");
-    } else {
+    // ---- External (graph-only) key (coordinate + data payload) ----
+    {
         auto ext_fn = [](grove_t& g, const KeyT& key, DataT data) {
             return g.add_external_key(key, std::move(data));
         };
