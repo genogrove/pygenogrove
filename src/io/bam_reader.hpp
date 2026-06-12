@@ -51,8 +51,7 @@ inline void bind_sam_entry(py::module_& m) {
     )pbdoc")
         .def(py::init<>())
         .def(py::init<uint16_t>(), py::arg("flags"))
-        .def_property_readonly("value", &gio::alignment_flags::value,
-                               "Raw 16-bit FLAG value.")
+        .def("value", &gio::alignment_flags::value, "Raw 16-bit FLAG value.")
         .def("has_flag", &gio::alignment_flags::has_flag, py::arg("flag"),
              "Whether a specific FLAG bit (see SamFlags) is set.")
         .def("is_paired", &gio::alignment_flags::is_paired)

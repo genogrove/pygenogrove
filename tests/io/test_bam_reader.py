@@ -52,7 +52,7 @@ def test_alignment_flags(tmp_path):
     assert a1.flags.has_flag(pg.SamFlags.REVERSE) is False
     assert a2.flags.has_flag(pg.SamFlags.REVERSE) is True
     assert a1.is_primary() and a1.is_mapped()
-    assert a1.flags.value == 0 and a2.flags.value == 16  # value is a property
+    assert a1.flags.value() == 0 and a2.flags.value() == 16
 
 
 def test_to_coordinate_strand_aware(tmp_path):
@@ -120,5 +120,5 @@ def test_clean_eof_error_message(tmp_path):
 
 def test_missing_file_raises():
     pg = _pg()
-    with pytest.raises(Exception):
+    with pytest.raises((RuntimeError, IOError, OSError)):
         pg.BamReader("/nonexistent_dir_xyz/reads.bam")
