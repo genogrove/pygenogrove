@@ -50,11 +50,13 @@ def test_imports_gff_data_grove():
 
 
 def test_imports_file_readers():
-    """The BED/GFF/BAM file readers are exposed."""
+    """The BED/GFF/BAM/FASTA file readers are exposed."""
     import pygenogrove
     assert hasattr(pygenogrove, 'BedReader')
     assert hasattr(pygenogrove, 'GffReader')
     assert hasattr(pygenogrove, 'BamReader')
+    assert hasattr(pygenogrove, 'FastaReader')
+    assert hasattr(pygenogrove, 'FastaEntry')
 
 
 def test_imports_sam_types():

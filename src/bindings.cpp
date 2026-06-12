@@ -14,6 +14,7 @@
 #include "data_type/registry.hpp"
 #include "io/bam_reader.hpp"
 #include "io/bed_reader.hpp"
+#include "io/fasta_reader.hpp"
 #include "io/gff_reader.hpp"
 #include "structure/grove.hpp"
 
@@ -73,6 +74,11 @@ PYBIND11_MODULE(pygenogrove, m) {
     // SamEntry.to_coordinate() + .to_dict() (see the SamEntry docstring).
     bind_sam_entry(m);
     bind_bam_reader(m);
+
+    // FASTA/FASTQ sequence reader: FastaEntry value type + FastaReader iterator.
+    // Standalone (named sequences, not intervals — no grove integration).
+    bind_fasta_entry(m);
+    bind_fasta_reader(m);
 
     // String interning registry: registry<std::string> exposed as StringRegistry
     // (a process-wide singleton, key == payload). Tagged / key->payload registry

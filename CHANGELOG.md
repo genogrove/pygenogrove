@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **FASTA/FASTQ sequence reader** — `FastaReader`, a single-pass iterator over FASTA/FASTQ files (auto-detected; `.gz` accepted) yielding `FastaEntry`, with a `skip_empty_sequences` option and `get_error_message()` / `get_current_line()`. `FastaEntry` exposes `name` / `comment` / `sequence` / `quality` (`Optional[str]`, FASTQ only), `is_fastq()`, and `len()`. Standalone (sequences aren't intervals — no grove integration); random-access (`fasta_index`) deferred ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#28](https://github.com/genogrove/pygenogrove/pull/28)).
 - **SAM/BAM alignment reader** — `BamReader`, a single-pass iterator over SAM/BAM files (htslib auto-detects the format) yielding `SamEntry`, with filtering options (`skip_unmapped`/`skip_secondary`/`skip_supplementary`/`skip_qc_fail`/`skip_duplicates`, `min_mapq`). `SamEntry` exposes the core fields + `get_strand()` (from the FLAG), `is_primary()`/`is_mapped()`/`consumes_reference()`, and `cigar` (string form); `AlignmentFlags` (the `.flags` object) + `SamFlags` constants are also bound. Since `sam_entry` isn't serializable there is no typed grove — `SamEntry.to_coordinate()` (strand-aware key) and `.to_dict()` (JSON payload) load alignments into the universal `Grove`. CIGAR element detail, mate info, and aux tags are deferred ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#27](https://github.com/genogrove/pygenogrove/pull/27)).
 
 ## [0.4.0] - 2026-06-11
