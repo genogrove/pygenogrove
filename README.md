@@ -33,115 +33,73 @@ pip install pygenogrove
 
 ## Quick Start
 
-```python
-import pygenogrove as pg
-
-# Create a grove with order 100 (max 99 keys per node)
-grove = pg.Grove(100)
-
-# Create intervals — coordinates are closed [start, end] (both inclusive)
-interval1 = pg.Interval(100, 200)
-interval2 = pg.Interval(150, 250)
-interval3 = pg.Interval(300, 400)
-
-# Insert intervals into different chromosomes
-grove.insert("chr1", interval1)
-grove.insert("chr1", interval2)
-grove.insert("chr2", interval3)
-
-print(f"Total intervals: {len(grove)}")  # Output: Total intervals: 3
-
-# Query for overlapping intervals
-query = pg.Interval(175, 225)
-results = grove.intersect(query, "chr1")
-
-print(f"Found {len(results)} overlapping intervals")
-for key in results:
-    interval = key.value
-    print(f"  {interval.start}-{interval.end}")
-```
-
-## Usage Examples
-
-### Basic Operations
+The standard key is a **`GenomicCoordinate`** (stranded, 0-based closed
+`[start, end]`), and the standard **`Grove`** stores any JSON-serializable
+payload (dict / list / scalar / `None`) per key:
 
 ```python
 import pygenogrove as pg
 
-# Create a grove (default order is 3; minimum is 3)
 grove = pg.Grove()
 
-# Create and insert intervals
-interval = pg.Interval(1000, 2000)
-key = grove.insert("chr1", interval)
+# Insert stranded coordinates with arbitrary metadata (or no data at all)
+grove.insert("chr1", pg.GenomicCoordinate("+", 100, 200), {"gene": "FOO", "score": 5})
+grove.insert("chr1", pg.GenomicCoordinate("-", 100, 200), {"gene": "BAR"})
+grove.insert("chr1", pg.GenomicCoordinate(".", 300, 400))   # data defaults to None
 
-# Access interval properties (read-only)
-print(f"Start: {interval.start}")  # Output: Start: 1000
-print(f"End: {interval.end}")      # Output: End: 2000
+# Query is strand-aware: a '+' query matches only '+' (and '*' wildcards)
+for key in grove.intersect(pg.GenomicCoordinate("+", 150, 160), "chr1"):
+    print(key.value, key.data)        # GenomicCoordinate('+', 100, 200) {'gene': 'FOO', 'score': 5}
+
+# '*' matches any strand; '.' is a concrete unstranded value (matches only '.')
+len(grove.intersect(pg.GenomicCoordinate("*", 150, 160), "chr1"))   # 2
+
+grove.serialize("out.gg")             # JSON-text payload; a C++ grove<gc, string> can read it
 ```
 
-**Important — do not mutate an inserted interval.** `Interval.start` and
-`Interval.end` are intentionally read-only, and `Interval.set_range(start, end)`
-must only be used on intervals you have NOT yet inserted (e.g. a query
-interval you want to reuse). Mutating a stored key silently corrupts B+ tree
-ordering — overlap queries will start returning wrong answers with no error.
+The payload round-trips transparently (no `json` import needed), and each key
+may carry a **different** shape — no schema is enforced.
 
-### Querying Intervals
+**Important — do not mutate an inserted coordinate.** `GenomicCoordinate.start`,
+`.end`, and `.strand` are read-only; `set_range()` / `set_strand()` must only be
+used on coordinates you have NOT yet inserted (e.g. a query you want to reuse).
+Mutating a stored key silently corrupts B+ tree ordering.
 
-```python
-import pygenogrove as pg
+### Strand semantics
+- `'+'` / `'-'` — forward / reverse strand
+- `'.'` — a concrete *unstranded* value (matches only `'.'`)
+- `'*'` — wildcard query strand (matches any strand)
 
-grove = pg.Grove(100)
+So plain unstranded intervals are just `GenomicCoordinate('.', start, end)`.
 
-# Insert some intervals
-grove.insert("chr1", pg.Interval(100, 200))
-grove.insert("chr1", pg.Interval(300, 400))
-grove.insert("chr2", pg.Interval(100, 200))
+### Typed BED/GFF groves (for C++ interop)
 
-# Query specific chromosome
-query = pg.Interval(150, 350)
-results = grove.intersect(query, "chr1")
-
-print(f"Found {len(results)} overlaps in chr1")
-for key in results:
-    print(f"  Interval: {key.value}")
-
-# Query across all chromosomes
-all_results = grove.intersect(query)
-print(f"Found {len(all_results)} overlaps across all chromosomes")
-```
-
-### Overlap Detection
+The schemaless `Grove` is the everyday tool. When you need a guaranteed BED/GFF
+structure and full interop with typed C++ `.gg` files, use the typed groves
+(`BedGrove` / `GffGrove`, also genomic-coordinate keyed):
 
 ```python
-import pygenogrove as pg
-
-# Static method for checking overlap
-interval1 = pg.Interval(100, 200)
-interval2 = pg.Interval(150, 250)
-interval3 = pg.Interval(300, 400)
-
-print(pg.Interval.overlaps(interval1, interval2))  # True (they overlap)
-print(pg.Interval.overlaps(interval1, interval3))  # False (no overlap)
+g = pg.BedGrove()
+g.insert("chr1", bed_entry)           # entry-deriving: strand taken from the BED6 column
 ```
 
 ## API Reference
 
-### Interval
+### GenomicCoordinate
 
 ```python
-Interval(start: int, end: int)
+GenomicCoordinate(strand: str, start: int, end: int)
 ```
 
-A genomic interval with closed `[start, end]` coordinates (0-based, both inclusive).
+A stranded genomic coordinate with closed `[start, end]` (0-based, both
+inclusive). `strand` is one of `'+'`, `'-'`, `'.'`, `'*'`. Overlap requires both
+coordinate overlap AND strand compatibility (`'*'` matches any).
 
-**Attributes** (read-only):
-- `start`: Start position (inclusive)
-- `end`: End position (inclusive)
+**Attributes** (read-only): `strand`, `start`, `end`
 
 **Methods**:
-- `set_range(start, end)`: Atomically set both endpoints. Only safe on intervals not yet inserted into a Grove (mutating a stored key corrupts B+ tree ordering).
-- `Interval.overlaps(a, b)`: Static method to check if two intervals overlap
+- `set_range(start, end)` / `set_strand(strand)`: pre-insertion only (mutating a stored key corrupts B+ tree ordering).
+- `GenomicCoordinate.overlaps(a, b)`: static strand-aware overlap check.
 
 ### Grove
 
@@ -157,10 +115,10 @@ A B+ tree container for genomic intervals with multi-index support.
 **Methods**:
 - `len(grove)` / `size()` / `indexed_vertex_count()`: Number of indexed intervals across all indices
 - `get_order()`: Get the order (branching factor) of the tree
-- `insert(index: str, interval: Interval) -> Key`: Insert an interval at the specified index
-- `intersect(query: Interval) -> QueryResult`: Find overlapping intervals across all indices
-- `intersect(query: Interval, index: str) -> QueryResult`: Find overlapping intervals in specific index
-- `flanking(query: Interval, index: str) -> FlankingResult`: Find the nearest **non-overlapping** keys on either side of the query (predecessor / successor)
+- `insert(index: str, key: GenomicCoordinate, data=None) -> Key`: Insert a coordinate (with an optional JSON-serializable payload) at the specified index
+- `intersect(query: GenomicCoordinate) -> QueryResult`: Find strand-aware overlaps across all indices
+- `intersect(query: GenomicCoordinate, index: str) -> QueryResult`: Find strand-aware overlaps in a specific index
+- `flanking(query: GenomicCoordinate, index: str) -> FlankingResult`: Find the nearest **non-overlapping** keys on either side of the query (predecessor / successor). Also `flanking(query, index, is_compatible)` filters candidates by a `bool(candidate, query)` predicate (e.g. same strand)
 
 **FlankingResult** (returned by `flanking`):
 - `predecessor`: the closest key entirely before the query (a `Key`), or `None`
@@ -180,7 +138,7 @@ carry `.data`).
 - `out_degree(source: Key) -> int`: Number of outgoing edges from `source`
 - `edge_count() -> int`: Total number of edges in the overlay
 - `vertex_count_with_edges() -> int`: Number of keys with at least one outgoing edge
-- `add_external_key(interval: Interval) -> Key`: Add a key outside the index that can still participate in the graph (not returned by `intersect`)
+- `add_external_key(key: GenomicCoordinate, data=None) -> Key`: Add a key outside the index that can still participate in the graph (not returned by `intersect`)
 
 **Serialization** (zlib-compressed `.gg` binary):
 - `serialize(path: str)`: Write the grove (intervals + graph overlay) to `path`
@@ -221,12 +179,12 @@ entry = pg.BedEntry("chr1", 1000, 2000)   # BED-native coords (0-based, half-ope
 entry.name = "BRCA1"
 entry.score = 900
 entry.strand = "+"
-key = g.insert("chr1", pg.Interval(1000, 1999), entry)
+key = g.insert("chr1", pg.GenomicCoordinate(".", 1000, 1999), entry)
 
 # the returned key exposes both the interval value and the BED payload
 print(key.value.start, key.data.name)     # 1000 BRCA1
 
-for hit in g.intersect(pg.Interval(1500, 1600), "chr1"):
+for hit in g.intersect(pg.GenomicCoordinate(".", 1500, 1600), "chr1"):
     print(hit.data.name, hit.data.score)
 
 # serialize/deserialize preserves the BedEntry data
@@ -236,11 +194,11 @@ reloaded = pg.BedGrove.deserialize("genes.gg")
 
 `BedGrove` exposes the same surface as `Grove` (multi-index `insert`/`intersect`,
 the graph overlay, and `serialize`/`deserialize`), with these differences:
-- `insert(index: str, interval: Interval, data: BedEntry) -> BedKey` takes the BED payload.
-- `add_external_key(interval: Interval, data: BedEntry) -> BedKey` takes the payload too.
+- `insert(index: str, key: GenomicCoordinate, data: BedEntry) -> BedKey` takes the BED payload.
+- `add_external_key(key: GenomicCoordinate, data: BedEntry) -> BedKey` takes the payload too.
 - **Entry-deriving inserts** (no hand-conversion of coordinates):
   - `insert(index, entry) -> BedKey` — a 2-argument overload: pass a bare
-    `BedEntry` and the `Interval` key is derived from its native coordinates
+    `BedEntry` and the GenomicCoordinate key is derived from its native coordinates
     (BED's half-open `[s, e)` → closed `[s, e-1]`; GFF's 1-based `[s, e]` →
     `[s-1, e-1]`). This is the foolproof way to load records from a reader.
   - `insert_bulk(index, entries, presorted=False) -> list[BedKey]` — same idea
@@ -249,7 +207,7 @@ the graph overlay, and `serialize`/`deserialize`), with these differences:
   - `insert_sorted(index, interval, data) -> BedKey` — single insert on the
     rightmost-append path (skips tree traversal).
   - `insert_bulk(index, items, presorted=False) -> list[BedKey]` — insert many
-    explicit `(Interval, BedEntry)` records at once (10–20× faster for large
+    explicit `(GenomicCoordinate, BedEntry)` records at once (10–20× faster for large
     datasets; an empty index is built bottom-up in O(n)). `presorted=True`
     assumes the records are already sorted by interval (skips the internal sort).
   - **Precondition:** sorted/bulk inserts require ascending intervals, and when
@@ -267,7 +225,7 @@ the graph overlay, and `serialize`/`deserialize`), with these differences:
 ### BedEntry
 
 A single BED record. Coordinates are BED-native: 0-based, half-open `[start, end)`
-(distinct from the closed `[start, end]` of `Interval` used as the grove key).
+(distinct from the closed [start, end] of GenomicCoordinate used as the grove key).
 
 ```python
 BedEntry(chrom: str, start: int, end: int)
@@ -301,11 +259,11 @@ entry = pg.GffEntry("chr1", 1000, 2000, "gene")   # GFF-native coords (1-based, 
 entry.source = "ensembl"
 entry.strand = "+"
 entry.attributes = {"gene_id": "ENSG1", "gene_name": "BRCA1"}
-key = g.insert("chr1", pg.Interval(999, 1999), entry)
+key = g.insert("chr1", pg.GenomicCoordinate(".", 999, 1999), entry)
 
 print(key.data.type, key.data.get_gene_id())      # gene ENSG1
 
-for hit in g.intersect(pg.Interval(1500, 1600), "chr1"):
+for hit in g.intersect(pg.GenomicCoordinate(".", 1500, 1600), "chr1"):
     print(hit.data.type, dict(hit.data.attributes))
 
 g.serialize("genes.gg")
@@ -318,7 +276,7 @@ reference); `GffQueryResult` is the `GffGrove` analog of `QueryResult`.
 ### GffEntry
 
 A single GFF3/GTF record. Coordinates are GFF-native: **1-based, both endpoints
-inclusive** (distinct from `Interval`'s 0-based closed and `BedEntry`'s 0-based
+inclusive** (distinct from GenomicCoordinate's 0-based closed and `BedEntry`'s 0-based
 half-open).
 
 ```python
@@ -352,7 +310,7 @@ for entry in pg.BedReader("peaks.bed"):
     print(entry.chrom, entry.start, entry.end, entry.name)
 
 # the common workflow: load a file into a grove. The 2-argument insert derives
-# the grove's 0-based closed Interval key from each entry's native coordinates,
+# the grove's 0-based closed GenomicCoordinate key from each entry's native coordinates,
 # so you don't hand-convert (BED half-open, GFF 1-based) yourself.
 g = pg.BedGrove(256)
 for e in pg.BedReader("peaks.bed"):
@@ -383,7 +341,7 @@ GffReader(path: str, skip_invalid_lines: bool = False, validate_gtf: bool = Fals
 - The readers are **single-pass** — they own an htslib file handle and cannot be
   restarted or iterated twice.
 
-> **Coordinate systems** — `Interval` is 0-based closed `[start, end]`; `BedEntry`
+> **Coordinate systems** — `GenomicCoordinate` is 0-based closed `[start, end]`; `BedEntry`
 > is 0-based half-open `[start, end)`; `GffEntry` is 1-based inclusive `[start, end]`.
 > Convert deliberately when building grove keys, as shown above.
 

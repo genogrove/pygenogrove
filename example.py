@@ -2,7 +2,7 @@
 """
 Example usage of pygenogrove Python bindings.
 
-This script demonstrates basic operations with the Grove and Interval classes.
+This script demonstrates basic operations with the Grove and GenomicCoordinate classes.
 """
 
 import sys
@@ -33,15 +33,15 @@ def main():
     # Create some intervals
     print("Creating intervals...")
     intervals_chr1 = [
-        pg.Interval(100, 200),
-        pg.Interval(150, 250),
-        pg.Interval(300, 400),
-        pg.Interval(350, 450),
+        pg.GenomicCoordinate(".", 100, 200),
+        pg.GenomicCoordinate(".", 150, 250),
+        pg.GenomicCoordinate(".", 300, 400),
+        pg.GenomicCoordinate(".", 350, 450),
     ]
 
     intervals_chr2 = [
-        pg.Interval(1000, 1500),
-        pg.Interval(2000, 2500),
+        pg.GenomicCoordinate(".", 1000, 1500),
+        pg.GenomicCoordinate(".", 2000, 2500),
     ]
 
     # Insert intervals
@@ -62,7 +62,7 @@ def main():
     print("Querying for overlaps...")
 
     # Query chr1
-    query1 = pg.Interval(175, 325)
+    query1 = pg.GenomicCoordinate(".", 175, 325)
     print(f"\nQuery chr1 with {query1}:")
     results1 = grove.intersect(query1, "chr1")
     print(f"  Found {len(results1)} overlapping intervals:")
@@ -70,7 +70,7 @@ def main():
         print(f"    {key.value}")
 
     # Query chr2
-    query2 = pg.Interval(1200, 1800)
+    query2 = pg.GenomicCoordinate(".", 1200, 1800)
     print(f"\nQuery chr2 with {query2}:")
     results2 = grove.intersect(query2, "chr2")
     print(f"  Found {len(results2)} overlapping intervals:")
@@ -78,7 +78,7 @@ def main():
         print(f"    {key.value}")
 
     # Query all chromosomes
-    query3 = pg.Interval(200, 250)
+    query3 = pg.GenomicCoordinate(".", 200, 250)
     print(f"\nQuery all chromosomes with {query3}:")
     results3 = grove.intersect(query3)
     print(f"  Found {len(results3)} overlapping intervals across all chromosomes:")
@@ -87,19 +87,19 @@ def main():
 
     # Test overlap detection
     print("\nTesting interval overlap detection...")
-    interval_a = pg.Interval(100, 200)
-    interval_b = pg.Interval(150, 250)
-    interval_c = pg.Interval(300, 400)
+    interval_a = pg.GenomicCoordinate(".", 100, 200)
+    interval_b = pg.GenomicCoordinate(".", 150, 250)
+    interval_c = pg.GenomicCoordinate(".", 300, 400)
 
-    print(f"  {interval_a} overlaps {interval_b}? {pg.Interval.overlaps(interval_a, interval_b)}")
-    print(f"  {interval_a} overlaps {interval_c}? {pg.Interval.overlaps(interval_a, interval_c)}")
+    print(f"  {interval_a} overlaps {interval_b}? {pg.GenomicCoordinate.overlaps(interval_a, interval_b)}")
+    print(f"  {interval_a} overlaps {interval_c}? {pg.GenomicCoordinate.overlaps(interval_a, interval_c)}")
 
     # Graph overlay: connect intervals with directed edges
     print("\nBuilding a graph overlay (e.g. exon -> exon -> enhancer)...")
     gene = pg.Grove(3)
-    exon1 = gene.insert("chr1", pg.Interval(1000, 1200))
-    exon2 = gene.insert("chr1", pg.Interval(1400, 1600))
-    enhancer = gene.add_external_key(pg.Interval(5000, 5500))  # not in the index
+    exon1 = gene.insert("chr1", pg.GenomicCoordinate(".", 1000, 1200))
+    exon2 = gene.insert("chr1", pg.GenomicCoordinate(".", 1400, 1600))
+    enhancer = gene.add_external_key(pg.GenomicCoordinate(".", 5000, 5500))  # not in the index
 
     gene.add_edge(exon1, exon2)
     gene.add_edge(exon2, enhancer)
@@ -111,7 +111,7 @@ def main():
     print(f"\nSerializing grove to {out_path} and reloading...")
     gene.serialize(out_path)
     reloaded = pg.Grove.deserialize(out_path)
-    src = list(reloaded.intersect(pg.Interval(1000, 1200), "chr1"))[0]
+    src = list(reloaded.intersect(pg.GenomicCoordinate(".", 1000, 1200), "chr1"))[0]
     print(f"  reloaded size: {reloaded.size()}, edges: {reloaded.edge_count()}")
     print(f"  reloaded exon1 -> {[str(n.value) for n in reloaded.get_neighbors(src)]}")
 
@@ -119,8 +119,8 @@ def main():
     print("\nBuilding a BedGrove (intervals with associated BED data)...")
     bed = pg.BedGrove(100)
     genes = [
-        ("chr1", pg.Interval(1000, 1999), "BRCA1", 900, "+"),
-        ("chr1", pg.Interval(3000, 3999), "TP53", 850, "-"),
+        ("chr1", pg.GenomicCoordinate(".", 1000, 1999), "BRCA1", 900, "+"),
+        ("chr1", pg.GenomicCoordinate(".", 3000, 3999), "TP53", 850, "-"),
     ]
     for chrom, iv, name, score, strand in genes:
         entry = pg.BedEntry(chrom, iv.start, iv.end + 1)  # BED end is half-open
@@ -129,8 +129,8 @@ def main():
         entry.strand = strand
         bed.insert(chrom, iv, entry)
 
-    print("  Querying chr1 with Interval(1500, 1600)...")
-    for hit in bed.intersect(pg.Interval(1500, 1600), "chr1"):
+    print("  Querying chr1 with GenomicCoordinate(.,1500,1600)...")
+    for hit in bed.intersect(pg.GenomicCoordinate(".", 1500, 1600), "chr1"):
         d = hit.data
         print(f"    {hit.value} -> {d.name} (score={d.score}, strand={d.strand})")
 
@@ -138,7 +138,7 @@ def main():
     print(f"\n  Serializing BedGrove to {bed_path} and reloading...")
     bed.serialize(bed_path)
     bed_reloaded = pg.BedGrove.deserialize(bed_path)
-    hit = list(bed_reloaded.intersect(pg.Interval(1500, 1600), "chr1"))[0]
+    hit = list(bed_reloaded.intersect(pg.GenomicCoordinate(".", 1500, 1600), "chr1"))[0]
     print(f"  reloaded payload survived round-trip: {hit.data.name} "
           f"(score={hit.data.score})")
 
@@ -149,10 +149,10 @@ def main():
     exon.source = "ensembl"
     exon.strand = "+"
     exon.attributes = {"gene_id": "ENSG1", "transcript_id": "ENST1", "exon_number": "1"}
-    gff.insert("chr1", exon)  # 2-arg insert derives Interval(999, 1999) from the GFF coords
+    gff.insert("chr1", exon)  # 2-arg insert derives GenomicCoordinate('.', 999, 1999) from the GFF coords
 
-    print("  Querying chr1 with Interval(1500, 1600)...")
-    for hit in gff.intersect(pg.Interval(1500, 1600), "chr1"):
+    print("  Querying chr1 with GenomicCoordinate(.,1500,1600)...")
+    for hit in gff.intersect(pg.GenomicCoordinate(".", 1500, 1600), "chr1"):
         d = hit.data
         print(f"    {d.type} gene_id={d.get_gene_id()} "
               f"exon#={d.get_exon_number()} attrs={dict(d.attributes)}")
@@ -170,11 +170,11 @@ def main():
         peaks.insert(e.chrom, e)              # 2-arg insert derives the key from BED coords
     print(f"  loaded {peaks.size()} peaks from {bed_file}")
 
-    overlaps = list(peaks.intersect(pg.Interval(1500, 1500), "chr1"))
+    overlaps = list(peaks.intersect(pg.GenomicCoordinate(".", 1500, 1500), "chr1"))
     print(f"  peak overlapping chr1:1500 -> {overlaps[0].data.name}")
 
     # Bulk insert: load many sorted records into a data-carrying grove at once.
-    # Passing bare entries lets insert_bulk derive each Interval key from the
+    # Passing bare entries lets insert_bulk derive each GenomicCoordinate key from the
     # entry's own coordinates.
     print("\nBulk-loading sorted records into a BedGrove (insert_bulk)...")
     big = pg.BedGrove(256)
@@ -184,7 +184,7 @@ def main():
 
     # Nearest-neighbour (flanking) query: closest features on either side of a gap
     print("\nFinding the nearest non-overlapping neighbours (flanking)...")
-    nn = peaks.flanking(pg.Interval(2100, 2200), "chr1")   # a gap with no peak
+    nn = peaks.flanking(pg.GenomicCoordinate(".", 2100, 2200), "chr1")   # a gap with no peak
     if nn.predecessor is not None:
         pred = nn.predecessor
         gap = 2100 - pred.value.end - 1

@@ -24,7 +24,7 @@ def test_bed_insert_entry_derives_closed_interval():
     pg = _pg()
     g = pg.BedGrove(8)
     key = g.insert("chr1", pg.BedEntry("chr1", 0, 100))
-    assert key.value == pg.Interval(0, 99)
+    assert key.value == pg.GenomicCoordinate(".", 0, 99)
     assert key.value.start == 0 and key.value.end == 99
     # payload keeps its native half-open coordinates
     assert key.data.start == 0 and key.data.end == 100
@@ -35,7 +35,7 @@ def test_gff_insert_entry_derives_closed_interval():
     pg = _pg()
     g = pg.GffGrove(8)
     key = g.insert("chr1", pg.GffEntry("chr1", 1, 100, "gene"))
-    assert key.value == pg.Interval(0, 99)
+    assert key.value == pg.GenomicCoordinate(".", 0, 99)
     # payload keeps its native 1-based coordinates
     assert key.data.start == 1 and key.data.end == 100
 
@@ -46,17 +46,17 @@ def test_bed_and_gff_same_region_yield_same_key():
     pg = _pg()
     bed_key = pg.BedGrove(8).insert("chr1", pg.BedEntry("chr1", 0, 100))   # [0,100)
     gff_key = pg.GffGrove(8).insert("chr1", pg.GffEntry("chr1", 1, 100, "x"))  # [1,100] 1-based
-    assert bed_key.value == gff_key.value == pg.Interval(0, 99)
+    assert bed_key.value == gff_key.value == pg.GenomicCoordinate(".", 0, 99)
 
 
 def test_explicit_and_entry_insert_coexist():
     """The 3-arg explicit insert and the 2-arg entry insert both work (overloads)."""
     pg = _pg()
     g = pg.BedGrove(8)
-    k_explicit = g.insert("chr1", pg.Interval(10, 20), pg.BedEntry("chr1", 10, 21))
+    k_explicit = g.insert("chr1", pg.GenomicCoordinate(".", 10, 20), pg.BedEntry("chr1", 10, 21))
     k_entry = g.insert("chr1", pg.BedEntry("chr1", 100, 151))
-    assert k_explicit.value == pg.Interval(10, 20)
-    assert k_entry.value == pg.Interval(100, 150)
+    assert k_explicit.value == pg.GenomicCoordinate(".", 10, 20)
+    assert k_entry.value == pg.GenomicCoordinate(".", 100, 150)
     assert g.size() == 2
 
 
@@ -69,10 +69,10 @@ def test_entry_insert_is_queryable():
     e.name = "geneA"
     g.insert("chr1", e)
 
-    assert len(list(g.intersect(pg.Interval(1500, 1500), "chr1"))) == 1
-    assert len(list(g.intersect(pg.Interval(1999, 1999), "chr1"))) == 1
-    assert len(list(g.intersect(pg.Interval(2000, 2000), "chr1"))) == 0
-    assert list(g.intersect(pg.Interval(1500, 1500), "chr1"))[0].data.name == "geneA"
+    assert len(list(g.intersect(pg.GenomicCoordinate(".", 1500, 1500), "chr1"))) == 1
+    assert len(list(g.intersect(pg.GenomicCoordinate(".", 1999, 1999), "chr1"))) == 1
+    assert len(list(g.intersect(pg.GenomicCoordinate(".", 2000, 2000), "chr1"))) == 0
+    assert list(g.intersect(pg.GenomicCoordinate(".", 1500, 1500), "chr1"))[0].data.name == "geneA"
 
 
 def test_insert_bulk_entries_derives_keys():
@@ -124,7 +124,7 @@ def test_explicit_pair_bulk_still_works():
     """The explicit (Interval, data) bulk form still resolves alongside the entry form."""
     pg = _pg()
     g = pg.BedGrove(8)
-    items = [(pg.Interval(i * 100, i * 100 + 50), pg.BedEntry("chr1", i * 100, i * 100 + 51))
+    items = [(pg.GenomicCoordinate(".", i * 100, i * 100 + 50), pg.BedEntry("chr1", i * 100, i * 100 + 51))
              for i in range(10)]
     keys = g.insert_bulk("chr1", items, presorted=True)
     assert len(keys) == 10
@@ -150,6 +150,29 @@ def test_malformed_gff_entry_raises():
         g.insert("chr1", pg.GffEntry("chr1", 5, 1, "gene"))    # end < start
     with pytest.raises((ValueError, RuntimeError)):
         g.insert("chr1", pg.GffEntry("chr1", 0, 100, "gene"))  # start 0 (not 1-based)
+
+
+def test_entry_deriving_insert_takes_strand_from_bed6():
+    """A BED entry with a strand derives a *stranded* GenomicCoordinate key."""
+    pg = _pg()
+    g = pg.BedGrove(8)
+    plus = pg.BedEntry("chr1", 0, 100)
+    plus.strand = "+"
+    minus = pg.BedEntry("chr1", 0, 100)
+    minus.strand = "-"
+    no_strand = pg.BedEntry("chr1", 0, 100)  # strand absent -> '.'
+
+    assert g.insert("chr1", plus).value == pg.GenomicCoordinate("+", 0, 99)
+    assert g.insert("chr1", minus).value == pg.GenomicCoordinate("-", 0, 99)
+    assert g.insert("chr1", no_strand).value == pg.GenomicCoordinate(".", 0, 99)
+
+
+def test_entry_deriving_insert_takes_strand_from_gff():
+    pg = _pg()
+    g = pg.GffGrove(8)
+    e = pg.GffEntry("chr1", 1, 100, "gene")
+    e.strand = "-"
+    assert g.insert("chr1", e).value == pg.GenomicCoordinate("-", 0, 99)
 
 
 if __name__ == "__main__":

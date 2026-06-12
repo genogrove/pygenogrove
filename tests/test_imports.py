@@ -8,27 +8,25 @@ silently skipping every test, hiding a broken build.
 """
 
 
-def test_imports():
+def test_imports_core():
+    """The standard genomic-coordinate Grove (JSON payload) and its types."""
     import pygenogrove
-    assert hasattr(pygenogrove, 'Interval')
+    assert hasattr(pygenogrove, 'GenomicCoordinate')
     assert hasattr(pygenogrove, 'Grove')
     assert hasattr(pygenogrove, 'Key')
     assert hasattr(pygenogrove, 'QueryResult')
     assert hasattr(pygenogrove, 'FlankingResult')
 
 
-def test_imports_genomic_coordinate_grove():
-    """The stranded genomic-coordinate grove and its value type are exposed."""
+def test_interval_is_removed():
+    """The old Interval-keyed surface is gone (genomic_coordinate is standard)."""
     import pygenogrove
-    assert hasattr(pygenogrove, 'GenomicCoordinate')
-    assert hasattr(pygenogrove, 'GenomicCoordinateGrove')
-    assert hasattr(pygenogrove, 'GenomicCoordinateKey')
-    assert hasattr(pygenogrove, 'GenomicCoordinateQueryResult')
-    assert hasattr(pygenogrove, 'GenomicCoordinateFlankingResult')
+    assert not hasattr(pygenogrove, 'Interval')
+    assert not hasattr(pygenogrove, 'GenomicCoordinateGrove')
 
 
 def test_imports_bed_data_grove():
-    """The data-carrying grove for bed_entry and its value types are exposed."""
+    """The typed BED data grove (genomic_coordinate keyed) and its value types."""
     import pygenogrove
     assert hasattr(pygenogrove, 'BedGrove')
     assert hasattr(pygenogrove, 'BedKey')
@@ -41,7 +39,7 @@ def test_imports_bed_data_grove():
 
 
 def test_imports_gff_data_grove():
-    """The data-carrying grove for gff_entry and its value types are exposed."""
+    """The typed GFF data grove (genomic_coordinate keyed) and its value types."""
     import pygenogrove
     assert hasattr(pygenogrove, 'GffGrove')
     assert hasattr(pygenogrove, 'GffKey')

@@ -10,7 +10,7 @@
 #include <genogrove/config/version.hpp>
 
 #include "data_type/genomic_coordinate.hpp"
-#include "data_type/interval.hpp"
+#include "data_type/json_value.hpp"
 #include "data_type/registry.hpp"
 #include "io/bed_reader.hpp"
 #include "io/gff_reader.hpp"
@@ -18,6 +18,11 @@
 
 namespace py = pybind11;
 namespace gio = genogrove::io;
+
+// The universal Grove's JSON payload defaults to None (an absent payload), so
+// dataless inserts can be written `g.insert(index, coord)`.
+template <>
+inline constexpr bool grove_data_optional<pygg::json_value> = true;
 
 // Stringify-and-join genogrove's integer version macros into "MAJOR.MINOR.PATCH".
 #define PYGENOGROVE_STR2(x) #x
@@ -34,36 +39,31 @@ PYBIND11_MODULE(pygenogrove, m) {
         A specialized B+ tree data structure optimized for genomic interval storage and querying.
     )pbdoc";
 
-    // Interval key value type, shared by every interval-keyed grove.
-    bind_interval(m);
-
-    // Dataless interval grove: grove<interval> exposed as Grove / Key /
-    // QueryResult / FlankingResult.
-    bind_grove<gdt::interval, void>(m, "Grove", "Key", "QueryResult",
-                                    "FlankingResult");
-
-    // GenomicCoordinate key value type (stranded interval), then the dataless
-    // grove<genomic_coordinate> exposed as GenomicCoordinateGrove /
-    // GenomicCoordinateKey / GenomicCoordinateQueryResult /
-    // GenomicCoordinateFlankingResult. Overlap is strand-aware ('*' = wildcard).
+    // GenomicCoordinate — the standard, strand-aware key value type. Overlap is
+    // strand-aware ('*' = wildcard, '.' = a concrete unstranded value).
     bind_genomic_coordinate(m);
-    bind_grove<gdt::genomic_coordinate, void>(
-        m, "GenomicCoordinateGrove", "GenomicCoordinateKey",
-        "GenomicCoordinateQueryResult", "GenomicCoordinateFlankingResult");
 
-    // BED value types, then the data-carrying grove<interval, bed_entry>
-    // exposed as BedGrove / BedKey / BedQueryResult / BedFlankingResult. BedEntry
-    // must be registered before the grove references it. BedReader yields BedEntry.
+    // The universal Grove: grove<genomic_coordinate, json_value>. Stores an
+    // arbitrary JSON-serializable Python object (dict / list / scalar / None) as
+    // the payload — insert(index, coord, data); key.data round-trips it back. It
+    // serializes to a .gg whose payload is JSON text, so a C++
+    // grove<genomic_coordinate, std::string> can still read the file.
+    bind_grove<gdt::genomic_coordinate, pygg::json_value>(
+        m, "Grove", "Key", "QueryResult", "FlankingResult");
+
+    // Typed data-carrying groves over genomic_coordinate, kept for full C++
+    // interop (typed binary .gg) and the BED/GFF helper accessors. BedEntry /
+    // GffEntry must be registered before the groves reference them; the readers
+    // yield them and the entry-deriving insert(index, entry) derives a stranded
+    // coordinate from the BED6/GFF strand column.
     bind_bed_entry(m);
-    bind_grove<gdt::interval, gio::bed_entry>(m, "BedGrove", "BedKey",
-                                              "BedQueryResult", "BedFlankingResult");
+    bind_grove<gdt::genomic_coordinate, gio::bed_entry>(
+        m, "BedGrove", "BedKey", "BedQueryResult", "BedFlankingResult");
     bind_bed_reader(m);
 
-    // GFF/GTF value types, then the data-carrying grove<interval, gff_entry>
-    // exposed as GffGrove / GffKey / GffQueryResult / GffFlankingResult.
     bind_gff_entry(m);
-    bind_grove<gdt::interval, gio::gff_entry>(m, "GffGrove", "GffKey",
-                                              "GffQueryResult", "GffFlankingResult");
+    bind_grove<gdt::genomic_coordinate, gio::gff_entry>(
+        m, "GffGrove", "GffKey", "GffQueryResult", "GffFlankingResult");
     bind_gff_reader(m);
 
     // String interning registry: registry<std::string> exposed as StringRegistry

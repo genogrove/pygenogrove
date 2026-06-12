@@ -1,14 +1,15 @@
 /*
  * Binding for ggs::grove<KeyT, DataT> — the B+ tree container. Mirrors genogrove
- * structure/grove/grove.hpp. Generic over the key type KeyT (interval,
- * genomic_coordinate, …): instantiated per concrete key type from bindings.cpp,
- * producing a distinct Python class each time (Grove, GenomicCoordinateGrove, …).
+ * structure/grove/grove.hpp. Generic over the key type KeyT and a (non-void)
+ * data payload DataT: instantiated per concrete (KeyT, DataT) from bindings.cpp,
+ * producing a distinct Python class each time (Grove = grove<genomic_coordinate,
+ * json_value>, BedGrove = grove<genomic_coordinate, bed_entry>, …).
  *
- * A single template covers the dataless grove (DataT = void, e.g. Grove) and
- * data-carrying groves (e.g. DataT = bed_entry → BedGrove). The differences are
- * the insert / add_external_key signatures (which gain a data argument), the
- * Key.data accessor, and the interval-only entry-deriving insert overloads;
- * these are switched with `if constexpr`.
+ * Every grove carries a payload. Two payload-dependent variations are switched
+ * with `if constexpr`: the insert/add_external_key `data` argument defaults to
+ * None for the JSON payload (grove_data_optional), and the entry-deriving
+ * insert(index, entry) overloads exist only for the genomic_coordinate key with
+ * a derivable entry type.
  */
 #pragma once
 
@@ -37,6 +38,13 @@
 namespace py = pybind11;
 namespace ggs = genogrove::structure;
 namespace gdt = genogrove::data_type;
+
+// Customization point: data types whose insert()/add_external_key() `data`
+// argument should default to an absent payload (so dataless inserts can omit
+// it). Specialized to true for the JSON payload type in bindings.cpp; false for
+// typed payloads (bed_entry/gff_entry), where a default makes no sense.
+template <typename>
+inline constexpr bool grove_data_optional = false;
 
 template <typename KeyT, typename DataT>
 void bind_grove(py::module_& m, const char* grove_name,
@@ -82,59 +90,41 @@ void bind_grove(py::module_& m, const char* grove_name,
         .def("get_order", &grove_t::get_order,
              "Get the order (branching factor) of the B+ tree");
 
-    // ---- Insert (data argument only present when DataT is non-void) ----
-    if constexpr (std::is_void_v<DataT>) {
-        cls.def("insert",
-                [](grove_t& g, const std::string& index,
-                   const KeyT& interval) {
-                    key_t key(interval);
-                    return g.insert(index, key);
-                },
-                py::arg("index"), py::arg("interval"),
-                py::return_value_policy::reference_internal,
-                R"pbdoc(
-                    Insert an interval into the grove at the specified index.
+    // ---- Insert (every grove carries a data payload) ----
+    {
+        auto insert_fn = [](grove_t& g, const std::string& index,
+                            const KeyT& key, DataT data) {
+            return g.insert_data(index, key, std::move(data));
+        };
+        const char* insert_doc = R"pbdoc(
+                    Insert a key with an associated data payload at the given index.
 
                     Parameters
                     ----------
                     index : str
                         The index name (e.g., chromosome name like "chr1")
-                    interval : Interval
-                        The interval to insert (copied into the grove)
-
-                    Returns
-                    -------
-                    Key
-                        Stable reference to the inserted key. Remains valid as
-                        long as the Grove is alive.
-                )pbdoc");
-    } else {
-        cls.def("insert",
-                [](grove_t& g, const std::string& index,
-                   const KeyT& interval, DataT data) {
-                    return g.insert_data(index, interval, std::move(data));
-                },
-                py::arg("index"), py::arg("interval"), py::arg("data"),
-                py::return_value_policy::reference_internal,
-                R"pbdoc(
-                    Insert an interval with associated data at the given index.
-
-                    Parameters
-                    ----------
-                    index : str
-                        The index name (e.g., chromosome name like "chr1")
-                    interval : Interval
-                        The interval key (copied into the grove). Drives B+ tree
-                        ordering — do not mutate it after insertion.
+                    key : GenomicCoordinate
+                        The key (copied into the grove). Drives B+ tree ordering —
+                        do not mutate it after insertion.
                     data : object
-                        The associated data payload (copied into the grove).
+                        The associated data payload (copied into the grove). On the
+                        universal Grove this is any JSON-serializable value
+                        (dict / list / scalar / None) and defaults to None.
 
                     Returns
                     -------
                     Key
-                        Stable reference to the inserted key. Its .data payload
-                        is freely mutable; its .value (interval) is not.
-                )pbdoc");
+                        Stable reference to the inserted key.
+                )pbdoc";
+        if constexpr (grove_data_optional<DataT>) {
+            cls.def("insert", insert_fn,
+                    py::arg("index"), py::arg("key"), py::arg("data") = DataT{},
+                    py::return_value_policy::reference_internal, insert_doc);
+        } else {
+            cls.def("insert", insert_fn,
+                    py::arg("index"), py::arg("key"), py::arg("data"),
+                    py::return_value_policy::reference_internal, insert_doc);
+        }
 
         // ---- Sorted / bulk insertion (fast paths; non-void data only) ----
         cls.def("insert_sorted",
@@ -197,14 +187,14 @@ void bind_grove(py::module_& m, const char* grove_name,
         //      the entry's native coordinates, so you never hand-convert
         //      (BED 0-based half-open, GFF 1-based inclusive). pybind resolves
         //      these against the explicit (interval, data) forms by signature.
-        //      Only for the interval key type (the conversion yields an interval)
-        //      and entry data types with a known conversion. ----
-        if constexpr (std::is_same_v<KeyT, gdt::interval> &&
-                      has_entry_interval<DataT>) {
+        //      Only for the genomic_coordinate key type (the conversion yields a
+        //      stranded coordinate) and entry data types with a known conversion. ----
+        if constexpr (std::is_same_v<KeyT, gdt::genomic_coordinate> &&
+                      has_entry_coordinate<DataT>) {
             cls.def("insert",
                     [](grove_t& g, const std::string& index, DataT entry) {
-                        KeyT iv = interval_from_entry(entry);
-                        return g.insert_data(index, iv, std::move(entry));
+                        KeyT k = genomic_coordinate_from_entry(entry);
+                        return g.insert_data(index, k, std::move(entry));
                     },
                     py::arg("index"), py::arg("entry"),
                     py::return_value_policy::reference_internal,
@@ -212,9 +202,11 @@ void bind_grove(py::module_& m, const char* grove_name,
                         insert(index, entry) -> Key
 
                         Overload that takes a single file entry and derives the
-                        Interval key from its native coordinates (BED half-open
-                        [s, e) -> [s, e-1]; GFF 1-based [s, e] -> [s-1, e-1]).
-                        The entry keeps its native coordinates as the payload.
+                        GenomicCoordinate key from its native coordinates + strand
+                        (BED half-open [s, e) -> [s, e-1]; GFF 1-based [s, e] ->
+                        [s-1, e-1]; strand from the BED6/GFF strand column, or '.'
+                        if absent). The entry keeps its native coordinates as the
+                        payload.
                     )pbdoc");
 
             cls.def("insert_bulk",
@@ -223,8 +215,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                         std::vector<std::pair<KeyT, DataT>> items;
                         items.reserve(entries.size());
                         for (auto& entry : entries) {
-                            KeyT iv = interval_from_entry(entry);
-                            items.emplace_back(iv, std::move(entry));
+                            KeyT k = genomic_coordinate_from_entry(entry);
+                            items.emplace_back(k, std::move(entry));
                         }
                         if (presorted) {
                             return g.insert_data(index, items, ggs::sorted,
@@ -239,9 +231,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                         insert_bulk(index, entries, presorted=False) -> list[Key]
 
                         Overload that takes a list of bare file entries (instead
-                        of (Interval, data) tuples) and derives each Interval key
-                        from the entry's native coordinates. Same append
-                        precondition as the explicit form.
+                        of (GenomicCoordinate, data) tuples) and derives each
+                        GenomicCoordinate key from the entry's native coordinates
+                        + strand. Same append precondition as the explicit form.
                     )pbdoc");
         }
     }
@@ -405,40 +397,29 @@ void bind_grove(py::module_& m, const char* grove_name,
                 from add_external_key() are NOT affected.
             )pbdoc");
 
-    // ---- External (graph-only) key — gains a data argument when non-void ----
-    if constexpr (std::is_void_v<DataT>) {
-        cls.def("add_external_key",
-                [](grove_t& g, const KeyT& interval) {
-                    return g.add_external_key(interval);
-                },
-                py::arg("interval"),
-                py::return_value_policy::reference_internal,
-                R"pbdoc(
-                    Add a key that lives outside the B+ tree index but can
-                    participate in the graph overlay (e.g. an enhancer linked to
-                    indexed exons).
-
-                    The interval is copied into the Grove. Returns a stable Key
-                    that remains valid as long as the Grove is alive. External
-                    keys are not returned by intersect() queries.
-                )pbdoc");
-    } else {
-        cls.def("add_external_key",
-                [](grove_t& g, const KeyT& interval, DataT data) {
-                    return g.add_external_key(interval, std::move(data));
-                },
-                py::arg("interval"), py::arg("data"),
-                py::return_value_policy::reference_internal,
-                R"pbdoc(
-                    Add a key (interval + data) that lives outside the B+ tree
+    // ---- External (graph-only) key (coordinate + data payload) ----
+    {
+        auto ext_fn = [](grove_t& g, const KeyT& key, DataT data) {
+            return g.add_external_key(key, std::move(data));
+        };
+        const char* ext_doc = R"pbdoc(
+                    Add a key (coordinate + data) that lives outside the B+ tree
                     index but can participate in the graph overlay.
 
-                    Both the interval and the data are copied into the Grove.
-                    Returns a stable Key that remains valid as long as the Grove
-                    is alive. External keys are not returned by intersect()
-                    queries. (Note: this takes a data argument, unlike the
-                    dataless Grove.add_external_key.)
-                )pbdoc");
+                    Both the key and the data are copied into the Grove. Returns a
+                    stable Key that remains valid as long as the Grove is alive.
+                    External keys are not returned by intersect() queries. On the
+                    universal Grove the data defaults to None.
+                )pbdoc";
+        if constexpr (grove_data_optional<DataT>) {
+            cls.def("add_external_key", ext_fn,
+                    py::arg("key"), py::arg("data") = DataT{},
+                    py::return_value_policy::reference_internal, ext_doc);
+        } else {
+            cls.def("add_external_key", ext_fn,
+                    py::arg("key"), py::arg("data"),
+                    py::return_value_policy::reference_internal, ext_doc);
+        }
     }
 
     // ---- Serialization (zlib-compressed .gg binary) ----
