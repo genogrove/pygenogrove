@@ -15,6 +15,7 @@
 #include "io/bam_reader.hpp"
 #include "io/bed_reader.hpp"
 #include "io/fasta_reader.hpp"
+#include "io/filetype_detector.hpp"
 #include "io/gff_reader.hpp"
 #include "structure/grove.hpp"
 
@@ -79,6 +80,9 @@ PYBIND11_MODULE(pygenogrove, m) {
     // Standalone (named sequences, not intervals — no grove integration).
     bind_fasta_entry(m);
     bind_fasta_reader(m);
+
+    // File-type detector: Filetype / CompressionType enums + FiletypeDetector.
+    bind_filetype_detector(m);
 
     // String interning registry: registry<std::string> exposed as StringRegistry
     // (a process-wide singleton, key == payload). Tagged / key->payload registry

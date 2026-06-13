@@ -71,3 +71,11 @@ def test_imports_string_registry():
     """The string interning registry singleton is exposed."""
     import pygenogrove
     assert hasattr(pygenogrove, 'StringRegistry')
+
+
+def test_imports_filetype_detector():
+    """The file-type detector and its enums are exposed."""
+    import pygenogrove
+    assert hasattr(pygenogrove, 'FiletypeDetector')
+    assert hasattr(pygenogrove, 'Filetype')
+    assert hasattr(pygenogrove, 'CompressionType')
