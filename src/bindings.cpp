@@ -14,6 +14,7 @@
 #include "data_type/registry.hpp"
 #include "io/bam_reader.hpp"
 #include "io/bed_reader.hpp"
+#include "io/fasta_index.hpp"
 #include "io/fasta_reader.hpp"
 #include "io/filetype_detector.hpp"
 #include "io/gff_reader.hpp"
@@ -80,6 +81,11 @@ PYBIND11_MODULE(pygenogrove, m) {
     // Standalone (named sequences, not intervals — no grove integration).
     bind_fasta_entry(m);
     bind_fasta_reader(m);
+
+    // Random-access FASTA: FastaIndex(path) over htslib faidx — fetch a region's
+    // bases by (name, start, end). Pairs with GenomicCoordinate (fetch a
+    // feature's sequence); requires a writable directory to build a missing .fai.
+    bind_fasta_index(m);
 
     // File-type detector: Filetype / CompressionType enums + FiletypeDetector.
     bind_filetype_detector(m);
