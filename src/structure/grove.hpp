@@ -1,15 +1,18 @@
 /*
- * Binding for ggs::grove<KeyT, DataT> — the B+ tree container. Mirrors genogrove
- * structure/grove/grove.hpp. Generic over the key type KeyT and a (non-void)
- * data payload DataT: instantiated per concrete (KeyT, DataT) from bindings.cpp,
- * producing a distinct Python class each time (Grove = grove<genomic_coordinate,
- * json_value>, BedGrove = grove<genomic_coordinate, bed_entry>, …).
+ * Binding for ggs::grove<KeyT, DataT, EdgeT> — the B+ tree container. Mirrors
+ * genogrove structure/grove/grove.hpp. Generic over the key type KeyT, a
+ * (non-void) data payload DataT, and an optional edge-metadata type EdgeT
+ * (void by default): instantiated per concrete type tuple from bindings.cpp,
+ * producing a distinct Python class each time (Grove =
+ * grove<genomic_coordinate, json_value, json_value>, BedGrove =
+ * grove<genomic_coordinate, bed_entry>, …).
  *
- * Every grove carries a payload. Two payload-dependent variations are switched
+ * Every grove carries a payload. Three type-dependent variations are switched
  * with `if constexpr`: the insert/add_external_key `data` argument defaults to
- * None for the JSON payload (grove_data_optional), and the entry-deriving
+ * None for the JSON payload (grove_data_optional); the entry-deriving
  * insert(index, entry) overloads exist only for the genomic_coordinate key with
- * a derivable entry type.
+ * a derivable entry type; and the labelled-edge methods (add_edge with a payload,
+ * get_edges, get_neighbors_if, link_with) exist only when EdgeT is non-void.
  */
 #pragma once
 
@@ -19,6 +22,7 @@
 
 #include <functional>
 #include <fstream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -46,11 +50,11 @@ namespace gdt = genogrove::data_type;
 template <typename>
 inline constexpr bool grove_data_optional = false;
 
-template <typename KeyT, typename DataT>
+template <typename KeyT, typename DataT, typename EdgeT = void>
 void bind_grove(py::module_& m, const char* grove_name,
                 const char* key_name, const char* qr_name,
                 const char* fr_name) {
-    using grove_t = ggs::grove<KeyT, DataT>;
+    using grove_t = ggs::grove<KeyT, DataT, EdgeT>;
     using key_t = gdt::key<KeyT, DataT>;
 
     // The grove's Key, QueryResult and FlankingResult instantiations must be
@@ -353,6 +357,47 @@ void bind_grove(py::module_& m, const char* grove_name,
         .def("vertex_count_with_edges", &grove_t::vertex_count_with_edges,
              "Number of keys that have at least one outgoing edge.")
 
+        // ---- Graph edge removal / bulk linking ----
+        .def("remove_edges_from",
+             [](grove_t& g, key_t* source) {
+                 return g.remove_edges_from(source);
+             },
+             py::arg("source"),
+             "Remove all outgoing edges from source. Returns the number removed.")
+        .def("remove_edges_to",
+             [](grove_t& g, key_t* target) {
+                 return g.remove_edges_to(target);
+             },
+             py::arg("target"),
+             "Remove all incoming edges to target (O(E) scan over the graph). "
+             "Returns the number removed.")
+        .def("remove_all_edges",
+             [](grove_t& g, key_t* key) { return g.remove_all_edges(key); },
+             py::arg("key"),
+             "Remove every edge touching key, incoming and outgoing. Returns the "
+             "total number removed.")
+        .def("clear_graph", &grove_t::clear_graph,
+             "Remove all edges from the graph overlay. The keys themselves are "
+             "left intact.")
+        .def("graph_empty", &grove_t::graph_empty,
+             "Return True if the graph overlay holds no edges.")
+        .def("link_if",
+             [](grove_t& g, const std::vector<key_t*>& keys,
+                std::function<bool(key_t*, key_t*)> predicate) {
+                 // The predicate calls back into Python — keep the GIL held.
+                 g.link_if(keys, std::move(predicate));
+             },
+             py::arg("keys"), py::arg("predicate"),
+             R"pbdoc(
+                 link_if(keys, predicate) -> None
+
+                 Add an (unlabelled) directed edge between each adjacent pair
+                 (keys[i], keys[i+1]) for which predicate(keys[i], keys[i+1])
+                 returns True. `keys` is typically the list returned by a bulk
+                 insert; the predicate receives two Keys. Use link_with() to attach
+                 edge metadata.
+             )pbdoc")
+
         // ---- Vertex / storage counts ----
         .def("vertex_count", &grove_t::vertex_count,
              "Total number of keys in the grove: indexed (B+ tree) plus external "
@@ -420,6 +465,69 @@ void bind_grove(py::module_& m, const char* grove_name,
                     py::arg("key"), py::arg("data"),
                     py::return_value_policy::reference_internal, ext_doc);
         }
+    }
+
+    // ---- Labelled edges (only on groves whose edge type is non-void; on the
+    //      universal Grove the metadata is any JSON-serializable value) ----
+    if constexpr (!std::is_void_v<EdgeT>) {
+        cls.def("add_edge",
+                [](grove_t& g, key_t* source, key_t* target, EdgeT data) {
+                    g.add_edge(source, target, std::move(data));
+                },
+                py::arg("source"), py::arg("target"), py::arg("data"),
+                R"pbdoc(
+                    add_edge(source, target, data) -> None
+
+                    Add a directed edge from source to target carrying a metadata
+                    payload (any JSON-serializable value on the universal Grove).
+                    This is an overload of add_edge(source, target); the two-argument
+                    form attaches a None payload. Raises ValueError if either key is
+                    None.
+                )pbdoc");
+        cls.def("get_edges",
+                [](const grove_t& g, const key_t* source) {
+                    return g.get_edges(source);
+                },
+                py::arg("source"),
+                R"pbdoc(
+                    get_edges(source) -> list
+
+                    The metadata payloads of all outgoing edges from source, in edge
+                    order (parallel to get_neighbors(source)). Edges added without a
+                    payload yield None.
+                )pbdoc");
+        cls.def("get_neighbors_if",
+                [](const grove_t& g, key_t* source,
+                   std::function<bool(const EdgeT&)> predicate) {
+                    // The predicate calls back into Python — keep the GIL held.
+                    return g.get_neighbors_if(source, std::move(predicate));
+                },
+                py::arg("source"), py::arg("predicate"),
+                py::return_value_policy::reference_internal,
+                R"pbdoc(
+                    get_neighbors_if(source, predicate) -> list[Key]
+
+                    Target Keys of the outgoing edges from source whose edge
+                    metadata satisfies predicate(metadata). The predicate receives
+                    the decoded payload (e.g. the dict you stored). The returned Keys
+                    point into this Grove's storage and are valid only while it is
+                    alive.
+                )pbdoc");
+        cls.def("link_with",
+                [](grove_t& g, const std::vector<key_t*>& keys,
+                   std::function<std::optional<EdgeT>(key_t*, key_t*)> predicate) {
+                    // The predicate calls back into Python — keep the GIL held.
+                    g.link_if(keys, std::move(predicate));
+                },
+                py::arg("keys"), py::arg("predicate"),
+                R"pbdoc(
+                    link_with(keys, predicate) -> None
+
+                    Like link_if(), but the predicate returns the edge metadata to
+                    attach, or None to skip: predicate(keys[i], keys[i+1]) ->
+                    Optional[object], applied to each adjacent pair. Use this to
+                    label edges built over a bulk-inserted run of keys.
+                )pbdoc");
     }
 
     // ---- Serialization (zlib-compressed .gg binary) ----
