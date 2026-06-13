@@ -57,6 +57,7 @@ def test_imports_file_readers():
     assert hasattr(pygenogrove, 'BamReader')
     assert hasattr(pygenogrove, 'FastaReader')
     assert hasattr(pygenogrove, 'FastaEntry')
+    assert hasattr(pygenogrove, 'FastaIndex')
 
 
 def test_imports_sam_types():
