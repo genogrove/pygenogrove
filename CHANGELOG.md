@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-13
+
 ### Added
 
 - **Completed graph overlay — labelled edges + edge cleanup** — the universal `Grove` is now `grove<genomic_coordinate, json_value, json_value>`, so graph edges carry an arbitrary JSON-serializable payload: `add_edge(source, target, data)`, `get_edges(source)`, `get_neighbors_if(source, predicate)` (predicate on the decoded metadata), and `link_with(keys, predicate)` (optional-returning predicate). Edge cleanup / bulk linking is exposed on every grove: `remove_edges_from`, `remove_edges_to`, `remove_all_edges`, `clear_graph`, `graph_empty`, `link_if`. Typed `BedGrove`/`GffGrove` keep void edge metadata (binary `.gg` C++ interop preserved); the universal `Grove`'s `.gg` now stores per-edge JSON metadata (edgeless files unchanged) ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#32](https://github.com/genogrove/pygenogrove/pull/32)).

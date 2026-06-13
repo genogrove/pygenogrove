@@ -140,6 +140,28 @@ carry `.data`).
 - `vertex_count_with_edges() -> int`: Number of keys with at least one outgoing edge
 - `add_external_key(key: GenomicCoordinate, data=None) -> Key`: Add a key outside the index that can still participate in the graph (not returned by `intersect`)
 
+**Labelled edges** — on the universal `Grove`, edges carry a JSON-serializable payload (the typed `BedGrove`/`GffGrove` keep unlabelled edges for binary interop, so these methods are absent there):
+- `add_edge(source: Key, target: Key, data)`: Add an edge with a metadata payload. The 2-argument `add_edge` attaches `None`
+- `get_edges(source: Key) -> list`: The edge payloads of `source`'s outgoing edges, parallel to `get_neighbors(source)`
+- `get_neighbors_if(source: Key, predicate) -> list[Key]`: Target keys whose edge metadata satisfies `predicate(metadata)` — the predicate receives the **decoded** payload (edges added without a payload yield `None`, so guard for it when mixing labelled and unlabelled edges)
+- `link_with(keys: list[Key], predicate)`: Label adjacent pairs — `predicate(k1, k2)` returns the edge payload to attach, or `None` to skip
+
+**Edge removal / bulk linking** (on every grove):
+- `remove_edges_from(source: Key) -> int` / `remove_edges_to(target: Key) -> int` / `remove_all_edges(key: Key) -> int`: Remove outgoing / incoming / all touching edges; each returns the count removed
+- `clear_graph()`: Remove all edges (keys are left intact); `graph_empty() -> bool`
+- `link_if(keys: list[Key], predicate)`: Add an unlabelled edge between each adjacent pair `(keys[i], keys[i+1])` for which `predicate(k1, k2)` returns `True` (typically over the keys returned by a bulk insert)
+
+```python
+import pygenogrove as pg
+
+g = pg.Grove()
+a = g.insert("chr1", pg.GenomicCoordinate("+", 100, 200))
+b = g.insert("chr1", pg.GenomicCoordinate("+", 300, 400))
+g.add_edge(a, b, {"type": "exon->transcript", "weight": 7})
+g.get_edges(a)                                    # [{"type": ..., "weight": 7}]
+g.get_neighbors_if(a, lambda m: m["weight"] > 5)  # [b]
+```
+
 **Serialization** (zlib-compressed `.gg` binary):
 - `serialize(path: str)`: Write the grove (coordinates + payloads + graph overlay) to `path`
 - `deserialize(path: str) -> Grove` *(static)*: Load a grove written by `serialize`
@@ -357,6 +379,103 @@ GffReader(path: str, skip_invalid_lines: bool = False, validate_gtf: bool = Fals
 > is 0-based half-open `[start, end)`; `GffEntry` is 1-based inclusive `[start, end]`.
 > Convert deliberately when building grove keys, as shown above.
 
+### BamReader (SAM/BAM alignments)
+
+`BamReader` is a single-pass iterator over SAM/BAM files (htslib auto-detects the
+format) yielding `SamEntry` records, with filtering options applied during
+iteration.
+
+```python
+import pygenogrove as pg
+
+for aln in pg.BamReader("reads.bam", min_mapq=30):
+    print(aln.qname, aln.chrom, aln.start, aln.end, aln.get_strand())
+
+# load alignments into the universal Grove (sam_entry isn't serializable, so
+# there's no typed BamGrove — route through to_coordinate() + to_dict())
+g = pg.Grove(256)
+for aln in pg.BamReader("reads.bam"):
+    if aln.is_mapped():
+        g.insert(aln.chrom, aln.to_coordinate(), aln.to_dict())
+```
+
+```python
+BamReader(path, skip_unmapped=True, skip_secondary=False,
+          skip_supplementary=False, skip_qc_fail=False,
+          skip_duplicates=False, min_mapq=0)
+```
+
+- **`SamEntry`** fields: `qname`, `chrom`, `start`, `end` (0-based half-open),
+  `mapq`, `sequence`, `quality`, `cigar` (string form), `flags` (an
+  `AlignmentFlags`). Helpers: `get_strand()`, `is_primary()` / `is_mapped()` /
+  `is_reverse()` / `is_secondary()` / `is_supplementary()` / `is_duplicate()` /
+  `is_paired()` / … , `consumes_reference()`, `has_flag(flag)`,
+  `to_coordinate()` (strand-aware key) and `to_dict()` (JSON payload).
+- **`SamFlags`** exposes the standard FLAG bit constants; **`AlignmentFlags`**
+  (the `.flags` object) has `value()` plus the same `is_*()` predicates.
+- CIGAR element detail, mate info, and aux tags are not yet exposed.
+
+### FastaReader (FASTA/FASTQ sequences)
+
+`FastaReader` is a single-pass iterator over FASTA/FASTQ files (auto-detected;
+`.gz` accepted) yielding `FastaEntry` records. Sequences are named records, not
+intervals, so this reader is standalone (no grove integration).
+
+```python
+import pygenogrove as pg
+
+for rec in pg.FastaReader("genome.fa"):
+    print(rec.name, rec.comment, len(rec), rec.is_fastq())
+```
+
+```python
+FastaReader(path, skip_empty_sequences=False)
+```
+
+- **`FastaEntry`** fields: `name`, `comment`, `sequence`, `quality`
+  (`Optional[str]`, FASTQ only); `is_fastq()`, `len(entry)`.
+
+### FastaIndex (random-access FASTA)
+
+`FastaIndex` provides random-access region fetches over a FASTA file, backed by an
+`.fai` index (built on first open — the directory must be writable then).
+
+```python
+import pygenogrove as pg
+
+fa = pg.FastaIndex("genome.fa")
+fa.fetch("chr1", 1000, 2000)   # bases of the 0-based half-open region [1000, 2000)
+fa.fetch("chrM")               # the whole sequence
+fa.sequence_length("chr1")     # length in bases
+list(fa.names()), "chr1" in fa, len(fa)
+
+# fetch a feature's bases: GenomicCoordinate is closed, fetch is half-open
+gc = pg.GenomicCoordinate("+", 4, 7)
+fa.fetch("chr1", gc.start, gc.end + 1)
+```
+
+- Methods: `fetch(name, start, end)` / `fetch(name)`, `sequence_count()`,
+  `sequence_name(i)`, `sequence_length(name)`, `has_sequence(name)`, plus the
+  Pythonic `len()` / `in` / `names()`. Unknown name / invalid region raise
+  `IndexError`.
+
+### FiletypeDetector (format detection)
+
+`FiletypeDetector` infers a file's format and compression from its extension
+(compression extension stripped first) and magic bytes.
+
+```python
+import pygenogrove as pg
+
+ftype, comp = pg.FiletypeDetector().detect_filetype("peaks.bed.gz")
+# (Filetype.BED, CompressionType.GZIP)
+```
+
+- `Filetype`: `BED` / `BEDGRAPH` / `GFF` / `GTF` / `VCF` / `SAM` / `BAM` /
+  `FASTA` / `FASTQ` / `GG` / `UNKNOWN`.
+- `CompressionType`: `NONE` / `GZIP` / `BZIP2` / `XZ` / `ZSTD` / `LZ4` /
+  `UNKNOWN`.
+
 ### StringRegistry
 
 A process-wide singleton that interns strings into small, stable integer ids
@@ -379,19 +498,19 @@ Currently exposed features:
 - **Strand-aware coordinates** — `GenomicCoordinate` is the standard key (`'+'` / `'-'` / `'.'` / `'*'`); overlap and flanking are strand-aware
 - **Universal `Grove`** (`grove<genomic_coordinate, json>`) storing arbitrary JSON payloads (dict / list / scalar / `None`), or no payload at all
 - Insert / query, multi-index support (per chromosome)
-- Graph overlay (directed edges, external keys)
+- Graph overlay (directed edges, external keys), including **labelled edges** on the universal `Grove` — `add_edge(s, t, data)` / `get_edges` / `get_neighbors_if` / `link_with` — and edge cleanup / bulk linking on every grove (`remove_edges_from`/`to`, `remove_all_edges`, `clear_graph`, `graph_empty`, `link_if`)
 - Key removal + storage compaction: `remove_key()`, `compact()`, `vertex_count()` / `external_vertex_count()` / `key_storage_size()`
-- Serialization / deserialization to compressed `.gg` files (the JSON Grove's `.gg` is readable by a C++ `grove<genomic_coordinate, std::string>`)
+- Serialization / deserialization to compressed `.gg` files (an edgeless JSON Grove `.gg` is readable by a C++ `grove<genomic_coordinate, std::string>`; with labelled edges, `grove<genomic_coordinate, std::string, std::string>`)
 - Nearest-neighbour queries: `flanking()` (predecessor / successor), incl. a predicate-filtered overload (e.g. same-strand neighbours)
 - **Typed** data groves for C++ interop: `BedGrove` (`grove<genomic_coordinate, bed_entry>`) and `GffGrove` (`grove<genomic_coordinate, gff_entry>`), with the `BedEntry` / `GffEntry` value types
-- File readers: `BedReader` and `GffReader` (single-pass iterators over BED / GFF3 / GTF files, including `.gz`)
+- File readers: `BedReader`, `GffReader`, `BamReader` (SAM/BAM), `FastaReader` (FASTA/FASTQ), plus `FastaIndex` (random-access) and `FiletypeDetector` (format detection)
 - Fast-path inserts on the typed groves: `insert_sorted` / `insert_bulk`, plus entry-deriving `insert(index, entry)` / `insert_bulk(index, entries)` that derive a **stranded** key from a BED/GFF record's native coordinates
 - `StringRegistry` — string interning singleton
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
 - Other key types — `numeric`, `kmer` ([#7](https://github.com/genogrove/pygenogrove/issues/7))
-- BAM/SAM and FASTA readers
-- Edge metadata, `get_neighbors_if` / `link_if` (require a metadata-carrying grove)
+- `remove_edges_if` ([#33](https://github.com/genogrove/pygenogrove/issues/33)) and SIF export `grove_to_sif` ([#34](https://github.com/genogrove/pygenogrove/issues/34))
+- BAM CIGAR-element detail, mate info, and aux tags
 
 ## Performance Tips
 
