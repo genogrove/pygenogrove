@@ -1,7 +1,8 @@
 """
-Tests for the universal Grove's JSON payload: grove<genomic_coordinate, json_value>
-stores any JSON-serializable Python object (dict / list / scalar / None) as the
-per-key data, round-tripping it transparently (no user-facing json import).
+Tests for the universal Grove's JSON payload: grove<genomic_coordinate,
+json_value, json_value> stores any JSON-serializable Python object (dict / list /
+scalar / None) as the per-key data, round-tripping it transparently (no
+user-facing json import). Edge metadata is JSON too — see test_graph_edges.py.
 
 This is the headline behaviour of the redesigned, genomic-coordinate-standard
 Grove. The typed BedGrove/GffGrove (tested elsewhere) are the schema'd

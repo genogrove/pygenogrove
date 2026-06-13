@@ -47,12 +47,15 @@ PYBIND11_MODULE(pygenogrove, m) {
     // strand-aware ('*' = wildcard, '.' = a concrete unstranded value).
     bind_genomic_coordinate(m);
 
-    // The universal Grove: grove<genomic_coordinate, json_value>. Stores an
-    // arbitrary JSON-serializable Python object (dict / list / scalar / None) as
-    // the payload — insert(index, coord, data); key.data round-trips it back. It
-    // serializes to a .gg whose payload is JSON text, so a C++
-    // grove<genomic_coordinate, std::string> can still read the file.
-    bind_grove<gdt::genomic_coordinate, pygg::json_value>(
+    // The universal Grove: grove<genomic_coordinate, json_value, json_value>.
+    // Stores an arbitrary JSON-serializable Python object (dict / list / scalar /
+    // None) as the payload — insert(index, coord, data); key.data round-trips it
+    // back. Graph edges also carry a JSON-serializable payload (add_edge(s, t,
+    // data) / get_edges / get_neighbors_if / link_with). It serializes to a .gg
+    // whose payload and edge metadata are JSON text, so a C++
+    // grove<genomic_coordinate, std::string, std::string> can still read the file
+    // (an edgeless .gg is also readable by grove<genomic_coordinate, std::string>).
+    bind_grove<gdt::genomic_coordinate, pygg::json_value, pygg::json_value>(
         m, "Grove", "Key", "QueryResult", "FlankingResult");
 
     // Typed data-carrying groves over genomic_coordinate, kept for full C++
