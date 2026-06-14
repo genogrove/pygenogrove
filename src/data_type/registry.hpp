@@ -24,7 +24,8 @@ namespace py = pybind11;
 namespace gdt = genogrove::data_type;
 
 template <typename Key, typename Tag = void, typename Payload = Key>
-void bind_registry(py::module_& m, const char* name) {
+py::class_<gdt::registry<Key, Tag, Payload>>
+bind_registry(py::module_& m, const char* name) {
     using reg_t = gdt::registry<Key, Tag, Payload>;
     using id_type = typename reg_t::id_type;
 
@@ -113,4 +114,8 @@ void bind_registry(py::module_& m, const char* name) {
 
     // Sentinel id (= max uint32) returned where "no id" is meaningful.
     cls.attr("null_id") = reg_t::null_id;
+
+    // Returned so the caller can graft instantiation-specific conveniences
+    // (e.g. a single-arg string-intern overload on the json_value payload form).
+    return cls;
 }
