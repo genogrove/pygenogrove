@@ -476,19 +476,28 @@ ftype, comp = pg.FiletypeDetector().detect_filetype("peaks.bed.gz")
 - `CompressionType`: `NONE` / `GZIP` / `BZIP2` / `XZ` / `ZSTD` / `LZ4` /
   `UNKNOWN`.
 
-### StringRegistry
+### Registry
 
-A process-wide singleton that interns strings into small, stable integer ids
-(deduplicated) — handy for chromosome names, sources, gene ids, etc.
+A process-wide singleton that interns a string identity into a small, stable
+integer id (deduplicated), mapping it to any JSON-serializable payload — handy
+for collapsing repeated gene ids, chromosome names, or sources into a 4-byte id
+plus a single stored record.
 
 ```python
 import pygenogrove as pg
-r = pg.StringRegistry.instance()
+r = pg.Registry.instance()
+
+# plain string interning — the string is its own payload
 a = r.intern("chr1")     # 0
 r.intern("chr1")         # 0  (deduplicated)
 r.get(a)                 # "chr1"
-r.find("chr2")           # None
-r.serialize("names.gg")  # also: StringRegistry.deserialize(path), reset(), null_id
+
+# key -> JSON payload (first write wins on re-intern)
+g = r.intern("ENSG001", {"name": "BRCA2", "biotype": "protein_coding"})
+r.get(g)                 # {"name": "BRCA2", "biotype": "protein_coding"}
+r.find("ENSG001")        # g
+r.find("missing")        # None
+r.serialize("genes.gg")  # also: Registry.deserialize(path), reset(), null_id
 ```
 
 ## Current Status
@@ -505,7 +514,7 @@ Currently exposed features:
 - **Typed** data groves for C++ interop: `BedGrove` (`grove<genomic_coordinate, bed_entry>`) and `GffGrove` (`grove<genomic_coordinate, gff_entry>`), with the `BedEntry` / `GffEntry` value types
 - File readers: `BedReader`, `GffReader`, `BamReader` (SAM/BAM), `FastaReader` (FASTA/FASTQ), plus `FastaIndex` (random-access) and `FiletypeDetector` (format detection)
 - Fast-path inserts on the typed groves: `insert_sorted` / `insert_bulk`, plus entry-deriving `insert(index, entry)` / `insert_bulk(index, entries)` that derive a **stranded** key from a BED/GFF record's native coordinates
-- `StringRegistry` — string interning singleton
+- `Registry` — interning singleton mapping a string identity to any JSON payload (plain string interning via single-arg `intern`)
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
 - Other key types — `numeric`, `kmer` ([#7](https://github.com/genogrove/pygenogrove/issues/7))

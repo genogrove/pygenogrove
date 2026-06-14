@@ -68,10 +68,10 @@ def test_imports_sam_types():
     assert hasattr(pygenogrove, 'SamFlags')
 
 
-def test_imports_string_registry():
-    """The string interning registry singleton is exposed."""
+def test_imports_registry():
+    """The universal interning registry singleton is exposed."""
     import pygenogrove
-    assert hasattr(pygenogrove, 'StringRegistry')
+    assert hasattr(pygenogrove, 'Registry')
 
 
 def test_imports_filetype_detector():

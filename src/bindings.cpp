@@ -93,10 +93,28 @@ PYBIND11_MODULE(pygenogrove, m) {
     // File-type detector: Filetype / CompressionType enums + FiletypeDetector.
     bind_filetype_detector(m);
 
-    // String interning registry: registry<std::string> exposed as StringRegistry
-    // (a process-wide singleton, key == payload). Tagged / key->payload registry
-    // variants are additional bind_registry<...> instantiations, not yet exposed.
-    bind_registry<std::string>(m, "StringRegistry");
+    // Universal interning registry: registry<std::string, void, json_value>
+    // exposed as Registry — a process-wide singleton mapping a string identity
+    // (gene_id / chrom / transcript_id) to any JSON-serializable payload. One
+    // bound class covers every payload shape, mirroring how the universal Grove
+    // uses json_value instead of a per-type template zoo. The two-arg
+    // intern(key, payload) form comes from the generic template; the single-arg
+    // intern(value) sugar below stores the string as its own payload so
+    // get(id) returns it back (plain string interning).
+    using registry_t = gdt::registry<std::string, void, pygg::json_value>;
+    auto reg = bind_registry<std::string, void, pygg::json_value>(m, "Registry");
+    reg.def(
+        "intern",
+        [](registry_t& r, const std::string& value) {
+            return r.intern(value, py::cast<pygg::json_value>(py::str(value)));
+        },
+        py::arg("value"),
+        R"pbdoc(
+            Intern a string as both key and payload and return its stable id.
+            Idempotent (deduplicated); get(id) returns the string back.
+            Convenience for plain string interning — use intern(key, payload)
+            to attach a distinct JSON payload.
+        )pbdoc");
 
     // __version__ is single-sourced from pyproject.toml via CMake; __genogrove_version__
     // reports the genogrove the wheel was built against (independent SemVer — the two
