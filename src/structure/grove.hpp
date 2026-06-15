@@ -35,6 +35,7 @@
 #include <genogrove/structure/grove/grove.hpp>
 
 #include "../data_type/key.hpp"
+#include "../data_type/key_list.hpp"
 #include "../data_type/query_result.hpp"
 #include "../data_type/flanking_query_result.hpp"
 #include "../io/entry_interval.hpp"
@@ -150,16 +151,19 @@ void bind_grove(py::module_& m, const char* grove_name,
                 )pbdoc");
 
         cls.def("insert_bulk",
-                [](grove_t& g, const std::string& index,
+                [](py::object self, const std::string& index,
                    std::vector<std::pair<KeyT, DataT>> items,
                    bool presorted) {
-                    if (presorted) {
-                        return g.insert_data(index, items, ggs::sorted, ggs::bulk);
-                    }
-                    return g.insert_data(index, std::move(items), ggs::bulk);
+                    auto& g = self.cast<grove_t&>();
+                    // Pin each returned Key to the Grove so extracted keys can't
+                    // dangle after the list is dropped — issue #37.
+                    auto keys =
+                        presorted
+                            ? g.insert_data(index, items, ggs::sorted, ggs::bulk)
+                            : g.insert_data(index, std::move(items), ggs::bulk);
+                    return pinned_key_list(keys, self);
                 },
                 py::arg("index"), py::arg("items"), py::arg("presorted") = false,
-                py::return_value_policy::reference_internal,
                 R"pbdoc(
                     Bulk-insert many (interval, data) records at once. 10-20x
                     faster than repeated insert() for large datasets — an empty
@@ -214,23 +218,24 @@ void bind_grove(py::module_& m, const char* grove_name,
                     )pbdoc");
 
             cls.def("insert_bulk",
-                    [](grove_t& g, const std::string& index,
+                    [](py::object self, const std::string& index,
                        std::vector<DataT> entries, bool presorted) {
+                        auto& g = self.cast<grove_t&>();
                         std::vector<std::pair<KeyT, DataT>> items;
                         items.reserve(entries.size());
                         for (auto& entry : entries) {
                             KeyT k = genomic_coordinate_from_entry(entry);
                             items.emplace_back(k, std::move(entry));
                         }
-                        if (presorted) {
-                            return g.insert_data(index, items, ggs::sorted,
-                                                 ggs::bulk);
-                        }
-                        return g.insert_data(index, std::move(items), ggs::bulk);
+                        // Pin each returned Key to the Grove — issue #37.
+                        auto keys =
+                            presorted
+                                ? g.insert_data(index, items, ggs::sorted, ggs::bulk)
+                                : g.insert_data(index, std::move(items), ggs::bulk);
+                        return pinned_key_list(keys, self);
                     },
                     py::arg("index"), py::arg("entries"),
                     py::arg("presorted") = false,
-                    py::return_value_policy::reference_internal,
                     R"pbdoc(
                         insert_bulk(index, entries, presorted=False) -> list[Key]
 
@@ -335,11 +340,13 @@ void bind_grove(py::module_& m, const char* grove_name,
              py::arg("source"), py::arg("target"),
              "Return True if a directed edge from source to target exists.")
         .def("get_neighbors",
-             [](grove_t& g, key_t* source) {
-                 return g.get_neighbors(source);
+             [](py::object self, key_t* source) {
+                 // Pin each Key to the Grove so an extracted neighbor can't
+                 // dangle after the list is dropped — issue #37.
+                 return pinned_key_list(
+                     self.cast<grove_t&>().get_neighbors(source), self);
              },
              py::arg("source"),
-             py::return_value_policy::reference_internal,
              R"pbdoc(
                  Return the list of target Keys directly reachable from source.
 
@@ -497,13 +504,17 @@ void bind_grove(py::module_& m, const char* grove_name,
                     payload yield None.
                 )pbdoc");
         cls.def("get_neighbors_if",
-                [](const grove_t& g, key_t* source,
+                [](py::object self, key_t* source,
                    std::function<bool(const EdgeT&)> predicate) {
                     // The predicate calls back into Python — keep the GIL held.
-                    return g.get_neighbors_if(source, std::move(predicate));
+                    // Pin each Key to the Grove so extracted keys can't dangle
+                    // after the list is dropped — issue #37.
+                    return pinned_key_list(
+                        self.cast<const grove_t&>().get_neighbors_if(
+                            source, std::move(predicate)),
+                        self);
                 },
                 py::arg("source"), py::arg("predicate"),
-                py::return_value_policy::reference_internal,
                 R"pbdoc(
                     get_neighbors_if(source, predicate) -> list[Key]
 

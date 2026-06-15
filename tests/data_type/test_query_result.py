@@ -80,5 +80,27 @@ def test_keys_keep_grove_alive():
     assert keys[0].value.end == 200
 
 
+def test_keys_property_keeps_grove_alive():
+    """The .keys property (distinct from __iter__) must pin each extracted Key to
+    the grove. Holding ONLY a key pulled from .keys across grove drop + GC must
+    stay safe — regression guard for issue #37 (a failure here is a use-after-
+    free crash, not a failed assertion). Before the fix only the list was pinned,
+    so an extracted key dangled once the list and grove were gone.
+    """
+    pg = _pg()
+    grove = pg.Grove(3)
+    grove.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+
+    # The QueryResult and its .keys list are temporaries dropped at statement end;
+    # only `key` survives, so it alone must keep the grove (its storage) alive.
+    key = grove.intersect(pg.GenomicCoordinate(".", 150, 175), "chr1").keys[0]
+
+    del grove
+    gc.collect()
+
+    assert key.value.start == 100
+    assert key.value.end == 200
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
