@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`StringRegistry` → `Registry`, now mapping a string identity to any JSON payload.** The bound registry is `registry<std::string, void, json_value>`: `intern(key, payload)` interns a string key against any JSON-serializable payload (dict / list / scalar / `None`), deduplicating on the key with **first-write-wins** on the payload, and `get(id)` returns the decoded payload. A single-arg `intern(value)` sugar interns a string as its own payload (plain string interning — `get(id)` returns the string), preserving the previous `StringRegistry` behaviour under the new name. `find` / `contains` / `size` / `__len__` / `empty` / `clear` / static `reset` / `null_id` / `serialize(path)` / static `deserialize(path)` are unchanged; serialization round-trips keys and their JSON payloads. Collapses the per-payload-type registry zoo into one class, mirroring how the universal `Grove` uses `json_value` instead of a typed-per-instantiation template ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#36](https://github.com/genogrove/pygenogrove/pull/36)).
 
+### Fixed
+
+- **Dangling `Key` from vector-of-keys returns.** `get_neighbors`, `get_neighbors_if`, `QueryResult.keys`, and both `insert_bulk` overloads returned `std::vector<key_t*>` with `reference_internal`, which pinned only the resulting list to its parent — extracted `Key` elements got no keep-alive, so a key pulled from the list and outliving it (and every other handle to the owning `Grove`) dangled (use-after-free reachable from pure Python). Each `Key` is now individually pinned to its parent (the `Grove`, or the `QueryResult` which keeps its `Grove` alive); the list stays indexable / `len()`-able, so the API is unchanged ([#37](https://github.com/genogrove/pygenogrove/issues/37), [#38](https://github.com/genogrove/pygenogrove/pull/38)).
+
 ## [0.5.0] - 2026-06-13
 
 ### Added
