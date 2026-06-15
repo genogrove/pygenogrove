@@ -10,6 +10,8 @@
 
 #include <genogrove/data_type/query_result.hpp>
 
+#include "key_list.hpp"
+
 namespace py = pybind11;
 namespace gdt = genogrove::data_type;
 
@@ -22,9 +24,16 @@ void bind_query_result(py::module_& m, const char* name) {
     )pbdoc")
         .def_property_readonly("query", &qr_t::get_query,
                                "The query interval used for this search")
-        .def_property_readonly("keys", &qr_t::get_keys,
-                               py::return_value_policy::reference_internal,
-                               "List of matching keys (pointers into the grove)")
+        .def_property_readonly("keys",
+                               [](py::object self) {
+                                   // Pin each Key to this QueryResult (which keeps
+                                   // its Grove alive) so an extracted Key can't
+                                   // dangle after the list is dropped — issue #37.
+                                   return pinned_key_list(
+                                       self.cast<const qr_t&>().get_keys(), self);
+                               },
+                               "List of matching keys; each Key keeps this result "
+                               "(and its Grove) alive.")
         .def("__len__", [](const qr_t& qr) { return qr.get_keys().size(); })
         .def("__iter__", [](const qr_t& qr) {
             return py::make_iterator(qr.get_keys().begin(), qr.get_keys().end());

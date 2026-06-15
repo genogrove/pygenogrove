@@ -13,6 +13,8 @@ coordinate conventions (closed vs half-open), so a key carries "its own" data
 iff the payload's name matches the record it was inserted with.
 """
 
+import gc
+
 import pytest
 
 
@@ -196,6 +198,27 @@ def test_grove_supports_bulk_with_json_payload():
     assert len(keys) == 5
     res = g.intersect(pg.GenomicCoordinate(".", 0, 1000), "chr1")
     assert sorted(k.data["i"] for k in res) == [0, 1, 2, 3, 4]
+
+
+def test_bulk_inserted_key_keeps_grove_alive():
+    """A Key from insert_bulk's returned list must pin the grove. Holding ONLY one
+    returned key across grove drop + GC must stay safe — regression guard for
+    issue #37 (a failure here is a use-after-free crash). Before the fix only the
+    returned list was pinned, so an extracted key dangled once the list and grove
+    were gone.
+    """
+    pg = _pg()
+    g = pg.Grove(3)
+    items = [(pg.GenomicCoordinate(".", i * 10, i * 10 + 5), {"i": i}) for i in range(5)]
+
+    # The returned list is a temporary; keep only one key out of it.
+    key = g.insert_bulk("chr1", items)[2]
+
+    del g, items
+    gc.collect()
+
+    assert key.value.start == 20
+    assert key.data == {"i": 2}
 
 
 if __name__ == "__main__":
