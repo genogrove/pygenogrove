@@ -68,6 +68,16 @@ def test_imports_sam_types():
     assert hasattr(pygenogrove, 'SamFlags')
 
 
+def test_imports_point_key_types():
+    """The point key types (numeric, kmer) and their groves are exposed."""
+    import pygenogrove
+    for name in ('Numeric', 'NumericGrove', 'NumericKey', 'NumericQueryResult',
+                 'NumericFlankingResult',
+                 'Kmer', 'KmerGrove', 'KmerKey', 'KmerQueryResult',
+                 'KmerFlankingResult'):
+        assert hasattr(pygenogrove, name), name
+
+
 def test_imports_registry():
     """The universal interning registry singleton is exposed."""
     import pygenogrove

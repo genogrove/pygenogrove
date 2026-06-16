@@ -194,6 +194,34 @@ Result object containing matching intervals from a query.
 - `__len__()`: Number of results
 - `__iter__()`: Iterate over matching keys
 
+### Point key types — Numeric & Kmer
+
+Two non-interval key types whose overlap is **exact equality** (not range
+intersection), so their groves act as point dictionaries. Each has its own
+`*Grove` / `*Key` / `*QueryResult` with the same surface as `Grove` — optional
+JSON payload, labelled edges, `serialize` / `deserialize`.
+
+```python
+import pygenogrove as pg
+
+# Numeric — integer point keys (ids, timestamps, …)
+g = pg.NumericGrove()
+g.insert("ids", pg.Numeric(42), {"label": "answer"})
+list(g.intersect(pg.Numeric(42), "ids"))[0].data   # {'label': 'answer'}
+len(g.intersect(pg.Numeric(43), "ids"))            # 0 — exact match only
+
+# Kmer — 2-bit-encoded DNA k-mers (k ≤ 32, A/C/G/T case-insensitive)
+km = pg.KmerGrove()
+km.insert("seqs", pg.Kmer("ACGT"), {"count": 3})
+str(pg.Kmer("acgt"))                                # 'ACGT' (normalized)
+pg.Kmer.is_valid("ACGN")                            # False
+```
+
+`Numeric`: `value` (read-only; `set_value` pre-insertion only), `overlaps(a, b)`,
+comparisons, `str`/`repr`. `Kmer`: `Kmer(sequence)` or `Kmer(encoding, k)`,
+`encoding` / `k` / `len()`, `overlaps(a, b)`, static `is_valid(sequence)` and
+`max_k` (32). Invalid bases or `k > 32` raise `ValueError`.
+
 ### BedGrove (typed BED grove)
 
 `BedGrove` (`grove<genomic_coordinate, bed_entry>`) is the **typed** alternative
@@ -511,13 +539,13 @@ Currently exposed features:
 - Key removal + storage compaction: `remove_key()`, `compact()`, `vertex_count()` / `external_vertex_count()` / `key_storage_size()`
 - Serialization / deserialization to compressed `.gg` files (an edgeless JSON Grove `.gg` is readable by a C++ `grove<genomic_coordinate, std::string>`; with labelled edges, `grove<genomic_coordinate, std::string, std::string>`)
 - Nearest-neighbour queries: `flanking()` (predecessor / successor), incl. a predicate-filtered overload (e.g. same-strand neighbours)
+- **Point key types** — `Numeric` (integer keys: ids / timestamps) and `Kmer` (2-bit-encoded DNA k-mers, k ≤ 32, a membership dictionary), each with its own `NumericGrove` / `KmerGrove` carrying the same universal surface (optional JSON payload, labelled edges, serialization). Overlap is exact equality
 - **Typed** data groves for C++ interop: `BedGrove` (`grove<genomic_coordinate, bed_entry>`) and `GffGrove` (`grove<genomic_coordinate, gff_entry>`), with the `BedEntry` / `GffEntry` value types
 - File readers: `BedReader`, `GffReader`, `BamReader` (SAM/BAM), `FastaReader` (FASTA/FASTQ), plus `FastaIndex` (random-access) and `FiletypeDetector` (format detection)
 - Fast-path inserts on the typed groves: `insert_sorted` / `insert_bulk`, plus entry-deriving `insert(index, entry)` / `insert_bulk(index, entries)` that derive a **stranded** key from a BED/GFF record's native coordinates
 - `Registry` — interning singleton mapping a string identity to any JSON payload (plain string interning via single-arg `intern`)
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
-- Other key types — `numeric`, `kmer` ([#7](https://github.com/genogrove/pygenogrove/issues/7))
 - `remove_edges_if` ([#33](https://github.com/genogrove/pygenogrove/issues/33)) and SIF export `grove_to_sif` ([#34](https://github.com/genogrove/pygenogrove/issues/34))
 - BAM CIGAR-element detail, mate info, and aux tags
 

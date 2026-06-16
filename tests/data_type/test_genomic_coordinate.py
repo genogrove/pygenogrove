@@ -58,6 +58,17 @@ def test_equality_requires_all_three_components():
     assert not (a == pg.GenomicCoordinate("+", 100, 201))
 
 
+def test_hashable_by_value():
+    pg = _pg()
+    a = pg.GenomicCoordinate("+", 100, 200)
+    assert hash(a) == hash(pg.GenomicCoordinate("+", 100, 200))
+    # Differing on any of strand / start / end makes a distinct set member.
+    s = {a, pg.GenomicCoordinate("+", 100, 200),
+         pg.GenomicCoordinate("-", 100, 200),
+         pg.GenomicCoordinate("+", 100, 201)}
+    assert len(s) == 3
+
+
 def test_comparison_by_start():
     pg = _pg()
     assert pg.GenomicCoordinate("+", 100, 200) < pg.GenomicCoordinate("+", 150, 200)

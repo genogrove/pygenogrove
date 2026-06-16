@@ -11,6 +11,8 @@
 
 #include "data_type/genomic_coordinate.hpp"
 #include "data_type/json_value.hpp"
+#include "data_type/kmer.hpp"
+#include "data_type/numeric.hpp"
 #include "data_type/registry.hpp"
 #include "io/bam_reader.hpp"
 #include "io/bed_reader.hpp"
@@ -57,6 +59,20 @@ PYBIND11_MODULE(pygenogrove, m) {
     // (an edgeless .gg is also readable by grove<genomic_coordinate, std::string>).
     bind_grove<gdt::genomic_coordinate, pygg::json_value, pygg::json_value>(
         m, "Grove", "Key", "QueryResult", "FlankingResult");
+
+    // Alternative point key types (overlap = exact equality, no range semantics).
+    // Each gets the same universal surface as Grove — optional JSON payload
+    // (insert without data -> None), labelled JSON edges, serialization. Numeric
+    // wraps an int (ids / timestamps); Kmer is a 2-bit-encoded DNA k-mer (k <= 32,
+    // a membership dictionary).
+    bind_numeric(m);
+    bind_grove<gdt::numeric, pygg::json_value, pygg::json_value>(
+        m, "NumericGrove", "NumericKey", "NumericQueryResult",
+        "NumericFlankingResult");
+
+    bind_kmer(m);
+    bind_grove<gdt::kmer, pygg::json_value, pygg::json_value>(
+        m, "KmerGrove", "KmerKey", "KmerQueryResult", "KmerFlankingResult");
 
     // Typed data-carrying groves over genomic_coordinate, kept for full C++
     // interop (typed binary .gg) and the BED/GFF helper accessors. BedEntry /
