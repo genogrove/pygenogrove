@@ -11,6 +11,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
 
+#include <functional>
 #include <string>
 
 #include <genogrove/data_type/numeric.hpp>
@@ -52,6 +53,9 @@ inline void bind_numeric(py::module_& m) {
         .def(py::self < py::self)
         .def(py::self > py::self)
         .def(py::self == py::self)
+        .def("__hash__", [](const gdt::numeric& n) {
+            return std::hash<int>{}(n.get_value());
+        })
         .def_static("overlaps", &gdt::numeric::overlaps,
                     py::arg("a"), py::arg("b"),
                     "Check if two Numerics overlap — true iff they are equal.");

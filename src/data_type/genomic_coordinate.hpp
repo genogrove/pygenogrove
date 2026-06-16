@@ -11,6 +11,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
 
+#include <functional>
 #include <string>
 
 #include <genogrove/data_type/genomic_coordinate.hpp>
@@ -84,6 +85,13 @@ inline void bind_genomic_coordinate(py::module_& m) {
         .def(py::self < py::self)
         .def(py::self > py::self)
         .def(py::self == py::self)
+        .def("__hash__", [](const gdt::genomic_coordinate& c) {
+            // == compares strand, start AND end, so mix all three.
+            std::size_t h = std::hash<char>{}(c.get_strand());
+            h ^= std::hash<size_t>{}(c.get_start()) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<size_t>{}(c.get_end()) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            return h;
+        })
         .def_static("overlaps", &gdt::genomic_coordinate::overlaps,
                    py::arg("a"),
                    py::arg("b"),

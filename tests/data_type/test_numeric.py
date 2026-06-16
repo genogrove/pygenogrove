@@ -61,6 +61,12 @@ def test_set_value_pre_insertion():
     assert n.value == 99
 
 
+def test_hashable_by_value():
+    pg = _pg()
+    assert hash(pg.Numeric(5)) == hash(pg.Numeric(5))
+    assert len({pg.Numeric(5), pg.Numeric(5), pg.Numeric(6)}) == 2
+
+
 def test_sorting_uses_value_order():
     pg = _pg()
     xs = [pg.Numeric(v) for v in (3, 1, 2, -5)]

@@ -12,6 +12,7 @@
 #include <pybind11/operators.h>
 
 #include <cstdint>
+#include <functional>
 #include <string>
 
 #include <genogrove/data_type/kmer.hpp>
@@ -53,6 +54,12 @@ inline void bind_kmer(py::module_& m) {
         .def(py::self < py::self)
         .def(py::self > py::self)
         .def(py::self == py::self)
+        .def("__hash__", [](const gdt::kmer& km) {
+            // == compares both encoding AND k, so the hash must mix both.
+            std::size_t h = std::hash<uint64_t>{}(km.get_encoding());
+            h ^= std::hash<uint8_t>{}(km.get_k()) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            return h;
+        })
         .def_static("overlaps", &gdt::kmer::overlaps,
                     py::arg("a"), py::arg("b"),
                     "Check if two k-mers overlap — true iff identical (same bases "

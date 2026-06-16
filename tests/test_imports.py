@@ -72,7 +72,9 @@ def test_imports_point_key_types():
     """The point key types (numeric, kmer) and their groves are exposed."""
     import pygenogrove
     for name in ('Numeric', 'NumericGrove', 'NumericKey', 'NumericQueryResult',
-                 'Kmer', 'KmerGrove', 'KmerKey', 'KmerQueryResult'):
+                 'NumericFlankingResult',
+                 'Kmer', 'KmerGrove', 'KmerKey', 'KmerQueryResult',
+                 'KmerFlankingResult'):
         assert hasattr(pygenogrove, name), name
 
 

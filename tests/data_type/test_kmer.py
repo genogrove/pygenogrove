@@ -64,6 +64,13 @@ def test_ordering_length_then_encoding():
     assert pg.Kmer("AAAA") < pg.Kmer("AAAC")        # encoding within equal length
 
 
+def test_hashable_by_value():
+    pg = _pg()
+    # Normalized-equal k-mers hash equal; different length/sequence stays distinct.
+    assert hash(pg.Kmer("ACGT")) == hash(pg.Kmer("acgt"))
+    assert len({pg.Kmer("ACGT"), pg.Kmer("ACGT"), pg.Kmer("ACG")}) == 2
+
+
 def test_invalid_base_raises():
     pg = _pg()
     with pytest.raises(ValueError):
