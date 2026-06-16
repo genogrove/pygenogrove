@@ -85,6 +85,14 @@ def test_length_over_32_raises():
         pg.Kmer("A" * 33)
 
 
+def test_encoding_constructor_over_32_raises():
+    # The (encoding, k) overload throws on its own code path, separate from the
+    # string ctor above.
+    pg = _pg()
+    with pytest.raises(ValueError):
+        pg.Kmer(0, 33)
+
+
 def test_is_valid_and_max_k():
     pg = _pg()
     assert pg.Kmer.is_valid("ACGTacgt") is True
