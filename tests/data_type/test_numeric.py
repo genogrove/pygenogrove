@@ -25,6 +25,8 @@ def test_default_constructor_is_int_min():
     pg = _pg()
     # Default is the aggregation sentinel INT_MIN (32-bit).
     assert pg.Numeric().value == -(2**31)
+    # Footgun (documented upstream): a default Numeric aliases Numeric(INT_MIN).
+    assert pg.Numeric() == pg.Numeric(-(2**31))
 
 
 def test_equality():

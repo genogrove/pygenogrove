@@ -42,7 +42,8 @@ inline void bind_kmer(py::module_& m) {
              "Raises ValueError on an invalid base or length > 32.")
         .def(py::init<uint64_t, uint8_t>(), py::arg("encoding"), py::arg("k"),
              "Build a k-mer from a precomputed 2-bit encoding and length k "
-             "(1..32). Raises ValueError if k > 32.")
+             "(1..32). The encoding is masked to k bases (bits above 2*k are "
+             "dropped). Raises ValueError if k > 32.")
         .def_property_readonly("encoding", &gdt::kmer::get_encoding,
                                "The 2-bit encoding as a 64-bit integer.")
         .def_property_readonly("k", &gdt::kmer::get_k, "The k-mer length.")
@@ -67,5 +68,5 @@ inline void bind_kmer(py::module_& m) {
         .def_static("is_valid", &gdt::kmer::is_valid, py::arg("sequence"),
                     "Whether a sequence contains only A/C/G/T (case-insensitive).");
 
-    cls.attr("max_k") = gdt::kmer::max_k;  // 32
+    cls.attr("max_k") = gdt::kmer::max_k;
 }

@@ -69,6 +69,9 @@ def test_hashable_by_value():
     # Normalized-equal k-mers hash equal; different length/sequence stays distinct.
     assert hash(pg.Kmer("ACGT")) == hash(pg.Kmer("acgt"))
     assert len({pg.Kmer("ACGT"), pg.Kmer("ACGT"), pg.Kmer("ACG")}) == 2
+    # The empty k-mer (k=0) is well-defined and self-consistent.
+    assert pg.Kmer() == pg.Kmer()
+    assert hash(pg.Kmer()) == hash(pg.Kmer())
 
 
 def test_invalid_base_raises():
