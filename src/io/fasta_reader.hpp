@@ -88,7 +88,10 @@ inline void bind_fasta_reader(py::module_& m) {
                      throw py::stop_iteration();
                  }
                  return entry;
-             })
+             },
+             // Disk read / parse touches no Python objects; the GIL is reacquired
+             // before the returned entry is converted.
+             py::call_guard<py::gil_scoped_release>())
         .def("get_error_message", &gio::fasta_reader::get_error_message,
              "Error message from the most recent read; empty on clean EOF.")
         .def("get_current_line", &gio::fasta_reader::get_current_line,

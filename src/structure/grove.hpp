@@ -155,12 +155,18 @@ void bind_grove(py::module_& m, const char* grove_name,
                    std::vector<std::pair<KeyT, DataT>> items,
                    bool presorted) {
                     auto& g = self.cast<grove_t&>();
+                    // The bulk tree build is a long C++ loop touching no Python
+                    // objects (items were already converted to C++); release the
+                    // GIL for it, then build the result list with it reacquired.
+                    std::vector<key_t*> keys;
+                    {
+                        py::gil_scoped_release rel;
+                        keys = presorted
+                                   ? g.insert_data(index, items, ggs::sorted, ggs::bulk)
+                                   : g.insert_data(index, std::move(items), ggs::bulk);
+                    }
                     // Pin each returned Key to the Grove so extracted keys can't
                     // dangle after the list is dropped — issue #37.
-                    auto keys =
-                        presorted
-                            ? g.insert_data(index, items, ggs::sorted, ggs::bulk)
-                            : g.insert_data(index, std::move(items), ggs::bulk);
                     return pinned_key_list(keys, self);
                 },
                 py::arg("index"), py::arg("items"), py::arg("presorted") = false,
@@ -227,11 +233,18 @@ void bind_grove(py::module_& m, const char* grove_name,
                             KeyT k = genomic_coordinate_from_entry(entry);
                             items.emplace_back(k, std::move(entry));
                         }
+                        // Release the GIL around the pure-C++ bulk build, then
+                        // build the result list with it reacquired.
+                        std::vector<key_t*> keys;
+                        {
+                            py::gil_scoped_release rel;
+                            keys = presorted
+                                       ? g.insert_data(index, items, ggs::sorted,
+                                                       ggs::bulk)
+                                       : g.insert_data(index, std::move(items),
+                                                       ggs::bulk);
+                        }
                         // Pin each returned Key to the Grove — issue #37.
-                        auto keys =
-                            presorted
-                                ? g.insert_data(index, items, ggs::sorted, ggs::bulk)
-                                : g.insert_data(index, std::move(items), ggs::bulk);
                         return pinned_key_list(keys, self);
                     },
                     py::arg("index"), py::arg("entries"),
@@ -556,6 +569,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                 }
             },
             py::arg("path"),
+            // File write + zlib touches no Python objects (JSON payloads are
+            // stored as strings); GIL released for the duration.
+            py::call_guard<py::gil_scoped_release>(),
             R"pbdoc(
                 Serialize the Grove (intervals + associated data + graph overlay)
                 to a zlib-compressed binary file at the given path.
@@ -570,6 +586,10 @@ void bind_grove(py::module_& m, const char* grove_name,
                 return grove_t::deserialize(is);
             },
             py::arg("path"),
+            // File read + zlib + tree rebuild is pure C++ (payloads stay encoded
+            // strings, decoded lazily on key.data); the returned Grove is wrapped
+            // after the GIL is reacquired.
+            py::call_guard<py::gil_scoped_release>(),
             R"pbdoc(
                 Load a Grove previously written with serialize(). Returns a new
                 Grove with the same intervals, associated data, and graph edges.
