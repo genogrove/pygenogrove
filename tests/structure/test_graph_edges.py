@@ -200,6 +200,73 @@ def test_link_if_predicate_can_skip():
 
 
 # --------------------------------------------------------------------------- #
+# remove_edges_if — predicate-filtered edge removal (#33)
+# --------------------------------------------------------------------------- #
+
+def test_remove_edges_if_by_metadata():
+    """JSON Grove: predicate(target, metadata) removes edges whose metadata matches."""
+    pg = _pg()
+    g = pg.Grove(5)
+    a, b, c, d = _chain(g, (100, 200), (300, 400), (500, 600), (700, 800))
+    g.add_edge(a, b, {"w": 1})
+    g.add_edge(a, c, {"w": 10})
+    g.add_edge(a, d, {"w": 20})
+
+    removed = g.remove_edges_if(lambda target, meta: meta["w"] < 10)
+    assert removed == 1
+    assert sorted(n.value.start for n in g.get_neighbors(a)) == [500, 700]
+
+
+def test_remove_edges_if_by_target():
+    """The predicate can also inspect the target Key, not just the metadata."""
+    pg = _pg()
+    g = pg.Grove(5)
+    a, b, c = _chain(g, (10, 20), (30, 40), (50, 60))
+    g.add_edge(a, b, {"w": 1})
+    g.add_edge(a, c, {"w": 2})
+
+    removed = g.remove_edges_if(lambda target, meta: target.value.start == 30)
+    assert removed == 1
+    assert [n.value.start for n in g.get_neighbors(a)] == [50]
+
+
+def test_remove_edges_if_no_match_returns_zero():
+    pg = _pg()
+    g = pg.Grove(3)
+    a, b = _chain(g, (10, 20), (30, 40))
+    g.add_edge(a, b, {"w": 5})
+    assert g.remove_edges_if(lambda t, m: m["w"] > 100) == 0
+    assert g.edge_count() == 1
+
+
+def test_remove_edges_if_predicate_exception_propagates():
+    pg = _pg()
+    g = pg.Grove(3)
+    a, b = _chain(g, (10, 20), (30, 40))
+    g.add_edge(a, b, {"w": 5})
+    with pytest.raises(KeyError):
+        g.remove_edges_if(lambda t, m: m["nonexistent"])
+
+
+def test_remove_edges_if_void_grove_takes_target_only():
+    """Void-edge groves (BedGrove) expose remove_edges_if with a 1-arg predicate."""
+    pg = _pg()
+    g = pg.BedGrove(5)
+
+    def ins(s, e):
+        return g.insert("chr1", pg.GenomicCoordinate(".", s, e),
+                        pg.BedEntry("chr1", s, e))
+
+    a, b, c = ins(10, 20), ins(30, 40), ins(50, 60)
+    g.add_edge(a, b)
+    g.add_edge(a, c)
+
+    removed = g.remove_edges_if(lambda target: target.value.start == 30)
+    assert removed == 1
+    assert [n.value.start for n in g.get_neighbors(a)] == [50]
+
+
+# --------------------------------------------------------------------------- #
 # Typed groves keep void edges (C++ binary interop) — no labelled-edge API
 # --------------------------------------------------------------------------- #
 
