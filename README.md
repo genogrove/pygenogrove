@@ -148,6 +148,7 @@ carry `.data`).
 
 **Edge removal / bulk linking** (on every grove):
 - `remove_edges_from(source: Key) -> int` / `remove_edges_to(target: Key) -> int` / `remove_all_edges(key: Key) -> int`: Remove outgoing / incoming / all touching edges; each returns the count removed
+- `remove_edges_if(predicate) -> int`: Remove every edge matching a predicate. On the universal `Grove` the predicate is `predicate(target: Key, metadata) -> bool` (sees both target and edge metadata); on void-edge `BedGrove`/`GffGrove` it is `predicate(target: Key) -> bool`. Returns the count removed
 - `clear_graph()`: Remove all edges (keys are left intact); `graph_empty() -> bool`
 - `link_if(keys: list[Key], predicate)`: Add an unlabelled edge between each adjacent pair `(keys[i], keys[i+1])` for which `predicate(k1, k2)` returns `True` (typically over the keys returned by a bulk insert)
 
@@ -535,7 +536,7 @@ Currently exposed features:
 - **Strand-aware coordinates** — `GenomicCoordinate` is the standard key (`'+'` / `'-'` / `'.'` / `'*'`); overlap and flanking are strand-aware
 - **Universal `Grove`** (`grove<genomic_coordinate, json>`) storing arbitrary JSON payloads (dict / list / scalar / `None`), or no payload at all
 - Insert / query, multi-index support (per chromosome)
-- Graph overlay (directed edges, external keys), including **labelled edges** on the universal `Grove` — `add_edge(s, t, data)` / `get_edges` / `get_neighbors_if` / `link_with` — and edge cleanup / bulk linking on every grove (`remove_edges_from`/`to`, `remove_all_edges`, `clear_graph`, `graph_empty`, `link_if`)
+- Graph overlay (directed edges, external keys), including **labelled edges** on the universal `Grove` — `add_edge(s, t, data)` / `get_edges` / `get_neighbors_if` / `link_with` — and edge cleanup / bulk linking on every grove (`remove_edges_from`/`to`, `remove_all_edges`, `remove_edges_if`, `clear_graph`, `graph_empty`, `link_if`)
 - Key removal + storage compaction: `remove_key()`, `compact()`, `vertex_count()` / `external_vertex_count()` / `key_storage_size()`
 - Serialization / deserialization to compressed `.gg` files (an edgeless JSON Grove `.gg` is readable by a C++ `grove<genomic_coordinate, std::string>`; with labelled edges, `grove<genomic_coordinate, std::string, std::string>`)
 - Nearest-neighbour queries: `flanking()` (predecessor / successor), incl. a predicate-filtered overload (e.g. same-strand neighbours)
@@ -546,7 +547,7 @@ Currently exposed features:
 - `Registry` — interning singleton mapping a string identity to any JSON payload (plain string interning via single-arg `intern`)
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
-- `remove_edges_if` ([#33](https://github.com/genogrove/pygenogrove/issues/33)) and SIF export `grove_to_sif` ([#34](https://github.com/genogrove/pygenogrove/issues/34))
+- SIF export `grove_to_sif` ([#34](https://github.com/genogrove/pygenogrove/issues/34))
 - BAM CIGAR-element detail, mate info, and aux tags
 
 ## Performance Tips

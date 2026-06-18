@@ -433,6 +433,48 @@ void bind_grove(py::module_& m, const char* grove_name,
                  reclaims the dead slots — so it is >= indexed_vertex_count().
              )pbdoc");
 
+    // ---- Predicate-filtered edge removal (every grove; #33) ----
+    // genogrove's remove_edges_if takes a generic predicate over `const edge&`
+    // ({ target, metadata }); we adapt it to a Python callable. The predicate
+    // re-enters Python, so the GIL stays held (no call_guard). The Python-facing
+    // signature differs by whether this grove's edges carry metadata.
+    if constexpr (std::is_void_v<EdgeT>) {
+        cls.def("remove_edges_if",
+                [](grove_t& g, std::function<bool(key_t*)> predicate) {
+                    return g.remove_edges_if([&predicate](const auto& e) -> bool {
+                        return predicate(e.target);
+                    });
+                },
+                py::arg("predicate"),
+                R"pbdoc(
+                    remove_edges_if(predicate) -> int
+
+                    Remove every edge whose target satisfies
+                    predicate(target: Key) -> bool, returning the number removed.
+                    (This grove's edges carry no metadata, so the predicate gets
+                    only the target Key; the universal Grove also passes the edge
+                    metadata.)
+                )pbdoc");
+    } else {
+        cls.def("remove_edges_if",
+                [](grove_t& g,
+                   std::function<bool(key_t*, const EdgeT&)> predicate) {
+                    return g.remove_edges_if([&predicate](const auto& e) -> bool {
+                        return predicate(e.target, e.metadata);
+                    });
+                },
+                py::arg("predicate"),
+                R"pbdoc(
+                    remove_edges_if(predicate) -> int
+
+                    Remove every edge for which
+                    predicate(target: Key, metadata: object) -> bool returns True,
+                    returning the number removed. The predicate receives the target
+                    Key and the decoded edge metadata (the value passed to
+                    add_edge).
+                )pbdoc");
+    }
+
     // ---- Key removal + storage compaction ----
     cls.def("remove_key",
             [](grove_t& g, const std::string& index, key_t* key) {
