@@ -100,5 +100,36 @@ def test_roundtrip_empty_bed_grove(tmp_path):
     assert loaded.get_order() == 3
 
 
+# --------------------------------------------------------------------------- #
+# Error paths — symmetric with the dataless grove suite (#6). BedGrove and Grove
+# share the same serialize/deserialize binding, so these are defense-in-depth.
+# --------------------------------------------------------------------------- #
+
+def test_deserialize_corrupt_file_raises(tmp_path):
+    """A file that is not a valid compressed BedGrove fails loudly."""
+    pg = _pg()
+    bad = tmp_path / "garbage.gg"
+    bad.write_bytes(b"this is definitely not a zlib-compressed grove")
+    with pytest.raises((RuntimeError, ValueError, IOError, OSError)):
+        pg.BedGrove.deserialize(str(bad))
+
+
+def test_deserialize_missing_file_raises(tmp_path):
+    pg = _pg()
+    missing = str(tmp_path / "does_not_exist.gg")
+    with pytest.raises((RuntimeError, IOError, OSError)):
+        pg.BedGrove.deserialize(missing)
+
+
+def test_serialize_to_unwritable_path_raises(tmp_path):
+    pg = _pg()
+    g = pg.BedGrove(3)
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), pg.BedEntry("chr1", 100, 201))
+    # a directory component that does not exist -> open fails
+    bad = str(tmp_path / "no_such_dir" / "out.gg")
+    with pytest.raises((RuntimeError, IOError, OSError)):
+        g.serialize(bad)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
