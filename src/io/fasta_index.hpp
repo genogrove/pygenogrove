@@ -41,11 +41,15 @@ inline void bind_fasta_index(py::module_& m) {
                  return std::make_unique<gio::fasta_index>(path);
              }),
              py::arg("path"),
+             // Building a missing .fai for a multi-GB genome is pure htslib I/O.
+             py::call_guard<py::gil_scoped_release>(),
              "Open a FASTA file and load (or create) its .fai index.")
         .def("fetch",
              py::overload_cast<const std::string&, std::size_t, std::size_t>(
                  &gio::fasta_index::fetch, py::const_),
              py::arg("name"), py::arg("start"), py::arg("end"),
+             // faidx disk read; returns a std::string converted after reacquire.
+             py::call_guard<py::gil_scoped_release>(),
              R"pbdoc(
                  fetch(name, start, end) -> str
 
@@ -57,6 +61,8 @@ inline void bind_fasta_index(py::module_& m) {
              py::overload_cast<const std::string&>(&gio::fasta_index::fetch,
                                                    py::const_),
              py::arg("name"),
+             // Whole-sequence faidx read (can be very large); GIL released.
+             py::call_guard<py::gil_scoped_release>(),
              R"pbdoc(
                  fetch(name) -> str
 

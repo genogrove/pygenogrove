@@ -192,7 +192,10 @@ inline void bind_bam_reader(py::module_& m) {
                      throw py::stop_iteration();
                  }
                  return entry;
-             })
+             },
+             // The read (htslib decode / disk I/O) touches no Python objects;
+             // pybind reacquires the GIL before converting the returned entry.
+             py::call_guard<py::gil_scoped_release>())
         .def("get_error_message", &gio::bam_reader::get_error_message,
              "Error message from the most recent read; empty on clean EOF.")
         .def("get_current_line", &gio::bam_reader::get_current_line,
