@@ -266,6 +266,36 @@ def test_remove_edges_if_void_grove_takes_target_only():
     assert [n.value.start for n in g.get_neighbors(a)] == [50]
 
 
+def test_remove_edges_if_can_remove_all_edges():
+    """A predicate matching everything empties the graph (exercises the
+    empty-adjacency cleanup), and the keys survive."""
+    pg = _pg()
+    g = pg.Grove(5)
+    a, b, c = _chain(g, (10, 20), (30, 40), (50, 60))
+    g.add_edge(a, b, {"w": 1})
+    g.add_edge(a, c, {"w": 2})
+
+    assert g.remove_edges_if(lambda target, meta: True) == 2
+    assert g.edge_count() == 0
+    assert g.graph_empty()
+    assert g.size() == 3  # keys themselves are untouched
+
+
+def test_remove_edges_if_aggregates_across_source_keys():
+    """The returned count sums removals over the whole graph, not one source."""
+    pg = _pg()
+    g = pg.Grove(5)
+    a, b, c, d = _chain(g, (10, 20), (30, 40), (50, 60), (70, 80))
+    g.add_edge(a, b, {"drop": True})    # source a
+    g.add_edge(c, d, {"drop": True})    # source c
+    g.add_edge(a, c, {"drop": False})   # source a, kept
+
+    removed = g.remove_edges_if(lambda target, meta: meta["drop"])
+    assert removed == 2
+    assert g.edge_count() == 1
+    assert g.has_edge(a, c)
+
+
 # --------------------------------------------------------------------------- #
 # Typed groves keep void edges (C++ binary interop) — no labelled-edge API
 # --------------------------------------------------------------------------- #
