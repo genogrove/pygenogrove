@@ -33,7 +33,11 @@ def test_concurrent_serialize_deserialize(tmp_path):
         g.serialize(path)
         loaded = pg.Grove.deserialize(path)
         assert loaded.size() == 50
-        return list(loaded.intersect(pg.GenomicCoordinate(".", 20, 21), "chr1"))[0].data
+        # Assert the exact hit count — a corrupt/cross-contaminated result from a
+        # mis-placed GIL release would surface as an extra or missing hit here.
+        hits = list(loaded.intersect(pg.GenomicCoordinate(".", 20, 21), "chr1"))
+        assert len(hits) == 1
+        return hits[0].data
 
     with ThreadPoolExecutor(max_workers=8) as ex:
         results = list(ex.map(roundtrip, range(8)))
@@ -73,3 +77,21 @@ def test_concurrent_reader(tmp_path):
         all_names = list(ex.map(read, range(8)))
 
     assert all(names == expected for names in all_names)
+
+
+def test_concurrent_fasta_fetch(tmp_path):
+    pg = _pg()
+    fa = tmp_path / "g.fa"
+    fa.write_text(">chr1\nACGTACGTACGT\n>chr2\nTTTTGGGGCCCC\n")
+    # Build the .fai once up front so the threads don't race to create it; each
+    # then opens its own handle and only reads (faidx fetch is the released path).
+    pg.FastaIndex(str(fa))
+
+    def fetch(_):
+        idx = pg.FastaIndex(str(fa))
+        return idx.fetch("chr1", 0, 4), idx.fetch("chr2")
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        results = list(ex.map(fetch, range(8)))
+
+    assert all(r == ("ACGT", "TTTTGGGGCCCC") for r in results)
