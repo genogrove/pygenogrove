@@ -331,26 +331,26 @@ void bind_grove(py::module_& m, const char* grove_name,
              [](grove_t& g, key_t* source, key_t* target) {
                  g.add_edge(source, target);
              },
-             py::arg("source"), py::arg("target"),
+             py::arg("source").none(false), py::arg("target").none(false),
              R"pbdoc(
                  Add a directed edge from source to target.
 
                  source and target must be Keys belonging to this Grove (returned
                  by insert(), add_external_key(), or yielded by a QueryResult).
-                 Raises ValueError if either is None.
+                 Raises TypeError if either is None.
              )pbdoc")
         .def("remove_edge",
              [](grove_t& g, key_t* source, key_t* target) {
                  return g.remove_edge(source, target);
              },
-             py::arg("source"), py::arg("target"),
+             py::arg("source").none(false), py::arg("target").none(false),
              "Remove the directed edge from source to target. Returns True if an "
              "edge was removed, False if it did not exist.")
         .def("has_edge",
              [](const grove_t& g, const key_t* source, const key_t* target) {
                  return g.has_edge(source, target);
              },
-             py::arg("source"), py::arg("target"),
+             py::arg("source").none(false), py::arg("target").none(false),
              "Return True if a directed edge from source to target exists.")
         .def("get_neighbors",
              [](py::object self, key_t* source) {
@@ -359,7 +359,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                  return pinned_key_list(
                      self.cast<grove_t&>().get_neighbors(source), self);
              },
-             py::arg("source"),
+             py::arg("source").none(false),
              R"pbdoc(
                  Return the list of target Keys directly reachable from source.
 
@@ -370,7 +370,7 @@ void bind_grove(py::module_& m, const char* grove_name,
              [](const grove_t& g, const key_t* source) {
                  return g.out_degree(source);
              },
-             py::arg("source"),
+             py::arg("source").none(false),
              "Number of outgoing edges from source.")
         .def("edge_count", &grove_t::edge_count,
              "Total number of directed edges in the graph overlay.")
@@ -382,18 +382,18 @@ void bind_grove(py::module_& m, const char* grove_name,
              [](grove_t& g, key_t* source) {
                  return g.remove_edges_from(source);
              },
-             py::arg("source"),
+             py::arg("source").none(false),
              "Remove all outgoing edges from source. Returns the number removed.")
         .def("remove_edges_to",
              [](grove_t& g, key_t* target) {
                  return g.remove_edges_to(target);
              },
-             py::arg("target"),
+             py::arg("target").none(false),
              "Remove all incoming edges to target (O(E) scan over the graph). "
              "Returns the number removed.")
         .def("remove_all_edges",
              [](grove_t& g, key_t* key) { return g.remove_all_edges(key); },
-             py::arg("key"),
+             py::arg("key").none(false),
              "Remove every edge touching key, incoming and outgoing. Returns the "
              "total number removed.")
         .def("clear_graph", &grove_t::clear_graph,
@@ -536,21 +536,22 @@ void bind_grove(py::module_& m, const char* grove_name,
                 [](grove_t& g, key_t* source, key_t* target, EdgeT data) {
                     g.add_edge(source, target, std::move(data));
                 },
-                py::arg("source"), py::arg("target"), py::arg("data"),
+                py::arg("source").none(false), py::arg("target").none(false),
+                py::arg("data"),
                 R"pbdoc(
                     add_edge(source, target, data) -> None
 
                     Add a directed edge from source to target carrying a metadata
                     payload (any JSON-serializable value on the universal Grove).
                     This is an overload of add_edge(source, target); the two-argument
-                    form attaches a None payload. Raises ValueError if either key is
+                    form attaches a None payload. Raises TypeError if either key is
                     None.
                 )pbdoc");
         cls.def("get_edges",
                 [](const grove_t& g, const key_t* source) {
                     return g.get_edges(source);
                 },
-                py::arg("source"),
+                py::arg("source").none(false),
                 R"pbdoc(
                     get_edges(source) -> list
 
@@ -569,7 +570,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                             source, std::move(predicate)),
                         self);
                 },
-                py::arg("source"), py::arg("predicate"),
+                py::arg("source").none(false), py::arg("predicate"),
                 R"pbdoc(
                     get_neighbors_if(source, predicate) -> list[Key]
 

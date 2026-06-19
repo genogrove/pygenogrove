@@ -187,6 +187,32 @@ def test_get_neighbors_none_raises():
         g.get_neighbors(None)
 
 
+def test_graph_read_remove_methods_reject_none():
+    """The read/remove graph methods reject a None key (previously they silently
+    returned False/0, masking caller bugs). Hardening from the bindings audit."""
+    pg = _pg()
+    g = pg.Grove(3)
+    a = g.insert("chr1", pg.GenomicCoordinate(".", 10, 20))
+    b = g.insert("chr1", pg.GenomicCoordinate(".", 30, 40))
+    g.add_edge(a, b)
+
+    for call in (
+        lambda: g.has_edge(None, b),
+        lambda: g.has_edge(a, None),
+        lambda: g.out_degree(None),
+        lambda: g.remove_edge(None, b),
+        lambda: g.remove_edge(a, None),
+        lambda: g.remove_edges_from(None),
+        lambda: g.remove_edges_to(None),
+        lambda: g.remove_all_edges(None),
+    ):
+        with pytest.raises(TypeError):
+            call()
+
+    # None of the rejected calls mutated the graph.
+    assert g.edge_count() == 1
+
+
 def test_neighbor_key_keeps_grove_alive():
     """A Key returned by get_neighbors keeps the Grove alive, so using it
     after every other handle is dropped must stay safe (use-after-free
