@@ -205,6 +205,8 @@ def test_graph_read_remove_methods_reject_none():
         lambda: g.remove_edges_from(None),
         lambda: g.remove_edges_to(None),
         lambda: g.remove_all_edges(None),
+        lambda: g.get_edges(None),
+        lambda: g.get_neighbors_if(None, lambda meta: True),
     ):
         with pytest.raises(TypeError):
             call()
