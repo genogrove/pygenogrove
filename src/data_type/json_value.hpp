@@ -48,16 +48,34 @@ struct type_caster<pygg::json_value> {
     // Python object -> json_value (json.dumps). Propagates a TypeError if the
     // object is not JSON-serializable.
     bool load(handle src, bool) {
-        object json_mod = module_::import("json");
-        value.json = json_mod.attr("dumps")(src).cast<std::string>();
+        value.json = json_dumps()(src).cast<std::string>();
         return true;
     }
 
     // json_value -> Python object (json.loads).
     static handle cast(const pygg::json_value& v, return_value_policy /*policy*/,
                        handle /*parent*/) {
-        object json_mod = module_::import("json");
-        return json_mod.attr("loads")(str(v.json)).release();
+        return json_loads()(str(v.json)).release();
+    }
+
+  private:
+    // Cache the bound json.dumps / json.loads once. Each is a function-local
+    // static initialized on first use (thread-safe in C++; the GIL is held when
+    // the casters run) and stored as a `handle` whose reference is intentionally
+    // leaked via release() — so it is never decref'd at interpreter teardown
+    // (a static `object` would crash there). This avoids the per-conversion
+    // module import + attribute lookup, which adds up over a grove's payloads.
+    static handle json_attr(const char* name) {
+        object fn = module_::import("json").attr(name);
+        return fn.release();  // leak: never decref'd, survives teardown
+    }
+    static handle json_dumps() {
+        static const handle fn = json_attr("dumps");  // imported once, then cached
+        return fn;
+    }
+    static handle json_loads() {
+        static const handle fn = json_attr("loads");
+        return fn;
     }
 };
 
