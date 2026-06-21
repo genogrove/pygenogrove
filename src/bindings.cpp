@@ -20,6 +20,7 @@
 #include "io/fasta_reader.hpp"
 #include "io/filetype_detector.hpp"
 #include "io/gff_reader.hpp"
+#include "io/vcf_reader.hpp"
 #include "structure/grove.hpp"
 
 namespace py = pybind11;
@@ -95,6 +96,12 @@ PYBIND11_MODULE(pygenogrove, m) {
     // SamEntry.to_coordinate() + .to_dict() (see the SamEntry docstring).
     bind_sam_entry(m);
     bind_bam_reader(m);
+
+    // VCF/BCF variant reader: SampleGenotype / VcfEntry value types + VcfReader
+    // iterator. Like SAM, vcf_entry isn't serializable (variant-valued INFO /
+    // nested samples), so there's no typed VcfGrove — load into the universal
+    // Grove via VcfEntry.to_coordinate() + .to_dict().
+    bind_vcf_reader(m);
 
     // FASTA/FASTQ sequence reader: FastaEntry value type + FastaReader iterator.
     // Standalone (named sequences, not intervals — no grove integration).

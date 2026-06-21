@@ -58,6 +58,7 @@ def test_imports_file_readers():
     assert hasattr(pygenogrove, 'FastaReader')
     assert hasattr(pygenogrove, 'FastaEntry')
     assert hasattr(pygenogrove, 'FastaIndex')
+    assert hasattr(pygenogrove, 'VcfReader')
 
 
 def test_imports_sam_types():
@@ -66,6 +67,13 @@ def test_imports_sam_types():
     assert hasattr(pygenogrove, 'SamEntry')
     assert hasattr(pygenogrove, 'AlignmentFlags')
     assert hasattr(pygenogrove, 'SamFlags')
+
+
+def test_imports_vcf_types():
+    """The VCF/BCF variant value types are exposed."""
+    import pygenogrove
+    assert hasattr(pygenogrove, 'VcfEntry')
+    assert hasattr(pygenogrove, 'SampleGenotype')
 
 
 def test_imports_point_key_types():
