@@ -619,6 +619,31 @@ void bind_grove(py::module_& m, const char* grove_name,
                 Serialize the Grove (intervals + associated data + graph overlay)
                 to a zlib-compressed binary file at the given path.
             )pbdoc")
+       .def("to_sif",
+            [](const grove_t& g, const std::string& path) {
+                std::ofstream os(path);
+                if (!os) {
+                    throw std::runtime_error(
+                        "Failed to open file for writing: " + path);
+                }
+                g.grove_to_sif(os);
+                if (!os) {
+                    throw std::runtime_error(
+                        "Failed to write SIF to file: " + path);
+                }
+            },
+            py::arg("path"),
+            // Pure C++ tree walk + text write (key.to_string()); no Python.
+            py::call_guard<py::gil_scoped_release>(),
+            R"pbdoc(
+                Write the grove to a SIF (Simple Interaction Format) text file for
+                graph visualization (e.g. Cytoscape). Emits the B+ tree structure
+                (`nodelink` / `leaflink` lines) and the graph-overlay edges
+                (`keylink` lines) as tab-separated interactions; an empty grove
+                writes an empty file.
+
+                Note: line and index iteration order are not stable across runs.
+            )pbdoc")
        .def_static("deserialize",
             [](const std::string& path) {
                 std::ifstream is(path, std::ios::binary);

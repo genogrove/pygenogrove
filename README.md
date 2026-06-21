@@ -539,6 +539,7 @@ Currently exposed features:
 - Graph overlay (directed edges, external keys), including **labelled edges** on the universal `Grove` — `add_edge(s, t, data)` / `get_edges` / `get_neighbors_if` / `link_with` — and edge cleanup / bulk linking on every grove (`remove_edges_from`/`to`, `remove_all_edges`, `remove_edges_if`, `clear_graph`, `graph_empty`, `link_if`)
 - Key removal + storage compaction: `remove_key()`, `compact()`, `vertex_count()` / `external_vertex_count()` / `key_storage_size()`
 - Serialization / deserialization to compressed `.gg` files (an edgeless JSON Grove `.gg` is readable by a C++ `grove<genomic_coordinate, std::string>`; with labelled edges, `grove<genomic_coordinate, std::string, std::string>`)
+- SIF export — `to_sif(path)` writes the grove's B+ tree structure and graph-overlay edges as a SIF (Simple Interaction Format) text file for visualization (e.g. Cytoscape)
 - Nearest-neighbour queries: `flanking()` (predecessor / successor), incl. a predicate-filtered overload (e.g. same-strand neighbours)
 - **Point key types** — `Numeric` (integer keys: ids / timestamps) and `Kmer` (2-bit-encoded DNA k-mers, k ≤ 32, a membership dictionary), each with its own `NumericGrove` / `KmerGrove` carrying the same universal surface (optional JSON payload, labelled edges, serialization). Overlap is exact equality
 - **Typed** data groves for C++ interop: `BedGrove` (`grove<genomic_coordinate, bed_entry>`) and `GffGrove` (`grove<genomic_coordinate, gff_entry>`), with the `BedEntry` / `GffEntry` value types
@@ -547,7 +548,6 @@ Currently exposed features:
 - `Registry` — interning singleton mapping a string identity to any JSON payload (plain string interning via single-arg `intern`)
 
 **Not yet exposed** (tracked in [#1](https://github.com/genogrove/pygenogrove/issues/1)):
-- SIF export `grove_to_sif` ([#34](https://github.com/genogrove/pygenogrove/issues/34))
 - BAM CIGAR-element detail, mate info, and aux tags
 
 ## Performance Tips
