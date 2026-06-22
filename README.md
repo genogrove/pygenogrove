@@ -543,7 +543,7 @@ Currently exposed features:
 - Nearest-neighbour queries: `flanking()` (predecessor / successor), incl. a predicate-filtered overload (e.g. same-strand neighbours)
 - **Point key types** — `Numeric` (integer keys: ids / timestamps) and `Kmer` (2-bit-encoded DNA k-mers, k ≤ 32, a membership dictionary), each with its own `NumericGrove` / `KmerGrove` carrying the same universal surface (optional JSON payload, labelled edges, serialization). Overlap is exact equality
 - **Typed** data groves for C++ interop: `BedGrove` (`grove<genomic_coordinate, bed_entry>`) and `GffGrove` (`grove<genomic_coordinate, gff_entry>`), with the `BedEntry` / `GffEntry` value types
-- File readers: `BedReader`, `GffReader`, `BamReader` (SAM/BAM), `FastaReader` (FASTA/FASTQ), plus `FastaIndex` (random-access) and `FiletypeDetector` (format detection)
+- File readers: `BedReader`, `GffReader`, `BamReader` (SAM/BAM), `FastaReader` (FASTA/FASTQ), `VcfReader` (VCF/BCF — variant records with INFO + per-sample genotypes), plus `FastaIndex` (random-access) and `FiletypeDetector` (format detection)
 - Fast-path inserts on the typed groves: `insert_sorted` / `insert_bulk`, plus entry-deriving `insert(index, entry)` / `insert_bulk(index, entries)` that derive a **stranded** key from a BED/GFF record's native coordinates
 - `Registry` — interning singleton mapping a string identity to any JSON payload (plain string interning via single-arg `intern`)
 
