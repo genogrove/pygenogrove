@@ -86,6 +86,7 @@ def test_samples_and_genotypes(tmp_path):
     assert reader.get_sample_names() == ["S1", "S2"]
 
     a, b = list(reader)
+    assert list(a.format) == ["GT", "DP"]        # FORMAT column order
     assert [s.gt_string() for s in a.samples] == ["0/1", "1|1"]
     assert a.samples[1].phased is True          # '|' separator
     assert a.samples[0].fields["DP"] == [20]
@@ -138,6 +139,15 @@ def test_loads_into_universal_grove(tmp_path):
     assert g.size() == 2
     hit = list(g.intersect(pg.GenomicCoordinate(".", 99, 99), "chr1"))[0]
     assert hit.data["id"] == "rs1"
+
+
+def test_reader_accessors_after_clean_iteration(tmp_path):
+    pg = _pg()
+    reader = pg.VcfReader(_write_vcf(tmp_path))
+    assert list(reader)  # consume both records
+    # Clean EOF leaves no error; the line counter reflects records consumed.
+    assert reader.get_error_message() == ""
+    assert reader.get_current_line() == 2
 
 
 def test_missing_file_raises(tmp_path):
