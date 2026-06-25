@@ -74,7 +74,7 @@ def test_get_edge_list_pairs_targets_and_metadata():
 def test_get_edge_list_empty_for_source_with_no_edges():
     pg = _pg()
     g = pg.Grove(3)
-    a, b = _chain(g, (10, 20), (30, 40))  # no edges added
+    a, _ = _chain(g, (10, 20), (30, 40))  # no edges added
     assert g.get_edge_list(a) == []
 
 
