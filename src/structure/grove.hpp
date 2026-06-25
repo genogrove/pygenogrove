@@ -560,7 +560,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                     payload yield None.
                 )pbdoc");
         cls.def("get_edge_list",
-                [](py::object self, key_t* source) {
+                [](py::object self, const key_t* source) {
                     const auto& g = self.cast<const grove_t&>();
                     py::list out;
                     for (const auto& e : g.get_edge_list(source)) {

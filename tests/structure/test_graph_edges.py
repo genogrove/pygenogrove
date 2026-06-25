@@ -71,6 +71,13 @@ def test_get_edge_list_pairs_targets_and_metadata():
     assert got == {(300, 1), (500, 2)}
 
 
+def test_get_edge_list_empty_for_source_with_no_edges():
+    pg = _pg()
+    g = pg.Grove(3)
+    a, b = _chain(g, (10, 20), (30, 40))  # no edges added
+    assert g.get_edge_list(a) == []
+
+
 def test_get_edge_list_none_metadata():
     """An edge added without a payload yields None metadata."""
     pg = _pg()
