@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-25
+
 ### Added
 
 - **Point key types `Numeric` and `Kmer`.** Two non-interval key types whose overlap is **exact equality** (not range intersection), so their groves act as point dictionaries. `Numeric` wraps an integer (ids / timestamps): `Numeric(value)`, read-only `value` (+ `set_value` for pre-insertion reuse), `overlaps(a, b)`, comparisons, `str`/`repr`. `Kmer` is a 2-bit-encoded DNA k-mer (k ≤ 32, A/C/G/T case-insensitive): `Kmer(sequence)` or `Kmer(encoding, k)`, `encoding` / `k` / `len()`, `overlaps(a, b)`, static `is_valid(sequence)` and `max_k` (invalid bases or `k > 32` raise `ValueError`). Each ships its own `NumericGrove` / `KmerGrove` (plus `*Key` / `*QueryResult` / `*FlankingResult`), each `grove<K, json_value, json_value>` with the same universal surface as `Grove` — optional JSON payload, labelled edges, `.gg` serialization. Reuses the generic `bind_grove<KeyT, DataT>` machinery; no new build dependency ([#1](https://github.com/genogrove/pygenogrove/issues/1), [#7](https://github.com/genogrove/pygenogrove/issues/7), [#39](https://github.com/genogrove/pygenogrove/pull/39)).
