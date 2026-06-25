@@ -59,6 +59,53 @@ def test_get_edges_parallel_to_neighbors():
     assert paired == {300: {"to": 300}, 500: {"to": 500}}
 
 
+def test_get_edge_list_pairs_targets_and_metadata():
+    """get_edge_list(source) returns (target Key, metadata) pairs."""
+    pg = _pg()
+    g = pg.Grove(5)
+    a, b, c = _chain(g, (100, 200), (300, 400), (500, 600))
+    g.add_edge(a, b, {"w": 1})
+    g.add_edge(a, c, {"w": 2})
+
+    got = {(tgt.value.start, meta["w"]) for tgt, meta in g.get_edge_list(a)}
+    assert got == {(300, 1), (500, 2)}
+
+
+def test_get_edge_list_empty_for_source_with_no_edges():
+    pg = _pg()
+    g = pg.Grove(3)
+    a, _ = _chain(g, (10, 20), (30, 40))  # no edges added
+    assert g.get_edge_list(a) == []
+
+
+def test_get_edge_list_none_metadata():
+    """An edge added without a payload yields None metadata."""
+    pg = _pg()
+    g = pg.Grove(3)
+    a, b = _chain(g, (10, 20), (30, 40))
+    g.add_edge(a, b)  # no metadata
+
+    edges = g.get_edge_list(a)
+    assert len(edges) == 1
+    tgt, meta = edges[0]
+    assert tgt.value.start == 30
+    assert meta is None
+
+
+def test_get_edge_list_target_keeps_grove_alive():
+    """A target Key from get_edge_list keeps the Grove alive (UAF guard, #37)."""
+    pg = _pg()
+    g = pg.Grove(3)
+    a, b = _chain(g, (10, 20), (30, 40))
+    g.add_edge(a, b, {"w": 9})
+
+    tgt, meta = g.get_edge_list(a)[0]
+    del g, a, b
+    gc.collect()
+    assert tgt.value.start == 30
+    assert meta == {"w": 9}
+
+
 def test_get_neighbors_if_filters_by_metadata():
     pg = _pg()
     g = pg.Grove(5)
@@ -311,6 +358,7 @@ def test_typed_grove_has_unlabelled_edges_only():
     assert g.remove_all_edges(a) == 1  # cleanup methods work
     # labelled-edge methods are gated out for void-edge groves
     assert not hasattr(g, "get_edges")
+    assert not hasattr(g, "get_edge_list")
     assert not hasattr(g, "get_neighbors_if")
     assert not hasattr(g, "link_with")
 

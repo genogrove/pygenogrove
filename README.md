@@ -143,6 +143,7 @@ carry `.data`).
 **Labelled edges** — on the universal `Grove`, edges carry a JSON-serializable payload (the typed `BedGrove`/`GffGrove` keep unlabelled edges for binary interop, so these methods are absent there):
 - `add_edge(source: Key, target: Key, data)`: Add an edge with a metadata payload. The 2-argument `add_edge` attaches `None`
 - `get_edges(source: Key) -> list`: The edge payloads of `source`'s outgoing edges, parallel to `get_neighbors(source)`
+- `get_edge_list(source: Key) -> list[tuple[Key, object]]`: The outgoing edges as `(target, metadata)` pairs — the zip of `get_neighbors` and `get_edges` (metadata is `None` for payload-less edges)
 - `get_neighbors_if(source: Key, predicate) -> list[Key]`: Target keys whose edge metadata satisfies `predicate(metadata)` — the predicate receives the **decoded** payload (edges added without a payload yield `None`, so guard for it when mixing labelled and unlabelled edges)
 - `link_with(keys: list[Key], predicate)`: Label adjacent pairs — `predicate(k1, k2)` returns the edge payload to attach, or `None` to skip
 
@@ -536,7 +537,7 @@ Currently exposed features:
 - **Strand-aware coordinates** — `GenomicCoordinate` is the standard key (`'+'` / `'-'` / `'.'` / `'*'`); overlap and flanking are strand-aware
 - **Universal `Grove`** (`grove<genomic_coordinate, json>`) storing arbitrary JSON payloads (dict / list / scalar / `None`), or no payload at all
 - Insert / query, multi-index support (per chromosome)
-- Graph overlay (directed edges, external keys), including **labelled edges** on the universal `Grove` — `add_edge(s, t, data)` / `get_edges` / `get_neighbors_if` / `link_with` — and edge cleanup / bulk linking on every grove (`remove_edges_from`/`to`, `remove_all_edges`, `remove_edges_if`, `clear_graph`, `graph_empty`, `link_if`)
+- Graph overlay (directed edges, external keys), including **labelled edges** on the universal `Grove` — `add_edge(s, t, data)` / `get_edges` / `get_edge_list` / `get_neighbors_if` / `link_with` — and edge cleanup / bulk linking on every grove (`remove_edges_from`/`to`, `remove_all_edges`, `remove_edges_if`, `clear_graph`, `graph_empty`, `link_if`)
 - Key removal + storage compaction: `remove_key()`, `compact()`, `vertex_count()` / `external_vertex_count()` / `key_storage_size()`
 - Serialization / deserialization to compressed `.gg` files (an edgeless JSON Grove `.gg` is readable by a C++ `grove<genomic_coordinate, std::string>`; with labelled edges, `grove<genomic_coordinate, std::string, std::string>`)
 - SIF export — `to_sif(path)` writes the grove's B+ tree structure and graph-overlay edges as a SIF (Simple Interaction Format) text file for visualization (e.g. Cytoscape)

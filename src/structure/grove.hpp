@@ -559,6 +559,29 @@ void bind_grove(py::module_& m, const char* grove_name,
                     order (parallel to get_neighbors(source)). Edges added without a
                     payload yield None.
                 )pbdoc");
+        cls.def("get_edge_list",
+                [](py::object self, const key_t* source) {
+                    const auto& g = self.cast<const grove_t&>();
+                    py::list out;
+                    for (const auto& e : g.get_edge_list(source)) {
+                        // Pin each target Key to the Grove — issue #37.
+                        out.append(py::make_tuple(
+                            py::cast(e.target,
+                                     py::return_value_policy::reference_internal,
+                                     self),
+                            py::cast(e.metadata)));
+                    }
+                    return out;
+                },
+                py::arg("source").none(false),
+                R"pbdoc(
+                    get_edge_list(source) -> list[tuple[Key, object]]
+
+                    The outgoing edges from source as (target Key, metadata)
+                    pairs — i.e. the zip of get_neighbors(source) and
+                    get_edges(source). Edges added without a payload yield None
+                    metadata. Each returned Key keeps this Grove alive.
+                )pbdoc");
         cls.def("get_neighbors_if",
                 [](py::object self, key_t* source,
                    std::function<bool(const EdgeT&)> predicate) {
