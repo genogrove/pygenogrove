@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`FastaIndex(path)` construction is no longer a data race.** htslib's
+  `fai_load()` is not thread-safe; opening several `FastaIndex` handles
+  concurrently could abort the interpreter (`SIGABRT`). Construction now takes a
+  process-wide lock, so concurrent opens are serialized. The GIL is still
+  released during the (potentially long) index build, and `fetch()` on separate
+  handles remains fully concurrent ([#50](https://github.com/genogrove/pygenogrove/issues/50)).
+
 ## [0.6.1] - 2026-06-26
 
 ### Added
