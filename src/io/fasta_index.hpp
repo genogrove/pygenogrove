@@ -14,6 +14,7 @@
 #include <pybind11/stl.h>  // std::vector<std::string> -> Python list
 
 #include <cstddef>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -38,6 +39,14 @@ inline void bind_fasta_index(py::module_& m) {
         .def(py::init([](const std::string& path) {
                  // std::string -> std::filesystem::path; throws std::runtime_error
                  // (-> RuntimeError) if the file can't be opened or indexed.
+                 //
+                 // htslib's fai_load() is not thread-safe, so concurrent opens
+                 // race and abort (issue #50). Serialize construction with a
+                 // process-wide lock; the GIL stays released (below) so a long
+                 // multi-GB index build still won't freeze unrelated threads,
+                 // and fetch() on separate handles remains fully concurrent.
+                 static std::mutex fai_load_mutex;
+                 std::lock_guard<std::mutex> lock(fai_load_mutex);
                  return std::make_unique<gio::fasta_index>(path);
              }),
              py::arg("path"),
