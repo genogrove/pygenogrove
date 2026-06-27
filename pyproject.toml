@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: C++",
 ]
 
@@ -54,7 +55,7 @@ sdist.include = ["external/genogrove/**"]
 
 [tool.cibuildwheel]
 # Match the CI test matrix; no PyPy, no musllinux (htslib isn't provisioned there).
-build = "cp39-* cp310-* cp311-* cp312-*"
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "*musllinux*"
 build-verbosity = 1
 # Smoke-test every built wheel: it imports and reports both versions.
