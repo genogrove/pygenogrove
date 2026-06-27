@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-06-26
+
 ### Added
 
 - **CPython 3.13 support.** Added `cp313-*` to the cibuildwheel matrix, `3.13`
