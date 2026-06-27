@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pygenogrove"
-version = "0.6.1"
+version = "0.6.2"
 description = "Python bindings for the genogrove C++ library - a specialized B+ tree for genomic intervals"
 readme = "README.md"
 requires-python = ">=3.9"
