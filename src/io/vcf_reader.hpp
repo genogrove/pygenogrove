@@ -151,17 +151,23 @@ inline void bind_vcf_reader(py::module_& m) {
                 ...
     )pbdoc")
         .def(py::init([](const std::string& path, bool parse_info,
-                         bool parse_samples, bool skip_filtered) {
+                         bool parse_samples, bool skip_filtered,
+                         const std::string& region) {
                  gio::vcf_reader_options opts;
                  opts.parse_info = parse_info;
                  opts.parse_samples = parse_samples;
                  opts.skip_filtered = skip_filtered;
+                 opts.region = region;
                  return std::make_unique<gio::vcf_reader>(path, opts);
              }),
              py::arg("path"), py::arg("parse_info") = true,
              py::arg("parse_samples") = true, py::arg("skip_filtered") = false,
+             py::arg("region") = "",
              "Open a VCF/BCF file. parse_info / parse_samples toggle INFO and "
-             "per-sample parsing; skip_filtered drops non-PASS records.")
+             "per-sample parsing; skip_filtered drops non-PASS records. region "
+             "is an htslib region string (\"chr:start-end\", 1-based inclusive); "
+             "when set, only overlapping records are yielded and a CSI/TBI-indexed "
+             "bgzip VCF or a BCF is required. Empty (default) reads the whole file.")
         .def("__iter__",
              [](gio::vcf_reader& r) -> gio::vcf_reader& { return r; })
         .def("__next__",
