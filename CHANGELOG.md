@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   requires a bgzip-compressed, tabix/CSI-indexed input (or a BCF for
   `VcfReader`). The default empty string streams the whole file as before
   (genogrove [#456](https://github.com/genogrove/genogrove/pull/456),
-  [#458](https://github.com/genogrove/genogrove/pull/458)).
+  [#458](https://github.com/genogrove/genogrove/pull/458);
+  [#55](https://github.com/genogrove/pygenogrove/pull/55)).
 
 ### Changed
 

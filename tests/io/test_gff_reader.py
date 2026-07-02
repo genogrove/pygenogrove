@@ -235,5 +235,21 @@ def test_region_whole_contig(tmp_path):
     assert [e.type for e in entries] == ["gene", "exon"]
 
 
+def test_empty_region_streams_all(tmp_path):
+    """The default empty region streams the whole file (no index needed)."""
+    pg = _pg()
+    gz = _bgzip_tabix(tmp_path, GFF3)
+    assert len(list(pg.GffReader(gz, region=""))) == 4
+
+
+def test_region_on_unindexed_file_raises(tmp_path):
+    """Requesting a region on a plain, non-indexed file raises: genogrove's
+    tabix_reader validates the index at construction and throws."""
+    pg = _pg()
+    path = _write(tmp_path / "plain.gff3", GFF3)   # not bgzipped/indexed
+    with pytest.raises(RuntimeError):
+        pg.GffReader(path, region="chr1")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
