@@ -6,11 +6,27 @@ and per-sample genotype parsing, header metadata, skip_filtered, and the
 grove-loading helpers (to_coordinate / to_dict).
 """
 
+import shutil
+import subprocess
+
 import pytest
 
 
 def _pg():
     return pytest.importorskip("pygenogrove")
+
+
+def _bgzip_tabix_vcf(tmp_path):
+    """bgzip + tabix-index the shared _VCF fixture. Skips if the CLI tools are
+    not on PATH. Returns the .vcf.gz path."""
+    if not (shutil.which("bgzip") and shutil.which("tabix")):
+        pytest.skip("bgzip/tabix not available")
+    vcf = tmp_path / "calls.vcf"
+    vcf.write_text(_VCF)
+    subprocess.run(["bgzip", "-f", str(vcf)], check=True)
+    gz = tmp_path / "calls.vcf.gz"
+    subprocess.run(["tabix", "-p", "vcf", str(gz)], check=True)
+    return str(gz)
 
 
 _VCF = "\n".join([
@@ -154,3 +170,20 @@ def test_missing_file_raises(tmp_path):
     pg = _pg()
     with pytest.raises((RuntimeError, IOError, OSError)):
         pg.VcfReader(str(tmp_path / "nope.vcf"))
+
+
+def test_region_filters_records(tmp_path):
+    """A region string restricts iteration via htslib's tbx index (1-based
+    inclusive). The fixture has variants at POS 100 and 200 on chr1."""
+    pg = _pg()
+    gz = _bgzip_tabix_vcf(tmp_path)
+    records = list(pg.VcfReader(gz, region="chr1:150-250"))
+    # start is the 0-based position; only POS 200 (start 199) overlaps.
+    assert [r.start for r in records] == [199]
+
+
+def test_empty_region_reads_all(tmp_path):
+    """The default empty region reads the whole indexed file."""
+    pg = _pg()
+    gz = _bgzip_tabix_vcf(tmp_path)
+    assert len(list(pg.VcfReader(gz, region=""))) == 2

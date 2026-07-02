@@ -7,6 +7,8 @@ file-not-found, validate_gtf, gzip) to the Python iterator surface.
 """
 
 import gzip
+import shutil
+import subprocess
 
 import pytest
 
@@ -19,6 +21,19 @@ def _write(path, lines):
     """Write GFF lines (each a list of 9 columns) and return the path as str."""
     path.write_text("".join("\t".join(map(str, c)) + "\n" for c in lines))
     return str(path)
+
+
+def _bgzip_tabix(tmp_path, lines):
+    """Write, bgzip, and tabix-index a GFF file. Skips if bgzip/tabix are not
+    on PATH. Returns the .gff3.gz path."""
+    if not (shutil.which("bgzip") and shutil.which("tabix")):
+        pytest.skip("bgzip/tabix not available")
+    gff = tmp_path / "r.gff3"
+    _write(gff, lines)
+    subprocess.run(["bgzip", "-f", str(gff)], check=True)
+    gz = tmp_path / "r.gff3.gz"
+    subprocess.run(["tabix", "-p", "gff", str(gz)], check=True)
+    return str(gz)
 
 
 GFF3 = [
@@ -200,6 +215,40 @@ def test_build_grove_from_reader(tmp_path):
     hits = list(g.intersect(pg.GenomicCoordinate(".", 1200, 1200), "chr1"))   # inside gene + exon
     types = sorted(h.data.type for h in hits)
     assert types == ["exon", "gene"]
+
+
+def test_region_filters_records(tmp_path):
+    """A region string restricts iteration to overlapping records (tabix
+    1-based-inclusive coords, matching GFF's own convention)."""
+    pg = _pg()
+    gz = _bgzip_tabix(tmp_path, GFF3)
+    # gene 1000-2000 overlaps; exon 1000-1500 does not.
+    entries = list(pg.GffReader(gz, region="chr1:1600-1700"))
+    assert [(e.type, e.start, e.end) for e in entries] == [("gene", 1000, 2000)]
+
+
+def test_region_whole_contig(tmp_path):
+    """A bare contig region yields every record on that contig."""
+    pg = _pg()
+    gz = _bgzip_tabix(tmp_path, GFF3)
+    entries = list(pg.GffReader(gz, region="chr1"))
+    assert [e.type for e in entries] == ["gene", "exon"]
+
+
+def test_empty_region_streams_all(tmp_path):
+    """The default empty region streams the whole file (no index needed)."""
+    pg = _pg()
+    gz = _bgzip_tabix(tmp_path, GFF3)
+    assert len(list(pg.GffReader(gz, region=""))) == 4
+
+
+def test_region_on_unindexed_file_raises(tmp_path):
+    """Requesting a region on a plain, non-indexed file raises: genogrove's
+    tabix_reader validates the index at construction and throws."""
+    pg = _pg()
+    path = _write(tmp_path / "plain.gff3", GFF3)   # not bgzipped/indexed
+    with pytest.raises(RuntimeError):
+        pg.GffReader(path, region="chr1")
 
 
 if __name__ == "__main__":

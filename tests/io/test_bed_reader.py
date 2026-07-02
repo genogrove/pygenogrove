@@ -7,12 +7,27 @@ Python iterator surface.
 """
 
 import gzip
+import shutil
+import subprocess
 
 import pytest
 
 
 def _pg():
     return pytest.importorskip("pygenogrove")
+
+
+def _bgzip_tabix(tmp_path, rows):
+    """Write a BED file, bgzip it, and build a tabix index. Skips the test if
+    the bgzip/tabix CLI tools aren't on PATH. Returns the .bed.gz path."""
+    if not (shutil.which("bgzip") and shutil.which("tabix")):
+        pytest.skip("bgzip/tabix not available")
+    bed = tmp_path / "r.bed"
+    _write(bed, rows)
+    subprocess.run(["bgzip", "-f", str(bed)], check=True)
+    gz = tmp_path / "r.bed.gz"
+    subprocess.run(["tabix", "-p", "bed", str(gz)], check=True)
+    return str(gz)
 
 
 def _write(path, rows):
@@ -243,6 +258,39 @@ def test_build_grove_from_reader(tmp_path):
     hits = list(g.intersect(pg.GenomicCoordinate(".", 1500, 1500), "chr1"))
     assert len(hits) == 1
     assert hits[0].data.name == "geneA"
+
+
+def test_region_filters_records(tmp_path):
+    """A region string restricts iteration to overlapping records. Region
+    coordinates are tabix/1-based-inclusive, distinct from BED's 0-based ends.
+    """
+    pg = _pg()
+    gz = _bgzip_tabix(tmp_path, [
+        ("chr1", 100, 200),
+        ("chr1", 1000, 2000),
+        ("chr2", 500, 600),
+    ])
+    entries = list(pg.BedReader(gz, region="chr1:900-2100"))
+    assert [(e.chrom, e.start, e.end) for e in entries] == [("chr1", 1000, 2000)]
+
+
+def test_region_whole_contig(tmp_path):
+    """A bare contig region yields every record on that contig."""
+    pg = _pg()
+    gz = _bgzip_tabix(tmp_path, [
+        ("chr1", 100, 200),
+        ("chr1", 1000, 2000),
+        ("chr2", 500, 600),
+    ])
+    entries = list(pg.BedReader(gz, region="chr1"))
+    assert [e.start for e in entries] == [100, 1000]
+
+
+def test_empty_region_streams_all(tmp_path):
+    """The default empty region streams the whole file (no index needed)."""
+    pg = _pg()
+    gz = _bgzip_tabix(tmp_path, [("chr1", 100, 200), ("chr2", 500, 600)])
+    assert len(list(pg.BedReader(gz, region=""))) == 2
 
 
 if __name__ == "__main__":

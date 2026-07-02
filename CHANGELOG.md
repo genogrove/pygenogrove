@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-06-30
+
+### Added
+
+- **Region-based random access for `BedReader`, `GffReader`, and `VcfReader`.**
+  Each reader constructor now takes an optional `region` string (e.g.
+  `"chr1"`, `"chr1:1000-2000"`) in htslib/tabix query coordinates (1-based,
+  inclusive). When set, only records overlapping the region are yielded; this
+  requires a bgzip-compressed, tabix/CSI-indexed input (or a BCF for
+  `VcfReader`). The default empty string streams the whole file as before
+  (genogrove [#456](https://github.com/genogrove/genogrove/pull/456),
+  [#458](https://github.com/genogrove/genogrove/pull/458);
+  [#55](https://github.com/genogrove/pygenogrove/pull/55)).
+
+### Changed
+
+- Bumped the bundled genogrove to
+  [v0.24.8](https://github.com/genogrove/genogrove/releases/tag/v0.24.8).
+
 ## [0.6.2] - 2026-06-27
 
 ### Fixed

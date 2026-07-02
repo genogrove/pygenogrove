@@ -141,13 +141,22 @@ inline void bind_bed_reader(py::module_& m) {
             is skipped silently. NOTE: the first data record is validated when
             the reader is constructed, so a malformed first record raises
             immediately at construction regardless of this flag.
+        region : str, optional
+            A tabix region string ("chr", "chr:start-end") in tabix query
+            coordinates (1-based, inclusive) — note this differs from BED's own
+            0-based half-open convention. When set, only records overlapping the
+            region are yielded; requires a bgzip-compressed, tabix-indexed file.
+            Empty (default) streams the whole file.
     )pbdoc")
-        .def(py::init([](const std::string& path, bool skip_invalid_lines) {
+        .def(py::init([](const std::string& path, bool skip_invalid_lines,
+                         const std::string& region) {
                  gio::bed_reader_options opts;
                  opts.skip_invalid_lines = skip_invalid_lines;
+                 opts.region = region;
                  return std::make_unique<gio::bed_reader>(path, opts);
              }),
-             py::arg("path"), py::arg("skip_invalid_lines") = false)
+             py::arg("path"), py::arg("skip_invalid_lines") = false,
+             py::arg("region") = "")
         .def("__iter__", [](gio::bed_reader& r) -> gio::bed_reader& { return r; })
         .def("__next__", [](gio::bed_reader& r) {
             gio::bed_entry entry;

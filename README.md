@@ -390,8 +390,8 @@ g2.insert_bulk("chr1", [e for e in pg.BedReader("peaks.bed") if e.chrom == "chr1
 ```
 
 ```python
-BedReader(path: str, skip_invalid_lines: bool = False)
-GffReader(path: str, skip_invalid_lines: bool = False, validate_gtf: bool = False)
+BedReader(path: str, skip_invalid_lines: bool = False, region: str = "")
+GffReader(path: str, skip_invalid_lines: bool = False, validate_gtf: bool = False, region: str = "")
 ```
 
 - A missing/unreadable `path` raises on construction.
@@ -401,6 +401,10 @@ GffReader(path: str, skip_invalid_lines: bool = False, validate_gtf: bool = Fals
   immediately regardless of this flag.
 - `GffReader(..., validate_gtf=True)` enforces the mandatory GTF2 attributes
   (`gene_id`, `transcript_id`).
+- `region` (e.g. `"chr1"`, `"chr1:1000-2000"`) restricts iteration to records
+  overlapping that range, in **tabix/1-based-inclusive** coordinates (distinct
+  from BED's 0-based ends). It requires a bgzip-compressed, tabix-indexed file;
+  the default empty string streams the whole file.
 - Both expose `get_error_message()` and `get_current_line()` for diagnostics.
 - The readers are **single-pass** — they own an htslib file handle and cannot be
   restarted or iterated twice.

@@ -124,16 +124,22 @@ inline void bind_gff_reader(py::module_& m) {
             immediately at construction regardless of this flag.
         validate_gtf : bool, optional
             If True, validate the mandatory GTF2 attributes (gene_id, transcript_id).
+        region : str, optional
+            A tabix region string ("chr", "chr:start-end") in tabix query
+            coordinates (1-based, inclusive). When set, only records overlapping
+            the region are yielded; requires a bgzip-compressed, tabix-indexed
+            file. Empty (default) streams the whole file.
     )pbdoc")
         .def(py::init([](const std::string& path, bool skip_invalid_lines,
-                         bool validate_gtf) {
+                         bool validate_gtf, const std::string& region) {
                  gio::gff_reader_options opts;
                  opts.skip_invalid_lines = skip_invalid_lines;
                  opts.validate_gtf = validate_gtf;
+                 opts.region = region;
                  return std::make_unique<gio::gff_reader>(path, opts);
              }),
              py::arg("path"), py::arg("skip_invalid_lines") = false,
-             py::arg("validate_gtf") = false)
+             py::arg("validate_gtf") = false, py::arg("region") = "")
         .def("__iter__", [](gio::gff_reader& r) -> gio::gff_reader& { return r; })
         .def("__next__", [](gio::gff_reader& r) {
             gio::gff_entry entry;
