@@ -22,6 +22,7 @@
 #include "io/gff_reader.hpp"
 #include "io/vcf_reader.hpp"
 #include "structure/grove.hpp"
+#include "structure/grove_view.hpp"
 
 namespace py = pybind11;
 namespace gio = genogrove::io;
@@ -60,6 +61,10 @@ PYBIND11_MODULE(pygenogrove, m) {
     // (an edgeless .gg is also readable by grove<genomic_coordinate, std::string>).
     bind_grove<gdt::genomic_coordinate, pygg::json_value, pygg::json_value>(
         m, "Grove", "Key", "QueryResult", "FlankingResult");
+    // Partial (random-access) reader over a serialized Grove .gg — query it on
+    // disk without loading it whole. Reuses this Grove's Key / QueryResult.
+    bind_grove_view<gdt::genomic_coordinate, pygg::json_value, pygg::json_value>(
+        m, "GroveView");
 
     // Alternative point key types (overlap = exact equality, no range semantics).
     // Each gets the same universal surface as Grove — optional JSON payload
@@ -70,10 +75,14 @@ PYBIND11_MODULE(pygenogrove, m) {
     bind_grove<gdt::numeric, pygg::json_value, pygg::json_value>(
         m, "NumericGrove", "NumericKey", "NumericQueryResult",
         "NumericFlankingResult");
+    bind_grove_view<gdt::numeric, pygg::json_value, pygg::json_value>(
+        m, "NumericGroveView");
 
     bind_kmer(m);
     bind_grove<gdt::kmer, pygg::json_value, pygg::json_value>(
         m, "KmerGrove", "KmerKey", "KmerQueryResult", "KmerFlankingResult");
+    bind_grove_view<gdt::kmer, pygg::json_value, pygg::json_value>(
+        m, "KmerGroveView");
 
     // Typed data-carrying groves over genomic_coordinate, kept for full C++
     // interop (typed binary .gg) and the BED/GFF helper accessors. BedEntry /
@@ -83,11 +92,13 @@ PYBIND11_MODULE(pygenogrove, m) {
     bind_bed_entry(m);
     bind_grove<gdt::genomic_coordinate, gio::bed_entry>(
         m, "BedGrove", "BedKey", "BedQueryResult", "BedFlankingResult");
+    bind_grove_view<gdt::genomic_coordinate, gio::bed_entry>(m, "BedGroveView");
     bind_bed_reader(m);
 
     bind_gff_entry(m);
     bind_grove<gdt::genomic_coordinate, gio::gff_entry>(
         m, "GffGrove", "GffKey", "GffQueryResult", "GffFlankingResult");
+    bind_grove_view<gdt::genomic_coordinate, gio::gff_entry>(m, "GffGroveView");
     bind_gff_reader(m);
 
     // SAM/BAM alignment reader: SamFlags / AlignmentFlags / SamEntry value types
