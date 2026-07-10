@@ -56,6 +56,17 @@ void bind_grove_view(py::module_& m, const char* view_name) {
         Create one with GroveView.open(path); a file written by Grove.serialize()
         is read directly (data_offset=0).
     )pbdoc")
+        .def("__repr__",
+             [view_name](const view_t& v) {
+                 return std::string(view_name) + "(blocks_loaded=" +
+                        std::to_string(v.blocks_loaded()) + ", block_count=" +
+                        std::to_string(v.block_count()) + ")";
+             })
+        .def("__str__",
+             [view_name](const view_t& v) {
+                 return std::string(view_name) + "(block_count=" +
+                        std::to_string(v.block_count()) + ")";
+             })
         // Non-copyable AND non-movable (owns the file handle + a z_stream), so
         // there is no py::init: open() is the only entry point. The prvalue it
         // returns direct-initializes the heap object via guaranteed copy elision
@@ -118,7 +129,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                 edges, paging in each target's block on demand. `source` must be a
                 Key this GroveView produced (via intersect() or a prior
                 get_neighbors()). The returned Keys are valid only while the view
-                is alive. Raises ValueError if source is None.
+                is alive. Raises TypeError if source is None.
             )pbdoc")
 
         .def("blocks_loaded", &view_t::blocks_loaded,

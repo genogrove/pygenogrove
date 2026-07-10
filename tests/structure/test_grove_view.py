@@ -64,6 +64,11 @@ def test_view_loads_only_part_of_the_file(tmp_path):
     assert len(hits) == 1
     assert 0 < view.blocks_loaded() < view.block_count()
 
+    # repr/str reflect the class name and block counts
+    assert "GroveView" in repr(view)
+    assert str(view.block_count()) in repr(view)
+    assert "GroveView" in str(view)
+
 
 def test_view_traverses_graph_edges(tmp_path):
     pg = _pg()
