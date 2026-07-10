@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`GroveView` — partial (random-access) reader over a serialized `.gg`.** A
+  read-only view that opens a file written by `Grove.serialize()` and pages in
+  only the blocks a query touches, instead of loading the whole grove like
+  `Grove.deserialize()` — query a large on-disk index without materializing it.
+  Exposes `GroveView.open(path, data_offset=0)`, `intersect(query[, index])`,
+  `get_neighbors(key)`, and the `blocks_loaded()` / `block_count()` partial-load
+  counters. Bound for every grove flavour (`GroveView` / `NumericGroveView` /
+  `KmerGroveView` / `BedGroveView` / `GffGroveView`) via one
+  `bind_grove_view<KeyT, DataT, EdgeT>` template mirroring `bind_grove`, reusing
+  each grove's `Key` / `QueryResult`. Queries hold the GIL (the view mutates its
+  block cache and is not thread-safe — use one view per thread)
+  ([#56](https://github.com/genogrove/pygenogrove/issues/56),
+  [#57](https://github.com/genogrove/pygenogrove/pull/57)).
+
+### Changed
+
+- Bumped the bundled genogrove to
+  [v0.25.1](https://github.com/genogrove/genogrove/releases/tag/v0.25.1) (from
+  v0.24.8, skipping v0.25.0): block-structured `.gg` serialization format 0.2
+  (which `GroveView` reads), cross-type BED↔GFF intersect in the CLI, and
+  `gff_reader` now rejecting a GFF `start < 1`
+  ([#57](https://github.com/genogrove/pygenogrove/pull/57)).
+- Switched the deprecated `scikit-build-core` config key
+  `cmake.minimum-version` to `cmake.version = ">=3.15"` and raised the build
+  backend floor to `scikit-build-core>=0.8`; the old key errors on modern
+  scikit-build-core, which would break `pip install` from source and CI wheels
+  ([#57](https://github.com/genogrove/pygenogrove/pull/57)).
+
 ## [0.6.3] - 2026-06-30
 
 ### Added
