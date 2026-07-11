@@ -168,6 +168,31 @@ g.get_neighbors_if(a, lambda m: m["weight"] > 5)  # [b]
 - `serialize(path: str)`: Write the grove (coordinates + payloads + graph overlay) to `path`
 - `deserialize(path: str) -> Grove` *(static)*: Load a grove written by `serialize`
 
+**Partial reading — `GroveView`** (query a `.gg` on disk without loading it whole):
+
+`GroveView` opens a file written by `serialize()` and pages in only the blocks a
+query touches, instead of materializing the whole grove like `deserialize()`.
+Useful for querying a large on-disk index. Read-only.
+
+```python
+view = pg.GroveView.open("out.gg")                    # or open(path, data_offset=…)
+hits = view.intersect(pg.GenomicCoordinate(".", 150, 350), "chr1")
+view.blocks_loaded()                                  # only the blocks the query touched were paged in;
+                                                      # < block_count() once the index spans several blocks
+if hits:
+    view.get_neighbors(list(hits)[0])                 # graph edges, paged in on demand
+```
+
+- `GroveView.open(path: str, data_offset: int = 0) -> GroveView` *(static)*: `data_offset` is for a `.gg` embedded behind a header (files written by `serialize()` use `0`)
+- `intersect(query)` / `intersect(query, index)`: same results as the eager grove
+- `get_neighbors(key) -> list[Key]`: graph-edge targets, loaded on demand
+- `blocks_loaded()` / `block_count()`: partial-load counters
+
+Bound for every flavour (`GroveView` / `NumericGroveView` / `KmerGroveView` /
+`BedGroveView` / `GffGroveView`). **Not thread-safe** — a query mutates the
+view's block cache and holds the GIL, so concurrent threads serialize on view
+I/O; use one view per thread.
+
 **Removal / storage**:
 - `remove_key(index: str, key: Key) -> bool`: Remove a key (and its graph edges); `True` if found. `None`/unknown index → `False`
 - `compact()`: Reclaim dead slots left by `remove_key()`. ⚠️ Invalidates every previously-returned indexed `Key` — re-discover via a fresh query afterward
@@ -544,6 +569,7 @@ Currently exposed features:
 - Graph overlay (directed edges, external keys), including **labelled edges** on the universal `Grove` — `add_edge(s, t, data)` / `get_edges` / `get_edge_list` / `get_neighbors_if` / `link_with` — and edge cleanup / bulk linking on every grove (`remove_edges_from`/`to`, `remove_all_edges`, `remove_edges_if`, `clear_graph`, `graph_empty`, `link_if`)
 - Key removal + storage compaction: `remove_key()`, `compact()`, `vertex_count()` / `external_vertex_count()` / `key_storage_size()`
 - Serialization / deserialization to compressed `.gg` files (an edgeless JSON Grove `.gg` is readable by a C++ `grove<genomic_coordinate, std::string>`; with labelled edges, `grove<genomic_coordinate, std::string, std::string>`)
+- **Partial (random-access) reading** — `GroveView.open(path)` queries a serialized `.gg` on disk, paging in only the blocks a query touches instead of loading the whole grove (`intersect` / `get_neighbors` / `blocks_loaded` / `block_count`); one view per grove flavour
 - SIF export — `to_sif(path)` writes the grove's B+ tree structure and graph-overlay edges as a SIF (Simple Interaction Format) text file for visualization (e.g. Cytoscape)
 - Nearest-neighbour queries: `flanking()` (predecessor / successor), incl. a predicate-filtered overload (e.g. same-strand neighbours)
 - **Point key types** — `Numeric` (integer keys: ids / timestamps) and `Kmer` (2-bit-encoded DNA k-mers, k ≤ 32, a membership dictionary), each with its own `NumericGrove` / `KmerGrove` carrying the same universal surface (optional JSON payload, labelled edges, serialization). Overlap is exact equality

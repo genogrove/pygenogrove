@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-10
+
+> **⚠️ BREAKING** — the `.gg` serialization format changed to block-structured
+> **format 0.2**. Files written by pygenogrove ≤ 0.6.x cannot be read by 0.7.0,
+> and 0.7.0 files cannot be read by older versions. Re-serialize existing indexes
+> (load with a 0.6.x install, `serialize()` again under 0.7.0). The new format is
+> what makes `GroveView`'s partial reads possible.
+
 ### Added
 
 - **`GroveView` — partial (random-access) reader over a serialized `.gg`.** A
