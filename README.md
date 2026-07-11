@@ -177,8 +177,10 @@ Useful for querying a large on-disk index. Read-only.
 ```python
 view = pg.GroveView.open("out.gg")                    # or open(path, data_offset=…)
 hits = view.intersect(pg.GenomicCoordinate(".", 150, 350), "chr1")
-view.blocks_loaded() < view.block_count()             # True — only part was read
-view.get_neighbors(list(hits)[0])                     # graph edges, paged in on demand
+view.blocks_loaded()                                  # only the blocks the query touched were paged in;
+                                                      # < block_count() once the index spans several blocks
+if hits:
+    view.get_neighbors(list(hits)[0])                 # graph edges, paged in on demand
 ```
 
 - `GroveView.open(path: str, data_offset: int = 0) -> GroveView` *(static)*: `data_offset` is for a `.gg` embedded behind a header (files written by `serialize()` use `0`)
