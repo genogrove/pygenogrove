@@ -11,15 +11,17 @@
  * bed_entry>, …). It reuses the Key / QueryResult classes already registered by
  * the matching bind_grove<KeyT, DataT, EdgeT>, so it registers nothing new.
  *
- * The surface is query-only: open / intersect / get_neighbors plus the
- * blocks_loaded / block_count partial-load counters. There is no insert or
- * serialize — a view never mutates the grove.
+ * The surface is query-only: open / intersect / get_neighbors (plus, when the
+ * edge type is non-void, get_edges / get_neighbors_if to read edge payloads)
+ * and the blocks_loaded / block_count partial-load counters. There is no insert
+ * or serialize — a view never mutates the grove.
  */
 #pragma once
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -40,7 +42,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
     using view_t = ggs::grove_view<KeyT, DataT, EdgeT>;
     using key_t = gdt::key<KeyT, DataT>;
 
-    py::class_<view_t>(m, view_name, R"pbdoc(
+    auto cls = py::class_<view_t>(m, view_name, R"pbdoc(
         A read-only, partial reader over a serialized (format 0.2) .gg grove.
 
         Unlike Grove.deserialize(), which loads the whole grove into memory, a
@@ -138,4 +140,49 @@ void bind_grove_view(py::module_& m, const char* view_name) {
         .def("block_count", &view_t::block_count,
              "Total number of blocks in the serialized grove (0 for an empty "
              "grove).");
+
+    // ---- Labelled-edge reads (only when the edge type is non-void; on the
+    //      universal GroveView the metadata is any JSON-serializable value).
+    //      Mirrors the same methods on the mutable Grove, but query-only: a view
+    //      surfaces edge payloads paged in with each source's block, without a
+    //      full deserialize (genogrove #480). ----
+    if constexpr (!std::is_void_v<EdgeT>) {
+        cls.def(
+            "get_edges",
+            [](const view_t& v, const key_t* source) {
+                return v.get_edges(source);
+            },
+            py::arg("source").none(false),
+            R"pbdoc(
+                get_edges(source) -> list
+
+                The metadata payloads of all outgoing edges from source, in edge
+                order (parallel to get_neighbors(source)), read from the block
+                already paged in for source. Edges added without a payload yield
+                None. Returns an empty list if source has no recorded edges.
+            )pbdoc");
+        cls.def(
+            "get_neighbors_if",
+            [](py::object self, key_t* source,
+               std::function<bool(const EdgeT&)> predicate) {
+                // The predicate calls back into Python — keep the GIL held. Pin
+                // each Key to the view so an extracted neighbor can't dangle
+                // after the list is dropped — issue #37. Resolves each surviving
+                // target's block on demand, like get_neighbors.
+                return pinned_key_list(
+                    self.cast<view_t&>().get_neighbors_if(source,
+                                                          std::move(predicate)),
+                    self);
+            },
+            py::arg("source").none(false), py::arg("predicate"),
+            R"pbdoc(
+                get_neighbors_if(source, predicate) -> list[Key]
+
+                Target Keys of the outgoing edges from source whose edge metadata
+                satisfies predicate(metadata), paging in each surviving target's
+                block on demand. The predicate receives the decoded payload. The
+                returned Keys are valid only while the GroveView is alive. Raises
+                TypeError if source is None.
+            )pbdoc");
+    }
 }
