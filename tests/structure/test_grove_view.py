@@ -123,6 +123,8 @@ def test_view_reads_edge_metadata(tmp_path):
     assert view.get_edges(leaf) == []
     with pytest.raises((TypeError, ValueError)):
         view.get_neighbors_if(None, lambda m: True)
+    with pytest.raises((TypeError, ValueError)):
+        view.get_edges(None)
 
 
 def test_view_unknown_index_and_empty_grove(tmp_path):
