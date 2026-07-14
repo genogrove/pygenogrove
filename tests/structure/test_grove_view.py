@@ -93,6 +93,47 @@ def test_view_traverses_graph_edges(tmp_path):
     assert [k.value.start for k in n2] == [5000]
 
 
+def test_view_reads_edge_metadata(tmp_path):
+    """get_edges / get_neighbors_if surface edge payloads through a view
+    without a full deserialize (genogrove #480)."""
+    pg = _pg()
+
+    g = pg.Grove(3)
+    a = g.insert("chr1", _coord(pg, 100, 200))
+    b = g.insert("chr1", _coord(pg, 300, 400))
+    c = g.insert("chr1", _coord(pg, 500, 600))
+    d = g.insert("chr1", _coord(pg, 700, 800))
+    g.add_edge(a, b, {"w": 1})
+    g.add_edge(a, c, {"w": 10})
+    g.add_edge(d, a)  # payload-less edge
+
+    path = str(tmp_path / "meta.gg")
+    g.serialize(path)
+
+    view = pg.GroveView.open(path)
+    src = list(view.intersect(_coord(pg, 100, 200), "chr1"))[0]
+
+    # payloads parallel to get_neighbors, same as the mutable Grove
+    paired = {n.value.start: e for n, e in zip(view.get_neighbors(src), view.get_edges(src))}
+    assert paired == {300: {"w": 1}, 500: {"w": 10}}
+
+    strong = view.get_neighbors_if(src, lambda meta: meta["w"] >= 10)
+    assert [k.value.start for k in strong] == [500]
+
+    # a payload-less edge reads back as None through the view (parity with the
+    # mutable Grove, and a distinct JSON-null serialization path)
+    dv = list(view.intersect(_coord(pg, 700, 800), "chr1"))[0]
+    assert view.get_edges(dv) == [None]
+
+    # empty for a source with no edges; None for None source
+    leaf = list(view.intersect(_coord(pg, 500, 600), "chr1"))[0]
+    assert view.get_edges(leaf) == []
+    with pytest.raises((TypeError, ValueError)):
+        view.get_neighbors_if(None, lambda m: True)
+    with pytest.raises((TypeError, ValueError)):
+        view.get_edges(None)
+
+
 def test_view_unknown_index_and_empty_grove(tmp_path):
     pg = _pg()
 
