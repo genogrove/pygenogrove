@@ -102,8 +102,10 @@ def test_view_reads_edge_metadata(tmp_path):
     a = g.insert("chr1", _coord(pg, 100, 200))
     b = g.insert("chr1", _coord(pg, 300, 400))
     c = g.insert("chr1", _coord(pg, 500, 600))
+    d = g.insert("chr1", _coord(pg, 700, 800))
     g.add_edge(a, b, {"w": 1})
     g.add_edge(a, c, {"w": 10})
+    g.add_edge(d, a)  # payload-less edge
 
     path = str(tmp_path / "meta.gg")
     g.serialize(path)
@@ -117,6 +119,11 @@ def test_view_reads_edge_metadata(tmp_path):
 
     strong = view.get_neighbors_if(src, lambda meta: meta["w"] >= 10)
     assert [k.value.start for k in strong] == [500]
+
+    # a payload-less edge reads back as None through the view (parity with the
+    # mutable Grove, and a distinct JSON-null serialization path)
+    dv = list(view.intersect(_coord(pg, 700, 800), "chr1"))[0]
+    assert view.get_edges(dv) == [None]
 
     # empty for a source with no edges; None for None source
     leaf = list(view.intersect(_coord(pg, 500, 600), "chr1"))[0]
