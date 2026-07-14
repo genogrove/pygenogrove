@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`GroveView.get_edges(source)` and `get_neighbors_if(source, predicate)`.**
+  Read edge metadata payloads through a partial (random-access) view without a
+  full `deserialize()`, mirroring the same methods on the mutable `Grove`:
+  `get_edges` returns the outgoing edges' payloads in `get_neighbors` order, and
+  `get_neighbors_if` returns the target Keys whose decoded payload satisfies a
+  Python predicate (paging in each surviving target's block on demand). Both are
+  gated out on the void-edge `BedGroveView` / `GffGroveView`
+  ([#1](https://github.com/genogrove/pygenogrove/issues/1),
+  [#59](https://github.com/genogrove/pygenogrove/pull/59)).
+
+### Changed
+
+- Bumped the bundled genogrove to
+  [v0.25.2](https://github.com/genogrove/genogrove/releases/tag/v0.25.2) (from
+  v0.25.1): exposes edge-payload reads (`get_edges` / `get_neighbors_if`) on
+  `grove_view` (genogrove [#480](https://github.com/genogrove/genogrove/pull/480))
+  ([#59](https://github.com/genogrove/pygenogrove/pull/59)).
+
 ## [0.7.0] - 2026-07-10
 
 > **⚠️ BREAKING** — the `.gg` serialization format changed to block-structured
