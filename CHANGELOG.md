@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`GroveView.flanking(query, index[, is_compatible])`.** Nearest
+  non-overlapping predecessor/successor queries through a partial (random-access)
+  view, paging in only the descent-path blocks — the same `FlankingResult` the
+  eager `Grove.flanking()` returns, including the predicate-filtered overload for
+  same-strand neighbours. This completes the view's read surface (it now mirrors
+  every `Grove` query method) ([#61](https://github.com/genogrove/pygenogrove/issues/61)).
+
+### Changed
+
+- Bumped the bundled genogrove to
+  [v0.25.3](https://github.com/genogrove/genogrove/releases/tag/v0.25.3) (from
+  v0.25.2): adds `grove_view::flanking` (genogrove
+  [#483](https://github.com/genogrove/genogrove/pull/483)) and makes the BED/GFF
+  readers honor `skip_invalid_lines` for the first record (genogrove
+  [#497](https://github.com/genogrove/genogrove/pull/497)) — a malformed leading
+  line is now skipped during iteration instead of throwing at construction when
+  the option is set ([#62](https://github.com/genogrove/pygenogrove/pull/62)).
+
 ## [0.7.1] - 2026-07-13
 
 ### Added

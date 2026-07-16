@@ -11,10 +11,10 @@
  * bed_entry>, …). It reuses the Key / QueryResult classes already registered by
  * the matching bind_grove<KeyT, DataT, EdgeT>, so it registers nothing new.
  *
- * The surface is query-only: open / intersect / get_neighbors (plus, when the
- * edge type is non-void, get_edges / get_neighbors_if to read edge payloads)
- * and the blocks_loaded / block_count partial-load counters. There is no insert
- * or serialize — a view never mutates the grove.
+ * The surface is query-only: open / intersect / flanking / get_neighbors (plus,
+ * when the edge type is non-void, get_edges / get_neighbors_if to read edge
+ * payloads) and the blocks_loaded / block_count partial-load counters. There is
+ * no insert or serialize — a view never mutates the grove.
  */
 #pragma once
 
@@ -132,6 +132,56 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                 Key this GroveView produced (via intersect() or a prior
                 get_neighbors()). The returned Keys are valid only while the view
                 is alive. Raises TypeError if source is None.
+            )pbdoc")
+
+        // ---- Flanking (nearest non-overlapping neighbours) ----
+        // Same result as the eager Grove.flanking(), but pages in only the
+        // blocks on the descent path (genogrove #483). keep_alive<0, 1>: the
+        // returned FlankingResult (and its Keys) point into the view's block
+        // cache, so the view must outlive it. No call_guard — paging mutates the
+        // cache and the view is not thread-safe, so the GIL stays held.
+        .def(
+            "flanking",
+            [](view_t& v, const KeyT& query, std::string_view index) {
+                return v.flanking(query, index);
+            },
+            py::arg("query"), py::arg("index"), py::keep_alive<0, 1>(),
+            R"pbdoc(
+                Find the nearest non-overlapping keys on either side of the query
+                within an index (the predecessor and successor), loading only the
+                blocks on the descent path.
+
+                Returns a FlankingResult with `.predecessor` / `.successor`, each
+                a Key or None — identical to what the eager Grove.flanking() would
+                return. Keys that overlap the query are excluded; for nested
+                intervals the predecessor is the one with the largest end
+                (smallest gap), not the sort-order maximum.
+            )pbdoc")
+        .def(
+            "flanking",
+            [](view_t& v, const KeyT& query, std::string_view index,
+               std::function<bool(const KeyT&, const KeyT&)> is_compatible) {
+                // The predicate calls back into Python, so the GIL must be held
+                // for the whole query — do NOT release it here.
+                return v.flanking(query, index, std::move(is_compatible));
+            },
+            py::arg("query"), py::arg("index"), py::arg("is_compatible"),
+            py::keep_alive<0, 1>(),
+            R"pbdoc(
+                flanking(query, index, is_compatible) -> FlankingResult
+
+                Predicate-filtered flanking: like flanking(query, index), but only
+                candidate keys for which `is_compatible(candidate, query)` returns
+                True are considered as neighbours. `candidate` and `query` are key
+                values (e.g. GenomicCoordinate), not Keys. Mirrors Grove.flanking's
+                predicate overload — the canonical use is same-strand neighbours:
+
+                    view.flanking(q, "chr1",
+                                  lambda cand, q: cand.strand == q.strand)
+
+                Internal-node pruning ignores the predicate (subtrees are still
+                paged in and filtered at the leaves). Exceptions raised by the
+                predicate propagate out.
             )pbdoc")
 
         .def("blocks_loaded", &view_t::blocks_loaded,
