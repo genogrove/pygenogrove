@@ -142,7 +142,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
         // cache and the view is not thread-safe, so the GIL stays held.
         .def(
             "flanking",
-            [](view_t& v, const KeyT& query, const std::string& index) {
+            [](view_t& v, const KeyT& query, std::string_view index) {
                 return v.flanking(query, index);
             },
             py::arg("query"), py::arg("index"), py::keep_alive<0, 1>(),
@@ -159,7 +159,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
             )pbdoc")
         .def(
             "flanking",
-            [](view_t& v, const KeyT& query, const std::string& index,
+            [](view_t& v, const KeyT& query, std::string_view index,
                std::function<bool(const KeyT&, const KeyT&)> is_compatible) {
                 // The predicate calls back into Python, so the GIL must be held
                 // for the whole query — do NOT release it here.
@@ -172,7 +172,8 @@ void bind_grove_view(py::module_& m, const char* view_name) {
 
                 Predicate-filtered flanking: like flanking(query, index), but only
                 candidate keys for which `is_compatible(candidate, query)` returns
-                True are considered as neighbours. Mirrors Grove.flanking's
+                True are considered as neighbours. `candidate` and `query` are key
+                values (e.g. GenomicCoordinate), not Keys. Mirrors Grove.flanking's
                 predicate overload — the canonical use is same-strand neighbours:
 
                     view.flanking(q, "chr1",

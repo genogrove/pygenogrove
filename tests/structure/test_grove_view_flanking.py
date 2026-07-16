@@ -118,5 +118,24 @@ def test_view_flanking_loads_only_part_of_the_file(tmp_path):
     assert 0 < view.blocks_loaded() < view.block_count()
 
 
+def test_bed_grove_view_flanking_smoke(tmp_path):
+    """The typed instantiation binds and the returned keys expose .data."""
+    pg = _pg()
+    g = pg.BedGrove(4)
+    up = pg.BedEntry("chr1", 50, 60)
+    up.name = "upstream"
+    down = pg.BedEntry("chr1", 500, 600)
+    down.name = "downstream"
+    g.insert("chr1", up)        # entry-deriving insert
+    g.insert("chr1", down)
+    path = str(tmp_path / "bed.gg")
+    g.serialize(path)
+
+    view = pg.BedGroveView.open(path)
+    r = view.flanking(_coord(pg, 300, 400), "chr1")
+    assert r.predecessor.data.name == "upstream"
+    assert r.successor.data.name == "downstream"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
