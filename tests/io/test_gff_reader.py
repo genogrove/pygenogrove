@@ -148,16 +148,20 @@ def test_skip_invalid_lines(tmp_path):
     assert [e.seqid for e in entries] == ["chr1", "chr3"]
 
 
-def test_invalid_first_line_raises_even_when_skipping(tmp_path):
-    """The first data record is validated at construction, so a malformed FIRST
-    line raises immediately — even with skip_invalid_lines=True."""
+def test_invalid_first_line_honors_skip(tmp_path):
+    """skip_invalid_lines governs the FIRST record too: with it off, a malformed
+    leading line raises at construction; with it on, the line is skipped during
+    iteration rather than throwing. Mirrors genogrove #492/#497."""
     pg = _pg()
-    bad = [["chr1", "src", "gene", "NOTANUMBER", 2000, ".", "+", ".", "ID=g1"]]
+    bad = [
+        ["chr1", "src", "gene", "NOTANUMBER", 2000, ".", "+", ".", "ID=g1"],
+        ["chr2", "src", "gene", 100, 200, ".", "-", ".", "ID=g2"],
+    ]
     path = _write(tmp_path / "badfirst.gff3", bad)
     with pytest.raises(RuntimeError):
         pg.GffReader(path)
-    with pytest.raises(RuntimeError):
-        pg.GffReader(path, skip_invalid_lines=True)
+    entries = list(pg.GffReader(path, skip_invalid_lines=True))
+    assert [e.seqid for e in entries] == ["chr2"]
 
 
 def test_file_not_found(tmp_path):
