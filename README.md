@@ -185,6 +185,7 @@ if hits:
 
 - `GroveView.open(path: str, data_offset: int = 0) -> GroveView` *(static)*: `data_offset` is for a `.gg` embedded behind a header (files written by `serialize()` use `0`)
 - `intersect(query)` / `intersect(query, index)`: same results as the eager grove
+- `flanking(query, index)` / `flanking(query, index, is_compatible)` `-> FlankingResult`: nearest non-overlapping predecessor/successor, paged in on demand — same result as the eager `Grove.flanking`
 - `get_neighbors(key) -> list[Key]`: graph-edge targets, loaded on demand
 - `get_edges(key) -> list`: edge payloads of `key`'s outgoing edges, parallel to `get_neighbors(key)` (payload-less edges yield `None`) — edge-carrying views only
 - `get_neighbors_if(key, predicate) -> list[Key]`: targets whose decoded edge metadata satisfies `predicate(metadata)`, paged in on demand — edge-carrying views only
