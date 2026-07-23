@@ -176,8 +176,11 @@ def test_view_order_and_index_names(tmp_path):
     g.serialize(path)
 
     view = pg.GroveView.open(path)
+    # both read the directory loaded by open() — they page in no extra blocks
+    blocks_before = view.blocks_loaded()
     assert view.get_order() == 5
     assert sorted(view.get_index_names()) == ["chr1", "chr2", "chrX"]
+    assert view.blocks_loaded() == blocks_before
 
     # an empty grove has no indices
     empty = str(tmp_path / "empty.gg")

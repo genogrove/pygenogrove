@@ -17,12 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   each target's block on demand. Mirrors the mutable `Grove.get_edge_list`;
   edges added without a payload yield `None` metadata, and a `None` source raises.
   Gated out on the void-edge `BedGroveView` / `GffGroveView`
-  ([#1](https://github.com/genogrove/pygenogrove/issues/1)).
+  ([#1](https://github.com/genogrove/pygenogrove/issues/1),
+  [#67](https://github.com/genogrove/pygenogrove/pull/67)).
 - **`GroveView.get_order()` and `GroveView.get_index_names()`.** Read the B+ tree
   order and the list of index (chromosome) names straight from the directory
   loaded by `open()`, without paging in any extra blocks — `get_order` mirrors
   `Grove.get_order()`, and `get_index_names` lets a caller discover what
-  `intersect` / `flanking` can run against.
+  `intersect` / `flanking` can run against
+  ([#1](https://github.com/genogrove/pygenogrove/issues/1),
+  [#67](https://github.com/genogrove/pygenogrove/pull/67)).
 
 ### Changed
 
