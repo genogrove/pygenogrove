@@ -1,5 +1,5 @@
 [submodule "external/genogrove"]
 	path = external/genogrove
 	url = https://github.com/genogrove/genogrove.git
-	# Pinned at genogrove v0.25.3 (the checked-out gitlink commit is the source
+	# Pinned at genogrove v0.25.5 (the checked-out gitlink commit is the source
 	# of truth; update this hint when bumping the submodule).

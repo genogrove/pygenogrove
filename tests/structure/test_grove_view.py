@@ -134,6 +134,58 @@ def test_view_reads_edge_metadata(tmp_path):
         view.get_edges(None)
 
 
+def test_view_get_edge_list(tmp_path):
+    """get_edge_list zips get_neighbors with get_edges through a view
+    (genogrove #505), paging targets in on demand and pinning them alive."""
+    pg = _pg()
+
+    g = pg.Grove(3)
+    a = g.insert("chr1", _coord(pg, 100, 200))
+    b = g.insert("chr1", _coord(pg, 300, 400))
+    c = g.insert("chr1", _coord(pg, 500, 600))
+    g.add_edge(a, b, {"w": 1})
+    g.add_edge(a, c)  # payload-less edge -> None metadata
+
+    path = str(tmp_path / "el.gg")
+    g.serialize(path)
+
+    view = pg.GroveView.open(path)
+    src = list(view.intersect(_coord(pg, 100, 200), "chr1"))[0]
+
+    paired = {k.value.start: meta for k, meta in view.get_edge_list(src)}
+    assert paired == {300: {"w": 1}, 500: None}
+
+    # empty for a source with no edges; TypeError/ValueError for None
+    leaf = list(view.intersect(_coord(pg, 300, 400), "chr1"))[0]
+    assert view.get_edge_list(leaf) == []
+    with pytest.raises((TypeError, ValueError)):
+        view.get_edge_list(None)
+
+
+def test_view_order_and_index_names(tmp_path):
+    """get_order / get_index_names expose the directory without extra reads
+    (genogrove #510)."""
+    pg = _pg()
+
+    g = pg.Grove(5)
+    g.insert("chr1", _coord(pg, 10, 20))
+    g.insert("chr2", _coord(pg, 30, 40))
+    g.insert("chrX", _coord(pg, 50, 60))
+
+    path = str(tmp_path / "dir.gg")
+    g.serialize(path)
+
+    view = pg.GroveView.open(path)
+    assert view.get_order() == 5
+    assert sorted(view.get_index_names()) == ["chr1", "chr2", "chrX"]
+
+    # an empty grove has no indices
+    empty = str(tmp_path / "empty.gg")
+    pg.Grove(3).serialize(empty)
+    ev = pg.GroveView.open(empty)
+    assert ev.get_index_names() == []
+
+
 def test_view_unknown_index_and_empty_grove(tmp_path):
     pg = _pg()
 

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-07-23
+
+### Added
+
+- **`GroveView.get_edge_list(source)`.** The outgoing edges from `source` as
+  `(target Key, metadata)` pairs — the zip of `get_neighbors(source)` and
+  `get_edges(source)` — read through a partial (random-access) view, paging in
+  each target's block on demand. Mirrors the mutable `Grove.get_edge_list`;
+  edges added without a payload yield `None` metadata, and a `None` source raises.
+  Gated out on the void-edge `BedGroveView` / `GffGroveView`
+  ([#1](https://github.com/genogrove/pygenogrove/issues/1)).
+- **`GroveView.get_order()` and `GroveView.get_index_names()`.** Read the B+ tree
+  order and the list of index (chromosome) names straight from the directory
+  loaded by `open()`, without paging in any extra blocks — `get_order` mirrors
+  `Grove.get_order()`, and `get_index_names` lets a caller discover what
+  `intersect` / `flanking` can run against.
+
+### Changed
+
+- Bumped the bundled genogrove to
+  [v0.25.5](https://github.com/genogrove/genogrove/releases/tag/v0.25.5) (from
+  v0.25.3): adds `grove_view::get_edge_list` (parity with `graph_overlay`,
+  genogrove [#505](https://github.com/genogrove/genogrove/pull/505)) and
+  `grove_view::get_order` / `get_index_names` (genogrove
+  [#510](https://github.com/genogrove/genogrove/pull/510)), plus hardening of the
+  serialized-`.gg` reader against file-controlled allocation counts and bulk
+  builds over `INT_MAX` keys (genogrove
+  [#511](https://github.com/genogrove/genogrove/pull/511),
+  [#512](https://github.com/genogrove/genogrove/pull/512)).
+
 ## [0.7.2] - 2026-07-16
 
 ### Added

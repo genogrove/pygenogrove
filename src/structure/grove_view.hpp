@@ -12,9 +12,10 @@
  * the matching bind_grove<KeyT, DataT, EdgeT>, so it registers nothing new.
  *
  * The surface is query-only: open / intersect / flanking / get_neighbors (plus,
- * when the edge type is non-void, get_edges / get_neighbors_if to read edge
- * payloads) and the blocks_loaded / block_count partial-load counters. There is
- * no insert or serialize — a view never mutates the grove.
+ * when the edge type is non-void, get_edges / get_edge_list / get_neighbors_if to
+ * read edge payloads), the get_order / get_index_names directory accessors, and
+ * the blocks_loaded / block_count partial-load counters. There is no insert or
+ * serialize — a view never mutates the grove.
  */
 #pragma once
 
@@ -189,7 +190,18 @@ void bind_grove_view(py::module_& m, const char* view_name) {
              "of the file (compare with block_count()).")
         .def("block_count", &view_t::block_count,
              "Total number of blocks in the serialized grove (0 for an empty "
-             "grove).");
+             "grove).")
+        .def("get_order", &view_t::get_order,
+             "The B+ tree order the .gg was built with (mirrors "
+             "Grove.get_order()). Read from the directory already in memory.")
+        .def("get_index_names", &view_t::get_index_names,
+             R"pbdoc(
+                get_index_names() -> list[str]
+
+                Names of every index (e.g. chromosome) in the .gg, in unspecified
+                order — what intersect(query) / flanking can run against. Reads
+                nothing extra (the directory is already loaded by open()).
+            )pbdoc");
 
     // ---- Labelled-edge reads (only when the edge type is non-void; on the
     //      universal GroveView the metadata is any JSON-serializable value).
@@ -210,6 +222,34 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                 order (parallel to get_neighbors(source)), read from the block
                 already paged in for source. Edges added without a payload yield
                 None. Returns an empty list if source has no recorded edges.
+            )pbdoc");
+        cls.def(
+            "get_edge_list",
+            [](py::object self, key_t* source) {
+                // Mirrors Grove.get_edge_list, but the view returns (target,
+                // metadata) pairs (.first/.second) and resolves each target's
+                // block on demand — so a null source throws (like get_neighbors),
+                // unlike the metadata-only get_edges. Pin each target Key to the
+                // view so it can't dangle after the list is dropped — issue #37.
+                py::list out;
+                for (auto& e : self.cast<view_t&>().get_edge_list(source)) {
+                    out.append(py::make_tuple(
+                        py::cast(e.first,
+                                 py::return_value_policy::reference_internal,
+                                 self),
+                        py::cast(e.second)));
+                }
+                return out;
+            },
+            py::arg("source").none(false),
+            R"pbdoc(
+                get_edge_list(source) -> list[tuple[Key, object]]
+
+                The outgoing edges from source as (target Key, metadata) pairs —
+                the zip of get_neighbors(source) and get_edges(source) — paging in
+                each target's block on demand. Edges added without a payload yield
+                None metadata. Each returned Key keeps this GroveView alive. Raises
+                TypeError if source is None.
             )pbdoc");
         cls.def(
             "get_neighbors_if",
