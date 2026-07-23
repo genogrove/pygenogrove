@@ -188,7 +188,10 @@ if hits:
 - `flanking(query, index)` / `flanking(query, index, is_compatible)` `-> FlankingResult`: nearest non-overlapping predecessor/successor, paged in on demand — same result as the eager `Grove.flanking`
 - `get_neighbors(key) -> list[Key]`: graph-edge targets, loaded on demand
 - `get_edges(key) -> list`: edge payloads of `key`'s outgoing edges, parallel to `get_neighbors(key)` (payload-less edges yield `None`) — edge-carrying views only
+- `get_edge_list(key) -> list[tuple[Key, object]]`: the outgoing edges as `(target, metadata)` pairs — the zip of `get_neighbors(key)` and `get_edges(key)`, targets paged in on demand (payload-less edges yield `None`) — edge-carrying views only
 - `get_neighbors_if(key, predicate) -> list[Key]`: targets whose decoded edge metadata satisfies `predicate(metadata)`, paged in on demand — edge-carrying views only
+- `get_order() -> int`: the B+ tree order the `.gg` was built with (mirrors `Grove.get_order()`)
+- `get_index_names() -> list[str]`: names of every index (e.g. chromosome) in the `.gg` — what `intersect` / `flanking` can run against
 - `blocks_loaded()` / `block_count()`: partial-load counters
 
 Bound for every flavour (`GroveView` / `NumericGroveView` / `KmerGroveView` /
