@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Out-of-order `insert()` no longer strands keys.** Bumped the bundled genogrove to
+  [v0.25.6](https://github.com/genogrove/genogrove/releases/tag/v0.25.6) (from
+  v0.25.5), which routes an unsorted insert on the subtree maximum instead of the
+  node's bounding box (genogrove
+  [#518](https://github.com/genogrove/genogrove/pull/518), plus
+  [#522](https://github.com/genogrove/genogrove/pull/522) keeping the routing cache
+  off the node's size budget). Before the bump, inserting a key that did not sort
+  last into a non-trivial grove — the "deserialize, then add more keys" workflow,
+  among others — placed it in a leaf too far right: `size()` and the graph overlay
+  saw it, but `intersect()` never returned it. Any out-of-order `insert()` was
+  affected, at any order
+  ([#68](https://github.com/genogrove/pygenogrove/issues/68),
+  [#69](https://github.com/genogrove/pygenogrove/pull/69)).
+
 ## [0.7.3] - 2026-07-23
 
 ### Added
