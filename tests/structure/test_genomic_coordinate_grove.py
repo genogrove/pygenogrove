@@ -168,3 +168,21 @@ def test_keys_keep_grove_alive():
     del g, results
     gc.collect()
     assert keys[0].value == _gc(pg, "+", 100, 200)
+
+def test_unsorted_insert_stays_queryable():
+    """Regression for genogrove #517 / pygenogrove #68.
+
+    Out-of-order ``insert()`` into a non-trivial tree used to route on the
+    node's bounding box instead of the subtree maximum, stranding the key in
+    a leaf too far right: ``size()`` counted it but ``intersect()`` missed it.
+    """
+    pg = _pg()
+    g = pg.Grove(3)
+    # deterministic shuffle: strided order guarantees plenty of misroutes
+    coords = [(i * 100, i * 100 + 50) for i in range(500)]
+    for start, end in coords[::7] + coords:
+        g.insert("chr1", _gc(pg, ".", start, end))
+
+    for start, end in coords:
+        hits = g.intersect(_gc(pg, ".", start, end), "chr1")
+        assert any(k.value.start == start for k in hits), f"lost key at {start}"
