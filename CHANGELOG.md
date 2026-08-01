@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.4] - 2026-07-31
 
+> **⚠️ The fix below is not retroactive — rebuild affected indexes.** 0.7.4 prevents
+> new corruption; it does not repair a `.gg` that already has it. A file written by
+> 0.7.3 or earlier after out-of-order `insert()` calls still has those keys in the
+> wrong leaves, and 0.7.4 reads it exactly as 0.7.3 did: the query path is identical
+> between the two engine versions, and deserialization only rebuilds the routing
+> maxima (derived state) — it does not move keys or relink the leaf chain that
+> `intersect()` walks. Measured on engine 0.25.5 with 500 out-of-order inserts at
+> `order=3`: 415 of 500 keys unfindable by their own exact query, unchanged by a
+> `serialize()` → `deserialize()` round trip. Rebuild such indexes from the source
+> data under 0.7.4. Indexes built with sorted or bulk insertion were never affected.
+
 ### Fixed
 
 - **Out-of-order `insert()` no longer strands keys.** Bumped the bundled genogrove to
