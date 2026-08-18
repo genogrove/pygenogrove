@@ -12,7 +12,8 @@
  * None for the JSON payload (grove_data_optional); the entry-deriving
  * insert(index, entry) overloads exist only for the genomic_coordinate key with
  * a derivable entry type; and the labelled-edge methods (add_edge with a payload,
- * get_edges, get_neighbors_if, link_with) exist only when EdgeT is non-void.
+ * get_edges, get_edge_list, get_neighbors_if, get_in_edges, get_in_edge_list,
+ * get_in_neighbors_if, link_with) exist only when EdgeT is non-void.
  */
 #pragma once
 
@@ -366,12 +367,33 @@ void bind_grove(py::module_& m, const char* grove_name,
                  The returned Keys point into this Grove's storage and remain valid
                  only while the Grove is alive.
              )pbdoc")
+        .def("get_in_neighbors",
+             [](py::object self, key_t* target) {
+                 // Pin each Key to the Grove so an extracted neighbor can't
+                 // dangle after the list is dropped — issue #37.
+                 return pinned_key_list(
+                     self.cast<grove_t&>().get_in_neighbors(target), self);
+             },
+             py::arg("target").none(false),
+             R"pbdoc(
+                 Return the list of source Keys with an edge pointing at target
+                 (the reverse of get_neighbors).
+
+                 The returned Keys point into this Grove's storage and remain valid
+                 only while the Grove is alive.
+             )pbdoc")
         .def("out_degree",
              [](const grove_t& g, const key_t* source) {
                  return g.out_degree(source);
              },
              py::arg("source").none(false),
              "Number of outgoing edges from source.")
+        .def("in_degree",
+             [](const grove_t& g, const key_t* target) {
+                 return g.in_degree(target);
+             },
+             py::arg("target").none(false),
+             "Number of incoming edges to target.")
         .def("edge_count", &grove_t::edge_count,
              "Total number of directed edges in the graph overlay.")
         .def("vertex_count_with_edges", &grove_t::vertex_count_with_edges,
@@ -389,8 +411,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                  return g.remove_edges_to(target);
              },
              py::arg("target").none(false),
-             "Remove all incoming edges to target (O(E) scan over the graph). "
-             "Returns the number removed.")
+             "Remove all incoming edges to target — O(in-degree + out-degree) for "
+             "target, not a graph-wide scan. Returns the number removed.")
         .def("remove_all_edges",
              [](grove_t& g, key_t* key) { return g.remove_all_edges(key); },
              py::arg("key").none(false),
@@ -582,6 +604,41 @@ void bind_grove(py::module_& m, const char* grove_name,
                     get_edges(source). Edges added without a payload yield None
                     metadata. Each returned Key keeps this Grove alive.
                 )pbdoc");
+        cls.def("get_in_edges",
+                [](const grove_t& g, const key_t* target) {
+                    return g.get_in_edges(target);
+                },
+                py::arg("target").none(false),
+                R"pbdoc(
+                    get_in_edges(target) -> list
+
+                    The metadata payloads of all incoming edges to target, in edge
+                    order (parallel to get_in_neighbors(target)). Edges added
+                    without a payload yield None.
+                )pbdoc");
+        cls.def("get_in_edge_list",
+                [](py::object self, const key_t* target) {
+                    const auto& g = self.cast<const grove_t&>();
+                    py::list out;
+                    for (const auto& e : g.get_in_edge_list(target)) {
+                        // Pin each source Key to the Grove — issue #37.
+                        out.append(py::make_tuple(
+                            py::cast(e.source,
+                                     py::return_value_policy::reference_internal,
+                                     self),
+                            py::cast(e.metadata)));
+                    }
+                    return out;
+                },
+                py::arg("target").none(false),
+                R"pbdoc(
+                    get_in_edge_list(target) -> list[tuple[Key, object]]
+
+                    The incoming edges to target as (source Key, metadata)
+                    pairs — i.e. the zip of get_in_neighbors(target) and
+                    get_in_edges(target). Edges added without a payload yield None
+                    metadata. Each returned Key keeps this Grove alive.
+                )pbdoc");
         cls.def("get_neighbors_if",
                 [](py::object self, key_t* source,
                    std::function<bool(const EdgeT&)> predicate) {
@@ -598,6 +655,27 @@ void bind_grove(py::module_& m, const char* grove_name,
                     get_neighbors_if(source, predicate) -> list[Key]
 
                     Target Keys of the outgoing edges from source whose edge
+                    metadata satisfies predicate(metadata). The predicate receives
+                    the decoded payload (e.g. the dict you stored). The returned Keys
+                    point into this Grove's storage and are valid only while it is
+                    alive.
+                )pbdoc");
+        cls.def("get_in_neighbors_if",
+                [](py::object self, key_t* target,
+                   std::function<bool(const EdgeT&)> predicate) {
+                    // The predicate calls back into Python — keep the GIL held.
+                    // Pin each Key to the Grove so extracted keys can't dangle
+                    // after the list is dropped — issue #37.
+                    return pinned_key_list(
+                        self.cast<const grove_t&>().get_in_neighbors_if(
+                            target, std::move(predicate)),
+                        self);
+                },
+                py::arg("target").none(false), py::arg("predicate"),
+                R"pbdoc(
+                    get_in_neighbors_if(target, predicate) -> list[Key]
+
+                    Source Keys of the incoming edges to target whose edge
                     metadata satisfies predicate(metadata). The predicate receives
                     the decoded payload (e.g. the dict you stored). The returned Keys
                     point into this Grove's storage and are valid only while it is

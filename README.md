@@ -135,7 +135,9 @@ carry `.data`).
 - `remove_edge(source: Key, target: Key) -> bool`: Remove an edge; `True` if one was removed
 - `has_edge(source: Key, target: Key) -> bool`: Test whether an edge exists
 - `get_neighbors(source: Key) -> list[Key]`: Keys directly reachable from `source`
+- `get_in_neighbors(target: Key) -> list[Key]`: Keys with an edge pointing at `target` — the reverse of `get_neighbors`
 - `out_degree(source: Key) -> int`: Number of outgoing edges from `source`
+- `in_degree(target: Key) -> int`: Number of incoming edges to `target`
 - `edge_count() -> int`: Total number of edges in the overlay
 - `vertex_count_with_edges() -> int`: Number of keys with at least one outgoing edge
 - `add_external_key(key: GenomicCoordinate, data=None) -> Key`: Add a key outside the index that can still participate in the graph (not returned by `intersect`)
@@ -145,10 +147,13 @@ carry `.data`).
 - `get_edges(source: Key) -> list`: The edge payloads of `source`'s outgoing edges, parallel to `get_neighbors(source)`
 - `get_edge_list(source: Key) -> list[tuple[Key, object]]`: The outgoing edges as `(target, metadata)` pairs — the zip of `get_neighbors` and `get_edges` (metadata is `None` for payload-less edges)
 - `get_neighbors_if(source: Key, predicate) -> list[Key]`: Target keys whose edge metadata satisfies `predicate(metadata)` — the predicate receives the **decoded** payload (edges added without a payload yield `None`, so guard for it when mixing labelled and unlabelled edges)
+- `get_in_edges(target: Key) -> list`: The edge payloads of `target`'s incoming edges, parallel to `get_in_neighbors(target)`
+- `get_in_edge_list(target: Key) -> list[tuple[Key, object]]`: The incoming edges as `(source, metadata)` pairs — the zip of `get_in_neighbors` and `get_in_edges`
+- `get_in_neighbors_if(target: Key, predicate) -> list[Key]`: Source keys of `target`'s incoming edges whose metadata satisfies `predicate(metadata)` — the reverse of `get_neighbors_if`
 - `link_with(keys: list[Key], predicate)`: Label adjacent pairs — `predicate(k1, k2)` returns the edge payload to attach, or `None` to skip
 
 **Edge removal / bulk linking** (on every grove):
-- `remove_edges_from(source: Key) -> int` / `remove_edges_to(target: Key) -> int` / `remove_all_edges(key: Key) -> int`: Remove outgoing / incoming / all touching edges; each returns the count removed
+- `remove_edges_from(source: Key) -> int` / `remove_edges_to(target: Key) -> int` / `remove_all_edges(key: Key) -> int`: Remove outgoing / incoming / all touching edges; each returns the count removed (`remove_edges_to` is O(in-degree + out-degree) for `target`, not a graph-wide scan)
 - `remove_edges_if(predicate) -> int`: Remove every edge matching a predicate. On the universal `Grove` the predicate is `predicate(target: Key, metadata) -> bool` (sees both target and edge metadata); on void-edge `BedGrove`/`GffGrove` it is `predicate(target: Key) -> bool`. Returns the count removed
 - `clear_graph()`: Remove all edges (keys are left intact); `graph_empty() -> bool`
 - `link_if(keys: list[Key], predicate)`: Add an unlabelled edge between each adjacent pair `(keys[i], keys[i+1])` for which `predicate(k1, k2)` returns `True` (typically over the keys returned by a bulk insert)
@@ -190,6 +195,7 @@ if hits:
 - `get_edges(key) -> list`: edge payloads of `key`'s outgoing edges, parallel to `get_neighbors(key)` (payload-less edges yield `None`) — edge-carrying views only
 - `get_edge_list(key) -> list[tuple[Key, object]]`: the outgoing edges as `(target, metadata)` pairs — the zip of `get_neighbors(key)` and `get_edges(key)`, targets paged in on demand (payload-less edges yield `None`) — edge-carrying views only
 - `get_neighbors_if(key, predicate) -> list[Key]`: targets whose decoded edge metadata satisfies `predicate(metadata)`, paged in on demand — edge-carrying views only
+- No reverse traversal (`get_in_neighbors`/`in_degree`/…) yet — the `.gg` format only records edges under the source key's block, so `GroveView` can't answer "what points at this key" without a graph-wide scan. Needs an upstream format change; tracked as [genogrove#534](https://github.com/genogrove/genogrove/issues/534)
 - `get_order() -> int`: the B+ tree order the `.gg` was built with (mirrors `Grove.get_order()`)
 - `get_index_names() -> list[str]`: names of every index (e.g. chromosome) in the `.gg` — what `intersect` / `flanking` can run against
 - `blocks_loaded()` / `block_count()`: partial-load counters
@@ -572,7 +578,7 @@ Currently exposed features:
 - **Strand-aware coordinates** — `GenomicCoordinate` is the standard key (`'+'` / `'-'` / `'.'` / `'*'`); overlap and flanking are strand-aware
 - **Universal `Grove`** (`grove<genomic_coordinate, json>`) storing arbitrary JSON payloads (dict / list / scalar / `None`), or no payload at all
 - Insert / query, multi-index support (per chromosome)
-- Graph overlay (directed edges, external keys), including **labelled edges** on the universal `Grove` — `add_edge(s, t, data)` / `get_edges` / `get_edge_list` / `get_neighbors_if` / `link_with` — and edge cleanup / bulk linking on every grove (`remove_edges_from`/`to`, `remove_all_edges`, `remove_edges_if`, `clear_graph`, `graph_empty`, `link_if`)
+- Graph overlay (directed edges, external keys) with **reverse traversal** on every grove — `get_in_neighbors` / `in_degree` alongside `get_neighbors` / `out_degree` — and **labelled edges** on the universal `Grove` — `add_edge(s, t, data)` / `get_edges` / `get_edge_list` / `get_neighbors_if` / `get_in_edges` / `get_in_edge_list` / `get_in_neighbors_if` / `link_with` — and edge cleanup / bulk linking on every grove (`remove_edges_from`/`to`, `remove_all_edges`, `remove_edges_if`, `clear_graph`, `graph_empty`, `link_if`)
 - Key removal + storage compaction: `remove_key()`, `compact()`, `vertex_count()` / `external_vertex_count()` / `key_storage_size()`
 - Serialization / deserialization to compressed `.gg` files (an edgeless JSON Grove `.gg` is readable by a C++ `grove<genomic_coordinate, std::string>`; with labelled edges, `grove<genomic_coordinate, std::string, std::string>`)
 - **Partial (random-access) reading** — `GroveView.open(path)` queries a serialized `.gg` on disk, paging in only the blocks a query touches instead of loading the whole grove (`intersect` / `get_neighbors` / `blocks_loaded` / `block_count`); one view per grove flavour

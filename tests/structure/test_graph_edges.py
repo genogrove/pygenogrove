@@ -106,6 +106,77 @@ def test_get_edge_list_target_keeps_grove_alive():
     assert meta == {"w": 9}
 
 
+def test_get_in_edges_parallel_to_in_neighbors():
+    """get_in_edges(target) is in the same order as get_in_neighbors(target)."""
+    pg = _pg()
+    g = pg.Grove(5)
+    a, b, c = _chain(g, (100, 200), (300, 400), (500, 600))
+    g.add_edge(a, c, {"from": 100})
+    g.add_edge(b, c, {"from": 300})
+    paired = {n.value.start: e for n, e in zip(g.get_in_neighbors(c), g.get_in_edges(c))}
+    assert paired == {100: {"from": 100}, 300: {"from": 300}}
+
+
+def test_get_in_edge_list_pairs_sources_and_metadata():
+    """get_in_edge_list(target) returns (source Key, metadata) pairs."""
+    pg = _pg()
+    g = pg.Grove(5)
+    a, b, c = _chain(g, (100, 200), (300, 400), (500, 600))
+    g.add_edge(a, c, {"w": 1})
+    g.add_edge(b, c, {"w": 2})
+
+    got = {(src.value.start, meta["w"]) for src, meta in g.get_in_edge_list(c)}
+    assert got == {(100, 1), (300, 2)}
+
+
+def test_get_in_edge_list_empty_for_target_with_no_edges():
+    pg = _pg()
+    g = pg.Grove(3)
+    _, b = _chain(g, (10, 20), (30, 40))  # no edges added
+    assert g.get_in_edge_list(b) == []
+
+
+def test_get_in_edge_list_source_keeps_grove_alive():
+    """A source Key from get_in_edge_list keeps the Grove alive (UAF guard, #37;
+    mirrors test_get_edge_list_target_keeps_grove_alive for the reverse
+    direction)."""
+    pg = _pg()
+    g = pg.Grove(3)
+    a, b = _chain(g, (10, 20), (30, 40))
+    g.add_edge(a, b, {"w": 9})
+
+    src, meta = g.get_in_edge_list(b)[0]
+    del g, a, b
+    gc.collect()
+    assert src.value.start == 10
+    assert meta == {"w": 9}
+
+
+def test_get_in_neighbors_if_filters_by_metadata():
+    pg = _pg()
+    g = pg.Grove(5)
+    a, b, c, d = _chain(g, (100, 200), (300, 400), (500, 600), (700, 800))
+    g.add_edge(b, a, {"w": 1})
+    g.add_edge(c, a, {"w": 10})
+    g.add_edge(d, a, {"w": 20})
+    strong = g.get_in_neighbors_if(a, lambda meta: meta["w"] >= 10)
+    assert sorted(n.value.start for n in strong) == [500, 700]
+
+
+def test_in_neighbors_if_key_keeps_grove_alive():
+    """A Key returned by get_in_neighbors_if keeps the Grove alive (UAF guard,
+    mirrors test_labelled_edge_key_keeps_grove_alive for the reverse
+    direction)."""
+    pg = _pg()
+    g = pg.Grove(3)
+    a, b = _chain(g, (100, 200), (300, 400))
+    g.add_edge(a, b, {"w": 99})
+    src = g.get_in_neighbors_if(b, lambda m: m["w"] > 0)[0]
+    del g, a, b
+    gc.collect()
+    assert src.value.start == 100
+
+
 def test_get_neighbors_if_filters_by_metadata():
     pg = _pg()
     g = pg.Grove(5)
@@ -355,11 +426,17 @@ def test_typed_grove_has_unlabelled_edges_only():
     a = g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), pg.BedEntry("chr1", 100, 200))
     b = g.insert("chr1", pg.GenomicCoordinate(".", 300, 400), pg.BedEntry("chr1", 300, 400))
     g.add_edge(a, b)                 # unlabelled edge works
+    # unlabelled reverse traversal is still available (void-edge groves keep it)
+    assert g.in_degree(b) == 1
+    assert g.get_in_neighbors(b)[0].value.start == 100
     assert g.remove_all_edges(a) == 1  # cleanup methods work
     # labelled-edge methods are gated out for void-edge groves
     assert not hasattr(g, "get_edges")
     assert not hasattr(g, "get_edge_list")
     assert not hasattr(g, "get_neighbors_if")
+    assert not hasattr(g, "get_in_edges")
+    assert not hasattr(g, "get_in_edge_list")
+    assert not hasattr(g, "get_in_neighbors_if")
     assert not hasattr(g, "link_with")
 
 

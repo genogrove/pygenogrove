@@ -5,8 +5,8 @@ Mirrors genogrove/tests/structure/graph_overlay_test.cpp, which is split into
 two suites: ``GraphOverlayTest`` (edges between indexed keys) and
 ``ExternalKeyTest`` (edges involving graph-only keys outside the B+ tree index).
 
-Covers add_edge / remove_edge / has_edge / get_neighbors / out_degree /
-edge_count / vertex_count_with_edges / add_external_key.
+Covers add_edge / remove_edge / has_edge / get_neighbors / get_in_neighbors /
+out_degree / in_degree / edge_count / vertex_count_with_edges / add_external_key.
 """
 
 import gc
@@ -45,6 +45,68 @@ def test_basic_edge_addition():
 
     assert g.edge_count() == 2
     assert g.vertex_count_with_edges() == 1
+
+
+def test_reverse_traversal_basic():
+    """get_in_neighbors / in_degree mirror get_neighbors / out_degree from the
+    target side."""
+    pg = _pg()
+
+    g = pg.Grove(3)
+    a = g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    b = g.insert("chr1", pg.GenomicCoordinate(".", 300, 400))
+    c = g.insert("chr1", pg.GenomicCoordinate(".", 500, 600))
+
+    g.add_edge(a, c)
+    g.add_edge(b, c)
+
+    assert g.in_degree(c) == 2
+    assert g.in_degree(a) == 0
+    sources = sorted(n.value.start for n in g.get_in_neighbors(c))
+    assert sources == [100, 300]
+    assert g.get_in_neighbors(a) == []
+
+
+def test_reverse_traversal_direction_not_confused_with_forward():
+    """A vertex with both an incoming and an outgoing edge: get_in_neighbors /
+    in_degree must see only the incoming side, get_neighbors / out_degree only
+    the outgoing side — the underlying graph_overlay files both directions in
+    the same incidence bucket for a key, filtered by comparing edge.source /
+    edge.target against it."""
+    pg = _pg()
+
+    g = pg.Grove(3)
+    a = g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    b = g.insert("chr1", pg.GenomicCoordinate(".", 300, 400))
+    c = g.insert("chr1", pg.GenomicCoordinate(".", 500, 600))
+
+    g.add_edge(a, b)  # incoming to b
+    g.add_edge(b, c)  # outgoing from b
+
+    assert g.in_degree(b) == 1
+    assert g.out_degree(b) == 1
+    assert [n.value.start for n in g.get_in_neighbors(b)] == [100]
+    assert [n.value.start for n in g.get_neighbors(b)] == [500]
+
+
+def test_in_neighbor_key_keeps_grove_alive():
+    """A Key returned by get_in_neighbors keeps the Grove alive, so using it
+    after every other handle is dropped must stay safe (use-after-free
+    guard, mirrors test_neighbor_key_keeps_grove_alive for the reverse
+    direction)."""
+    pg = _pg()
+
+    g = pg.Grove(3)
+    a = g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    b = g.insert("chr1", pg.GenomicCoordinate(".", 300, 400))
+    g.add_edge(a, b)
+
+    src = g.get_in_neighbors(b)[0]
+    del g, a, b
+    gc.collect()
+
+    # The source key kept the Grove alive.
+    assert src.value.start == 100
 
 
 def test_edge_removal():
@@ -200,6 +262,8 @@ def test_graph_read_remove_methods_reject_none():
         lambda: g.has_edge(None, b),
         lambda: g.has_edge(a, None),
         lambda: g.out_degree(None),
+        lambda: g.in_degree(None),
+        lambda: g.get_in_neighbors(None),
         lambda: g.remove_edge(None, b),
         lambda: g.remove_edge(a, None),
         lambda: g.remove_edges_from(None),
@@ -207,6 +271,8 @@ def test_graph_read_remove_methods_reject_none():
         lambda: g.remove_all_edges(None),
         lambda: g.get_edges(None),
         lambda: g.get_neighbors_if(None, lambda meta: True),
+        lambda: g.get_in_edges(None),
+        lambda: g.get_in_neighbors_if(None, lambda meta: True),
     ):
         with pytest.raises(TypeError):
             call()

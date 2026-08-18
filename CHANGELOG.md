@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Reverse graph traversal.** Every `Grove` now exposes `get_in_neighbors(target)`
+  and `in_degree(target)` — the reverse of `get_neighbors`/`out_degree`; groves
+  with labelled (JSON) edges (`Grove`, `NumericGrove`, `KmerGrove`) also get
+  `get_in_edges(target)`, `get_in_edge_list(target)`, and
+  `get_in_neighbors_if(target, predicate)` — the reverse of `get_edges` /
+  `get_edge_list` / `get_neighbors_if`. Reading edges from the target side no
+  longer requires storing a mirrored edge by hand. `remove_edges_to` also drops
+  from an O(E) scan to O(in-degree + out-degree) for `target`. `GroveView` (the
+  partial/on-disk reader) does not get reverse traversal yet — the `.gg` format
+  only records edges under the source key's block, so it needs an upstream
+  format change first (filed as genogrove
+  [#534](https://github.com/genogrove/genogrove/issues/534)).
+  Bumped the bundled genogrove to
+  [v0.26.0](https://github.com/genogrove/genogrove/releases/tag/v0.26.0) (from
+  v0.25.6), which adds the underlying `graph_overlay` reverse-traversal support
+  (genogrove [#532](https://github.com/genogrove/genogrove/pull/532))
+  ([#72](https://github.com/genogrove/pygenogrove/pull/72)).
+
 ## [0.7.4] - 2026-07-31
 
 > **⚠️ The fix below is not retroactive — rebuild affected indexes.** 0.7.4 prevents
