@@ -136,6 +136,22 @@ def test_get_in_edge_list_empty_for_target_with_no_edges():
     assert g.get_in_edge_list(b) == []
 
 
+def test_get_in_edge_list_source_keeps_grove_alive():
+    """A source Key from get_in_edge_list keeps the Grove alive (UAF guard, #37;
+    mirrors test_get_edge_list_target_keeps_grove_alive for the reverse
+    direction)."""
+    pg = _pg()
+    g = pg.Grove(3)
+    a, b = _chain(g, (10, 20), (30, 40))
+    g.add_edge(a, b, {"w": 9})
+
+    src, meta = g.get_in_edge_list(b)[0]
+    del g, a, b
+    gc.collect()
+    assert src.value.start == 10
+    assert meta == {"w": 9}
+
+
 def test_get_in_neighbors_if_filters_by_metadata():
     pg = _pg()
     g = pg.Grove(5)
@@ -145,6 +161,20 @@ def test_get_in_neighbors_if_filters_by_metadata():
     g.add_edge(d, a, {"w": 20})
     strong = g.get_in_neighbors_if(a, lambda meta: meta["w"] >= 10)
     assert sorted(n.value.start for n in strong) == [500, 700]
+
+
+def test_in_neighbors_if_key_keeps_grove_alive():
+    """A Key returned by get_in_neighbors_if keeps the Grove alive (UAF guard,
+    mirrors test_labelled_edge_key_keeps_grove_alive for the reverse
+    direction)."""
+    pg = _pg()
+    g = pg.Grove(3)
+    a, b = _chain(g, (100, 200), (300, 400))
+    g.add_edge(a, b, {"w": 99})
+    src = g.get_in_neighbors_if(b, lambda m: m["w"] > 0)[0]
+    del g, a, b
+    gc.collect()
+    assert src.value.start == 100
 
 
 def test_get_neighbors_if_filters_by_metadata():

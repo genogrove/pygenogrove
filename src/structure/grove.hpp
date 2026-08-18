@@ -411,8 +411,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                  return g.remove_edges_to(target);
              },
              py::arg("target").none(false),
-             "Remove all incoming edges to target (O(in-degree)). "
-             "Returns the number removed.")
+             "Remove all incoming edges to target — O(in-degree + out-degree) for "
+             "target, not a graph-wide scan. Returns the number removed.")
         .def("remove_all_edges",
              [](grove_t& g, key_t* key) { return g.remove_all_edges(key); },
              py::arg("key").none(false),

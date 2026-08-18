@@ -153,7 +153,7 @@ carry `.data`).
 - `link_with(keys: list[Key], predicate)`: Label adjacent pairs — `predicate(k1, k2)` returns the edge payload to attach, or `None` to skip
 
 **Edge removal / bulk linking** (on every grove):
-- `remove_edges_from(source: Key) -> int` / `remove_edges_to(target: Key) -> int` / `remove_all_edges(key: Key) -> int`: Remove outgoing / incoming / all touching edges; each returns the count removed (`remove_edges_to` is O(in-degree), not a graph-wide scan)
+- `remove_edges_from(source: Key) -> int` / `remove_edges_to(target: Key) -> int` / `remove_all_edges(key: Key) -> int`: Remove outgoing / incoming / all touching edges; each returns the count removed (`remove_edges_to` is O(in-degree + out-degree) for `target`, not a graph-wide scan)
 - `remove_edges_if(predicate) -> int`: Remove every edge matching a predicate. On the universal `Grove` the predicate is `predicate(target: Key, metadata) -> bool` (sees both target and edge metadata); on void-edge `BedGrove`/`GffGrove` it is `predicate(target: Key) -> bool`. Returns the count removed
 - `clear_graph()`: Remove all edges (keys are left intact); `graph_empty() -> bool`
 - `link_if(keys: list[Key], predicate)`: Add an unlabelled edge between each adjacent pair `(keys[i], keys[i+1])` for which `predicate(k1, k2)` returns `True` (typically over the keys returned by a bulk insert)
@@ -195,6 +195,7 @@ if hits:
 - `get_edges(key) -> list`: edge payloads of `key`'s outgoing edges, parallel to `get_neighbors(key)` (payload-less edges yield `None`) — edge-carrying views only
 - `get_edge_list(key) -> list[tuple[Key, object]]`: the outgoing edges as `(target, metadata)` pairs — the zip of `get_neighbors(key)` and `get_edges(key)`, targets paged in on demand (payload-less edges yield `None`) — edge-carrying views only
 - `get_neighbors_if(key, predicate) -> list[Key]`: targets whose decoded edge metadata satisfies `predicate(metadata)`, paged in on demand — edge-carrying views only
+- No reverse traversal (`get_in_neighbors`/`in_degree`/…) yet — the `.gg` format only records edges under the source key's block, so `GroveView` can't answer "what points at this key" without a graph-wide scan. Needs an upstream format change; tracked as [genogrove#534](https://github.com/genogrove/genogrove/issues/534)
 - `get_order() -> int`: the B+ tree order the `.gg` was built with (mirrors `Grove.get_order()`)
 - `get_index_names() -> list[str]`: names of every index (e.g. chromosome) in the `.gg` — what `intersect` / `flanking` can run against
 - `blocks_loaded()` / `block_count()`: partial-load counters

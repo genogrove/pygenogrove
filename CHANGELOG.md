@@ -16,10 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `get_in_neighbors_if(target, predicate)` — the reverse of `get_edges` /
   `get_edge_list` / `get_neighbors_if`. Reading edges from the target side no
   longer requires storing a mirrored edge by hand. `remove_edges_to` also drops
-  from an O(E) scan to O(in-degree). `GroveView` (the partial/on-disk reader)
-  does not get reverse traversal yet — the `.gg` format only records edges under
-  the source key's block, so it needs an upstream format change first (filed as
-  genogrove [#534](https://github.com/genogrove/genogrove/issues/534)).
+  from an O(E) scan to O(in-degree + out-degree) for `target`. `GroveView` (the
+  partial/on-disk reader) does not get reverse traversal yet — the `.gg` format
+  only records edges under the source key's block, so it needs an upstream
+  format change first (filed as genogrove
+  [#534](https://github.com/genogrove/genogrove/issues/534)).
   Bumped the bundled genogrove to
   [v0.26.0](https://github.com/genogrove/genogrove/releases/tag/v0.26.0) (from
   v0.25.6), which adds the underlying `graph_overlay` reverse-traversal support

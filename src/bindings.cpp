@@ -55,7 +55,9 @@ PYBIND11_MODULE(pygenogrove, m) {
     // Stores an arbitrary JSON-serializable Python object (dict / list / scalar /
     // None) as the payload — insert(index, coord, data); key.data round-trips it
     // back. Graph edges also carry a JSON-serializable payload (add_edge(s, t,
-    // data) / get_edges / get_neighbors_if / link_with). It serializes to a .gg
+    // data) / get_edges / get_neighbors_if / get_in_edges / get_in_neighbors_if /
+    // link_with) and support reverse traversal (get_in_neighbors / in_degree,
+    // every grove). It serializes to a .gg
     // whose payload and edge metadata are JSON text, so a C++
     // grove<genomic_coordinate, std::string, std::string> can still read the file
     // (an edgeless .gg is also readable by grove<genomic_coordinate, std::string>).
