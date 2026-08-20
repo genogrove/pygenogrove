@@ -16,16 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `get_in_neighbors_if(target, predicate)` — the reverse of `get_edges` /
   `get_edge_list` / `get_neighbors_if`. Reading edges from the target side no
   longer requires storing a mirrored edge by hand. `remove_edges_to` also drops
-  from an O(E) scan to O(in-degree + out-degree) for `target`. `GroveView` (the
-  partial/on-disk reader) does not get reverse traversal yet — the `.gg` format
-  only records edges under the source key's block, so it needs an upstream
-  format change first (filed as genogrove
-  [#534](https://github.com/genogrove/genogrove/issues/534)).
+  from an O(E) scan to O(in-degree + out-degree) for `target`.
+  `GroveView` (the partial/on-disk reader) now gets the same reverse-traversal
+  surface — `get_in_neighbors`, `in_degree`, and (for labelled-edge views)
+  `get_in_edges`, `get_in_edge_list`, `get_in_neighbors_if` — paging in each
+  source's block on demand, now that the `.gg` format records incoming edges
+  too (genogrove [#535](https://github.com/genogrove/genogrove/pull/535),
+  closing [#534](https://github.com/genogrove/genogrove/issues/534)); `out_degree`/
+  `in_degree` on `grove_view` shipped separately in genogrove
+  [#539](https://github.com/genogrove/genogrove/pull/539).
   Bumped the bundled genogrove to
-  [v0.26.0](https://github.com/genogrove/genogrove/releases/tag/v0.26.0) (from
+  [v0.26.1](https://github.com/genogrove/genogrove/releases/tag/v0.26.1) (from
   v0.25.6), which adds the underlying `graph_overlay` reverse-traversal support
-  (genogrove [#532](https://github.com/genogrove/genogrove/pull/532))
-  ([#72](https://github.com/genogrove/pygenogrove/pull/72)).
+  (genogrove [#532](https://github.com/genogrove/genogrove/pull/532)), the
+  `grove_view` reverse-traversal/degree support above, and two bug fixes:
+  incoming-edge order is now preserved across a serialize/deserialize round
+  trip (genogrove [#545](https://github.com/genogrove/genogrove/pull/545)),
+  and an interleaved self-loop no longer corrupts outgoing edge order
+  (genogrove [#551](https://github.com/genogrove/genogrove/pull/551))
+  ([#72](https://github.com/genogrove/pygenogrove/pull/72),
+  [#73](https://github.com/genogrove/pygenogrove/pull/73)).
 
 ## [0.7.4] - 2026-07-31
 
