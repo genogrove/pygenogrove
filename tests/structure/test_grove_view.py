@@ -189,8 +189,9 @@ def test_view_reads_in_edge_metadata(tmp_path):
     paired_list = {k.value.start: meta for k, meta in view.get_in_edge_list(dst)}
     assert paired_list == {100: {"w": 1}, 300: {"w": 10}}
 
-    # empty for a target with no incoming edges; TypeError/ValueError for None
-    leaf = list(view.intersect(_coord(pg, 100, 200), "chr1"))[0]
+    # empty for a target with no incoming edges (b only has an outgoing edge);
+    # TypeError/ValueError for None
+    leaf = list(view.intersect(_coord(pg, 300, 400), "chr1"))[0]
     assert view.get_in_edges(leaf) == []
     assert view.get_in_edge_list(leaf) == []
     with pytest.raises((TypeError, ValueError)):
