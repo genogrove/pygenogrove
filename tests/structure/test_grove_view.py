@@ -112,7 +112,9 @@ def test_view_reverse_traversal(tmp_path):
     dst = list(view.intersect(_coord(pg, 300, 400), "chr1"))[0]
     assert view.out_degree(dst) == 0
     assert view.in_degree(dst) == 2
-    assert sorted(k.value.start for k in view.get_in_neighbors(dst)) == [100, 5000]
+    # exact order, not sorted -- incoming-edge order is preserved across
+    # serialize/deserialize (genogrove #545), so this also guards regressions
+    assert [k.value.start for k in view.get_in_neighbors(dst)] == [100, 5000]
 
     src = list(view.intersect(_coord(pg, 100, 200), "chr1"))[0]
     assert view.out_degree(src) == 1
@@ -180,14 +182,17 @@ def test_view_reads_in_edge_metadata(tmp_path):
     view = pg.GroveView.open(path)
     dst = list(view.intersect(_coord(pg, 500, 600), "chr1"))[0]
 
-    paired = {n.value.start: e for n, e in zip(view.get_in_neighbors(dst), view.get_in_edges(dst))}
-    assert paired == {100: {"w": 1}, 300: {"w": 10}}
+    # ordered lists, not dicts -- incoming-edge order is preserved across
+    # serialize/deserialize (genogrove #545), and dict equality would hide an
+    # order regression
+    paired = [(n.value.start, e) for n, e in zip(view.get_in_neighbors(dst), view.get_in_edges(dst))]
+    assert paired == [(100, {"w": 1}), (300, {"w": 10})]
 
     strong = view.get_in_neighbors_if(dst, lambda meta: meta["w"] >= 10)
     assert [k.value.start for k in strong] == [300]
 
-    paired_list = {k.value.start: meta for k, meta in view.get_in_edge_list(dst)}
-    assert paired_list == {100: {"w": 1}, 300: {"w": 10}}
+    paired_list = [(k.value.start, meta) for k, meta in view.get_in_edge_list(dst)]
+    assert paired_list == [(100, {"w": 1}), (300, {"w": 10})]
 
     # empty for a target with no incoming edges (b only has an outgoing edge);
     # TypeError/ValueError for None
