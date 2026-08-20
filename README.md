@@ -195,7 +195,11 @@ if hits:
 - `get_edges(key) -> list`: edge payloads of `key`'s outgoing edges, parallel to `get_neighbors(key)` (payload-less edges yield `None`) — edge-carrying views only
 - `get_edge_list(key) -> list[tuple[Key, object]]`: the outgoing edges as `(target, metadata)` pairs — the zip of `get_neighbors(key)` and `get_edges(key)`, targets paged in on demand (payload-less edges yield `None`) — edge-carrying views only
 - `get_neighbors_if(key, predicate) -> list[Key]`: targets whose decoded edge metadata satisfies `predicate(metadata)`, paged in on demand — edge-carrying views only
-- No reverse traversal (`get_in_neighbors`/`in_degree`/…) yet — the `.gg` format only records edges under the source key's block, so `GroveView` can't answer "what points at this key" without a graph-wide scan. Needs an upstream format change; tracked as [genogrove#534](https://github.com/genogrove/genogrove/issues/534)
+- `get_in_neighbors(key) -> list[Key]`: sources with an edge pointing at `key` — the reverse of `get_neighbors`, loaded on demand
+- `out_degree(key) -> int` / `in_degree(key) -> int`: outgoing/incoming edge counts — bucket-size lookups, no extra block loads
+- `get_in_edges(key) -> list`: edge payloads of `key`'s incoming edges, parallel to `get_in_neighbors(key)` — edge-carrying views only
+- `get_in_edge_list(key) -> list[tuple[Key, object]]`: the incoming edges as `(source, metadata)` pairs — the zip of `get_in_neighbors(key)` and `get_in_edges(key)`, sources paged in on demand — edge-carrying views only
+- `get_in_neighbors_if(key, predicate) -> list[Key]`: sources whose decoded edge metadata satisfies `predicate(metadata)`, paged in on demand — edge-carrying views only
 - `get_order() -> int`: the B+ tree order the `.gg` was built with (mirrors `Grove.get_order()`)
 - `get_index_names() -> list[str]`: names of every index (e.g. chromosome) in the `.gg` — what `intersect` / `flanking` can run against
 - `blocks_loaded()` / `block_count()`: partial-load counters
@@ -581,7 +585,7 @@ Currently exposed features:
 - Graph overlay (directed edges, external keys) with **reverse traversal** on every grove — `get_in_neighbors` / `in_degree` alongside `get_neighbors` / `out_degree` — and **labelled edges** on the universal `Grove` — `add_edge(s, t, data)` / `get_edges` / `get_edge_list` / `get_neighbors_if` / `get_in_edges` / `get_in_edge_list` / `get_in_neighbors_if` / `link_with` — and edge cleanup / bulk linking on every grove (`remove_edges_from`/`to`, `remove_all_edges`, `remove_edges_if`, `clear_graph`, `graph_empty`, `link_if`)
 - Key removal + storage compaction: `remove_key()`, `compact()`, `vertex_count()` / `external_vertex_count()` / `key_storage_size()`
 - Serialization / deserialization to compressed `.gg` files (an edgeless JSON Grove `.gg` is readable by a C++ `grove<genomic_coordinate, std::string>`; with labelled edges, `grove<genomic_coordinate, std::string, std::string>`)
-- **Partial (random-access) reading** — `GroveView.open(path)` queries a serialized `.gg` on disk, paging in only the blocks a query touches instead of loading the whole grove (`intersect` / `get_neighbors` / `blocks_loaded` / `block_count`); one view per grove flavour
+- **Partial (random-access) reading** — `GroveView.open(path)` queries a serialized `.gg` on disk, paging in only the blocks a query touches instead of loading the whole grove (`intersect` / `get_neighbors` / `get_in_neighbors` / `out_degree` / `in_degree` / `blocks_loaded` / `block_count`, plus `get_edges` / `get_edge_list` / `get_neighbors_if` / `get_in_edges` / `get_in_edge_list` / `get_in_neighbors_if` on labelled-edge views); one view per grove flavour
 - SIF export — `to_sif(path)` writes the grove's B+ tree structure and graph-overlay edges as a SIF (Simple Interaction Format) text file for visualization (e.g. Cytoscape)
 - Nearest-neighbour queries: `flanking()` (predecessor / successor), incl. a predicate-filtered overload (e.g. same-strand neighbours)
 - **Point key types** — `Numeric` (integer keys: ids / timestamps) and `Kmer` (2-bit-encoded DNA k-mers, k ≤ 32, a membership dictionary), each with its own `NumericGrove` / `KmerGrove` carrying the same universal surface (optional JSON payload, labelled edges, serialization). Overlap is exact equality
