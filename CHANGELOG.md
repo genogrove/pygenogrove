@@ -22,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `get_in_edges`, `get_in_edge_list`, `get_in_neighbors_if` — paging in each
   source's block on demand, now that the `.gg` format records incoming edges
   too (genogrove [#535](https://github.com/genogrove/genogrove/pull/535),
-  closing [#534](https://github.com/genogrove/genogrove/issues/534)).
+  closing [#534](https://github.com/genogrove/genogrove/issues/534)); `out_degree`/
+  `in_degree` on `grove_view` shipped separately in genogrove
+  [#539](https://github.com/genogrove/genogrove/pull/539).
   Bumped the bundled genogrove to
   [v0.26.1](https://github.com/genogrove/genogrove/releases/tag/v0.26.1) (from
   v0.25.6), which adds the underlying `graph_overlay` reverse-traversal support
@@ -32,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   trip (genogrove [#545](https://github.com/genogrove/genogrove/pull/545)),
   and an interleaved self-loop no longer corrupts outgoing edge order
   (genogrove [#551](https://github.com/genogrove/genogrove/pull/551))
-  ([#72](https://github.com/genogrove/pygenogrove/pull/72)).
+  ([#72](https://github.com/genogrove/pygenogrove/pull/72),
+  [#73](https://github.com/genogrove/pygenogrove/pull/73)).
 
 ## [0.7.4] - 2026-07-31
 
