@@ -11,10 +11,12 @@
  * bed_entry>, …). It reuses the Key / QueryResult classes already registered by
  * the matching bind_grove<KeyT, DataT, EdgeT>, so it registers nothing new.
  *
- * The surface is query-only: open / intersect / flanking / get_neighbors (plus,
- * when the edge type is non-void, get_edges / get_edge_list / get_neighbors_if to
- * read edge payloads), the get_order / get_index_names directory accessors, and
- * the blocks_loaded / block_count partial-load counters. There is no insert or
+ * The surface is query-only: open / intersect / flanking / get_neighbors /
+ * get_in_neighbors / out_degree / in_degree (plus, when the edge type is
+ * non-void, get_edges / get_edge_list / get_neighbors_if and their incoming-edge
+ * mirrors get_in_edges / get_in_edge_list / get_in_neighbors_if to read edge
+ * payloads), the get_order / get_index_names directory accessors, and the
+ * blocks_loaded / block_count partial-load counters. There is no insert or
  * serialize — a view never mutates the grove.
  */
 #pragma once
@@ -135,6 +137,39 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                 is alive. Raises TypeError if source is None.
             )pbdoc")
 
+        .def(
+            "get_in_neighbors",
+            [](py::object self, key_t* target) {
+                // Pin each Key to the view so an extracted neighbor can't dangle
+                // after the list is dropped — issue #37. Loads each source's
+                // block on demand, exactly like get_neighbors.
+                return pinned_key_list(
+                    self.cast<view_t&>().get_in_neighbors(target), self);
+            },
+            py::arg("target").none(false),
+            R"pbdoc(
+                Return the source Keys with an edge pointing at target (the
+                reverse of get_neighbors), paging in each source's block on
+                demand. `target` must be a Key this GroveView produced. The
+                returned Keys are valid only while the view is alive. Raises
+                TypeError if target is None.
+            )pbdoc")
+
+        .def("out_degree",
+             [](const view_t& v, const key_t* source) {
+                 return v.out_degree(source);
+             },
+             py::arg("source").none(false),
+             "Number of outgoing edges from source — a bucket-size lookup, no "
+             "additional block loads.")
+        .def("in_degree",
+             [](const view_t& v, const key_t* target) {
+                 return v.in_degree(target);
+             },
+             py::arg("target").none(false),
+             "Number of incoming edges to target — a bucket-size lookup, no "
+             "additional block loads.")
+
         // ---- Flanking (nearest non-overlapping neighbours) ----
         // Same result as the eager Grove.flanking(), but pages in only the
         // blocks on the descent path (genogrove #483). keep_alive<0, 1>: the
@@ -224,6 +259,21 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                 None. Returns an empty list if source has no recorded edges.
             )pbdoc");
         cls.def(
+            "get_in_edges",
+            [](const view_t& v, const key_t* target) {
+                return v.get_in_edges(target);
+            },
+            py::arg("target").none(false),
+            R"pbdoc(
+                get_in_edges(target) -> list
+
+                The metadata payloads of all incoming edges to target, in edge
+                order (parallel to get_in_neighbors(target)), read from the
+                block already paged in for target. Edges added without a
+                payload yield None. Returns an empty list if target has no
+                recorded incoming edges.
+            )pbdoc");
+        cls.def(
             "get_edge_list",
             [](py::object self, key_t* source) {
                 // Mirrors Grove.get_edge_list, but the view returns (target,
@@ -252,6 +302,34 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                 TypeError if source is None.
             )pbdoc");
         cls.def(
+            "get_in_edge_list",
+            [](py::object self, key_t* target) {
+                // Mirrors get_edge_list, but walks incoming edges: resolves
+                // each source's block on demand, so a null target throws
+                // (like get_in_neighbors), unlike the metadata-only
+                // get_in_edges. Pin each source Key to the view so it can't
+                // dangle after the list is dropped — issue #37.
+                py::list out;
+                for (auto& e : self.cast<view_t&>().get_in_edge_list(target)) {
+                    out.append(py::make_tuple(
+                        py::cast(e.first,
+                                 py::return_value_policy::reference_internal,
+                                 self),
+                        py::cast(e.second)));
+                }
+                return out;
+            },
+            py::arg("target").none(false),
+            R"pbdoc(
+                get_in_edge_list(target) -> list[tuple[Key, object]]
+
+                The incoming edges to target as (source Key, metadata) pairs —
+                the zip of get_in_neighbors(target) and get_in_edges(target) —
+                paging in each source's block on demand. Edges added without a
+                payload yield None metadata. Each returned Key keeps this
+                GroveView alive. Raises TypeError if target is None.
+            )pbdoc");
+        cls.def(
             "get_neighbors_if",
             [](py::object self, key_t* source,
                std::function<bool(const EdgeT&)> predicate) {
@@ -273,6 +351,29 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                 block on demand. The predicate receives the decoded payload. The
                 returned Keys are valid only while the GroveView is alive. Raises
                 TypeError if source is None.
+            )pbdoc");
+        cls.def(
+            "get_in_neighbors_if",
+            [](py::object self, key_t* target,
+               std::function<bool(const EdgeT&)> predicate) {
+                // The predicate calls back into Python — keep the GIL held. Pin
+                // each Key to the view so an extracted neighbor can't dangle
+                // after the list is dropped — issue #37. Resolves each surviving
+                // source's block on demand, like get_in_neighbors.
+                return pinned_key_list(
+                    self.cast<view_t&>().get_in_neighbors_if(target,
+                                                             std::move(predicate)),
+                    self);
+            },
+            py::arg("target").none(false), py::arg("predicate"),
+            R"pbdoc(
+                get_in_neighbors_if(target, predicate) -> list[Key]
+
+                Source Keys of the incoming edges to target whose edge metadata
+                satisfies predicate(metadata), paging in each surviving source's
+                block on demand. The predicate receives the decoded payload. The
+                returned Keys are valid only while the GroveView is alive. Raises
+                TypeError if target is None.
             )pbdoc");
     }
 }

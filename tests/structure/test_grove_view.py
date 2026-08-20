@@ -93,6 +93,33 @@ def test_view_traverses_graph_edges(tmp_path):
     assert [k.value.start for k in n2] == [5000]
 
 
+def test_view_reverse_traversal(tmp_path):
+    """get_in_neighbors / out_degree / in_degree mirror the forward direction
+    through a view, resolving sources' blocks on demand (genogrove #535/#539)."""
+    pg = _pg()
+
+    g = pg.Grove(3)
+    a = g.insert("chr1", _coord(pg, 100, 200))
+    b = g.insert("chr1", _coord(pg, 300, 400))
+    ext = g.add_external_key(_coord(pg, 5000, 5500))
+    g.add_edge(a, b)
+    g.add_edge(ext, b)
+
+    path = str(tmp_path / "reverse.gg")
+    g.serialize(path)
+
+    view = pg.GroveView.open(path)
+    dst = list(view.intersect(_coord(pg, 300, 400), "chr1"))[0]
+    assert view.out_degree(dst) == 0
+    assert view.in_degree(dst) == 2
+    assert sorted(k.value.start for k in view.get_in_neighbors(dst)) == [100, 5000]
+
+    src = list(view.intersect(_coord(pg, 100, 200), "chr1"))[0]
+    assert view.out_degree(src) == 1
+    assert view.in_degree(src) == 0
+    assert view.get_in_neighbors(src) == []
+
+
 def test_view_reads_edge_metadata(tmp_path):
     """get_edges / get_neighbors_if surface edge payloads through a view
     without a full deserialize (genogrove #480)."""
@@ -132,6 +159,46 @@ def test_view_reads_edge_metadata(tmp_path):
         view.get_neighbors_if(None, lambda m: True)
     with pytest.raises((TypeError, ValueError)):
         view.get_edges(None)
+
+
+def test_view_reads_in_edge_metadata(tmp_path):
+    """get_in_edges / get_in_neighbors_if / get_in_edge_list mirror their
+    forward-direction counterparts through a view (genogrove #535)."""
+    pg = _pg()
+
+    g = pg.Grove(3)
+    a = g.insert("chr1", _coord(pg, 100, 200))
+    b = g.insert("chr1", _coord(pg, 300, 400))
+    c = g.insert("chr1", _coord(pg, 500, 600))
+    g.add_edge(a, c, {"w": 1})
+    g.add_edge(b, c, {"w": 10})
+    g.add_edge(c, a)  # payload-less edge, unrelated direction
+
+    path = str(tmp_path / "in_meta.gg")
+    g.serialize(path)
+
+    view = pg.GroveView.open(path)
+    dst = list(view.intersect(_coord(pg, 500, 600), "chr1"))[0]
+
+    paired = {n.value.start: e for n, e in zip(view.get_in_neighbors(dst), view.get_in_edges(dst))}
+    assert paired == {100: {"w": 1}, 300: {"w": 10}}
+
+    strong = view.get_in_neighbors_if(dst, lambda meta: meta["w"] >= 10)
+    assert [k.value.start for k in strong] == [300]
+
+    paired_list = {k.value.start: meta for k, meta in view.get_in_edge_list(dst)}
+    assert paired_list == {100: {"w": 1}, 300: {"w": 10}}
+
+    # empty for a target with no incoming edges; TypeError/ValueError for None
+    leaf = list(view.intersect(_coord(pg, 100, 200), "chr1"))[0]
+    assert view.get_in_edges(leaf) == []
+    assert view.get_in_edge_list(leaf) == []
+    with pytest.raises((TypeError, ValueError)):
+        view.get_in_neighbors_if(None, lambda m: True)
+    with pytest.raises((TypeError, ValueError)):
+        view.get_in_edges(None)
+    with pytest.raises((TypeError, ValueError)):
+        view.get_in_edge_list(None)
 
 
 def test_view_get_edge_list(tmp_path):
@@ -216,6 +283,12 @@ def test_view_get_neighbors_rejects_none(tmp_path):
     view = pg.GroveView.open(path)
     with pytest.raises((TypeError, ValueError)):
         view.get_neighbors(None)
+    with pytest.raises((TypeError, ValueError)):
+        view.get_in_neighbors(None)
+    with pytest.raises((TypeError, ValueError)):
+        view.out_degree(None)
+    with pytest.raises((TypeError, ValueError)):
+        view.in_degree(None)
 
 
 def test_open_missing_and_corrupt_raise(tmp_path):
