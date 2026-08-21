@@ -222,6 +222,14 @@ def test_link_with_none_skips_the_edge():
     assert not g.has_edge(keys[1], keys[2])
 
 
+def test_link_with_none_in_keys_raises_type_error():
+    pg = _pg()
+    g = pg.Grove(5)
+    a, b = _chain(g, (100, 200), (300, 400))
+    with pytest.raises(TypeError):
+        g.link_with([a, None, b], lambda x, y: {"x": 1})
+
+
 def test_serialization_preserves_edge_metadata(tmp_path):
     pg = _pg()
     g = pg.Grove(4)
@@ -315,6 +323,14 @@ def test_link_if_predicate_can_skip():
     assert g.has_edge(keys[0], keys[1])
     assert not g.has_edge(keys[1], keys[2])
     assert g.edge_count() == 1
+
+
+def test_link_if_none_in_keys_raises_type_error():
+    pg = _pg()
+    g = pg.Grove(5)
+    a, b = _chain(g, (100, 200), (300, 400))
+    with pytest.raises(TypeError):
+        g.link_if([a, None, b], lambda x, y: True)
 
 
 # --------------------------------------------------------------------------- #
