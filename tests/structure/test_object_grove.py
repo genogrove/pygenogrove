@@ -71,6 +71,15 @@ def test_non_json_serializable_raises():
         g.insert("chr1", _c(pg, "+", 100, 200), {1, 2, 3})  # a set is not JSON
 
 
+def test_nan_payload_raises():
+    pg = _pg()
+    g = pg.Grove()
+    with pytest.raises(ValueError):
+        g.insert("chr1", _c(pg, "+", 100, 200), float("nan"))
+    with pytest.raises(ValueError):
+        g.insert("chr1", _c(pg, "+", 100, 200), {"score": float("inf")})
+
+
 def test_strand_aware_query_with_payload():
     pg = _pg()
     g = pg.Grove()
