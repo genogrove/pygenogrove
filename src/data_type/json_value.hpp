@@ -46,9 +46,11 @@ struct type_caster<pygg::json_value> {
     PYBIND11_TYPE_CASTER(pygg::json_value, const_name("object"));
 
     // Python object -> json_value (json.dumps). Propagates a TypeError if the
-    // object is not JSON-serializable.
+    // object is not JSON-serializable, or a ValueError for NaN/Infinity (which
+    // json.dumps would otherwise emit as non-standard tokens, breaking the
+    // "always valid JSON" invariant above).
     bool load(handle src, bool) {
-        value.json = json_dumps()(src).cast<std::string>();
+        value.json = json_dumps()(src, arg("allow_nan") = false).cast<std::string>();
         return true;
     }
 

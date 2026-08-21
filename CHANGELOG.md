@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`json_value` payloads reject NaN/Infinity.** `Grove`/`NumericGrove`/`KmerGrove`
+  data payloads and edge metadata (and `Registry` values) previously accepted
+  `float('nan')`/`float('inf')`/`float('-inf')` silently, serializing them as the
+  non-standard `NaN`/`Infinity`/`-Infinity` JSON tokens — violating the documented
+  "always valid JSON" invariant and breaking any strict downstream JSON parser or
+  non-Python consumer of the resulting `.gg` file. Such payloads now raise
+  `ValueError` at insert time instead
+  ([#76](https://github.com/genogrove/pygenogrove/issues/76),
+  [#85](https://github.com/genogrove/pygenogrove/pull/85)).
+
 ## [0.8.0] - 2026-08-20
 
 ### Added
