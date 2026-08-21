@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (pybind11's `std::vector` caster has no per-element `None` guard),
   surfacing later as either an `AttributeError` deep in the caller's own
   predicate or a mismatched `ValueError` from `graph_overlay::add_edge`.
-  Both methods now raise a clear `TypeError` up front, matching every other
-  single-Key argument in the class
+  Both methods now raise a clear `TypeError` up front, matching the other
+  single-key arguments that reject `None`
   ([#77](https://github.com/genogrove/pygenogrove/issues/77),
   [#86](https://github.com/genogrove/pygenogrove/pull/86)).
 
