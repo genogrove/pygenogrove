@@ -52,10 +52,12 @@ namespace gdt = genogrove::data_type;
 template <typename>
 inline constexpr bool grove_data_optional = false;
 
-// Raises TypeError if any element of `keys` is None. Every single-Key argument
-// in this file uses py::arg(...).none(false) for this; std::vector's caster has
-// no per-element equivalent and silently turns a None element into nullptr, so
-// link_if()/link_with() check by hand (issue #77).
+// Raises TypeError if any element of `keys` is None. The edge-graph methods'
+// single-Key arguments (source/target/key) use py::arg(...).none(false) for
+// this; std::vector's caster has no per-element equivalent and silently turns
+// a None element into nullptr, so link_if()/link_with() check by hand (issue
+// #77). (remove_key()'s `key` intentionally allows None via .none(true) —
+// unrelated to this check.)
 template <typename KeyPtr>
 void check_no_none_keys(const std::vector<KeyPtr>& keys, const char* arg_name) {
     for (const auto* k : keys) {
