@@ -52,6 +52,21 @@ namespace gdt = genogrove::data_type;
 template <typename>
 inline constexpr bool grove_data_optional = false;
 
+// Raises TypeError if any element of `keys` is None. The edge-graph methods'
+// single-Key arguments (source/target/key) use py::arg(...).none(false) for
+// this; std::vector's caster has no per-element equivalent and silently turns
+// a None element into nullptr, so link_if()/link_with() check by hand (issue
+// #77). (remove_key()'s `key` intentionally allows None via .none(true) —
+// unrelated to this check.)
+template <typename KeyPtr>
+void check_no_none_keys(const std::vector<KeyPtr>& keys, const char* arg_name) {
+    for (const auto* k : keys) {
+        if (k == nullptr) {
+            throw py::type_error(std::string(arg_name) + " must not contain None");
+        }
+    }
+}
+
 template <typename KeyT, typename DataT, typename EdgeT = void>
 void bind_grove(py::module_& m, const char* grove_name,
                 const char* key_name, const char* qr_name,
@@ -426,6 +441,7 @@ void bind_grove(py::module_& m, const char* grove_name,
         .def("link_if",
              [](grove_t& g, const std::vector<key_t*>& keys,
                 std::function<bool(key_t*, key_t*)> predicate) {
+                 check_no_none_keys(keys, "keys");
                  // The predicate calls back into Python — keep the GIL held.
                  g.link_if(keys, std::move(predicate));
              },
@@ -437,7 +453,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                  (keys[i], keys[i+1]) for which predicate(keys[i], keys[i+1])
                  returns True. `keys` is typically the list returned by a bulk
                  insert; the predicate receives two Keys. Use link_with() to attach
-                 edge metadata.
+                 edge metadata. Raises TypeError if any element of keys is None.
              )pbdoc")
 
         // ---- Vertex / storage counts ----
@@ -684,6 +700,7 @@ void bind_grove(py::module_& m, const char* grove_name,
         cls.def("link_with",
                 [](grove_t& g, const std::vector<key_t*>& keys,
                    std::function<std::optional<EdgeT>(key_t*, key_t*)> predicate) {
+                    check_no_none_keys(keys, "keys");
                     // The predicate calls back into Python — keep the GIL held.
                     g.link_if(keys, std::move(predicate));
                 },
@@ -694,7 +711,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                     Like link_if(), but the predicate returns the edge metadata to
                     attach, or None to skip: predicate(keys[i], keys[i+1]) ->
                     Optional[object], applied to each adjacent pair. Use this to
-                    label edges built over a bulk-inserted run of keys.
+                    label edges built over a bulk-inserted run of keys. Raises
+                    TypeError if any element of keys is None.
                 )pbdoc");
     }
 
