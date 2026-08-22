@@ -31,6 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `GenomicCoordinate`'s constructor docstring
   ([#79](https://github.com/genogrove/pygenogrove/issues/79),
   [#87](https://github.com/genogrove/pygenogrove/pull/87)).
+- **Documented copy-on-access VCF fields; tightened `insert_bulk` GIL scope.**
+  `VcfEntry.info`/`format`/`samples` and `SampleGenotype.gt_alleles`/`fields`
+  now document that they return a fresh copy on each access (matching the
+  existing `BlockInfo`/`GffEntry.attributes` note), and `insert_bulk`'s
+  entry-deriving overload now releases the GIL around its coordinate-derivation
+  loop too, not just the bulk tree build — both changes are internal/doc-only,
+  no behavior change
+  ([#80](https://github.com/genogrove/pygenogrove/issues/80),
+  [#89](https://github.com/genogrove/pygenogrove/pull/89)).
 
 ### Fixed
 
