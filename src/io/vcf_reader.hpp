@@ -44,14 +44,16 @@ inline void bind_vcf_reader(py::module_& m) {
         .def(py::init<>())
         .def_readonly("gt_alleles", &gio::sample_genotype::gt_alleles,
                       "Decoded GT allele indices (0 = REF, 1.. = ALT index, "
-                      "-1 = missing '.'); empty when no GT field.")
+                      "-1 = missing '.'); empty when no GT field. list[int]; "
+                      "returned by copy on each access.")
         .def_readonly("phased", &gio::sample_genotype::phased,
                       "Whether the genotype is phased (the '|' separator).")
         .def_readonly("has_gt", &gio::sample_genotype::has_gt,
                       "True if a GT field was present for this sample.")
         .def_readonly("fields", &gio::sample_genotype::fields,
                       "Other FORMAT fields keyed by tag (e.g. 'DP', 'GQ'), "
-                      "excluding GT. Values are list[int] / list[float] / str.")
+                      "excluding GT. Values are list[int] / list[float] / str. "
+                      "dict; returned by copy on each access.")
         .def("gt_string", &gio::sample_genotype::gt_string,
              "GT as a VCF-style string ('0/1', '0|1', './.', '' if no GT).")
         .def("is_hom_ref", &gio::sample_genotype::is_hom_ref,
@@ -91,13 +93,19 @@ inline void bind_vcf_reader(py::module_& m) {
                       "FILTER entries; ['PASS'] when passed, empty when '.'.")
         .def_readonly("info", &gio::vcf_entry::info,
                       "INFO fields (when parse_info): name -> "
-                      "bool / list[int] / list[float] / str.")
+                      "bool / list[int] / list[float] / str. dict; returned "
+                      "by copy on each access — bind it to a local before "
+                      "repeated lookups/iteration.")
         .def_readonly("format", &gio::vcf_entry::format,
                       "FORMAT keys in column order (incl. 'GT'); empty unless "
-                      "parse_samples.")
+                      "parse_samples. list[str]; returned by copy on each "
+                      "access — bind it to a local before repeated "
+                      "indexing/iteration.")
         .def_readonly("samples", &gio::vcf_entry::samples,
                       "Per-sample SampleGenotype list, parallel to "
-                      "VcfReader.get_sample_names().")
+                      "VcfReader.get_sample_names(). list[SampleGenotype]; "
+                      "returned by copy on each access — bind it to a local "
+                      "before repeated indexing/iteration.")
         .def("passed_filter", &gio::vcf_entry::passed_filter,
              "True if FILTER is PASS or unset ('.').")
         .def("is_snp", &gio::vcf_entry::is_snp,

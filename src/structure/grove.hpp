@@ -243,17 +243,20 @@ void bind_grove(py::module_& m, const char* grove_name,
                     [](py::object self, const std::string& index,
                        std::vector<DataT> entries, bool presorted) {
                         auto& g = self.cast<grove_t&>();
-                        std::vector<std::pair<KeyT, DataT>> items;
-                        items.reserve(entries.size());
-                        for (auto& entry : entries) {
-                            KeyT k = genomic_coordinate_from_entry(entry);
-                            items.emplace_back(k, std::move(entry));
-                        }
-                        // Release the GIL around the pure-C++ bulk build, then
-                        // build the result list with it reacquired.
+                        // Both the coordinate-derivation loop and the bulk
+                        // build operate only on already-converted C++ values
+                        // (no Python objects touched), so release the GIL
+                        // around both — then build the result list with it
+                        // reacquired.
                         std::vector<key_t*> keys;
                         {
                             py::gil_scoped_release rel;
+                            std::vector<std::pair<KeyT, DataT>> items;
+                            items.reserve(entries.size());
+                            for (auto& entry : entries) {
+                                KeyT k = genomic_coordinate_from_entry(entry);
+                                items.emplace_back(k, std::move(entry));
+                            }
                             keys = presorted
                                        ? g.insert_data(index, items, ggs::sorted,
                                                        ggs::bulk)
