@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`Key` equality/ordering/hashing moved from identity-based to value-based.**
+  `Key` previously had no bound comparisons or hash, so Python's default
+  pointer-identity semantics applied (distinct `Key` objects were never equal,
+  even with identical wrapped values). `Key` now binds `__eq__`/`__lt__`/`__gt__`/
+  `__hash__`, delegating to the wrapped value and ignoring `.data` — mirroring
+  `key_t`'s own C++ comparison semantics. **Behavior change:** two distinct
+  `Key`s with equal values (e.g. from different `Grove`s, or with different
+  `.data`) now compare equal and hash equal, and will collapse to one entry in
+  a `set`/`dict` where they previously didn't
+  ([#79](https://github.com/genogrove/pygenogrove/issues/79),
+  [#87](https://github.com/genogrove/pygenogrove/pull/87)).
+- **API polish: `__repr__`, `<=`/`>=`, and doc fixes.** Added `__repr__` to
+  `Key`/`QueryResult`/`FlankingResult` and every reader class
+  (`BamReader`/`BedReader`/`GffReader`/`VcfReader`/`FastaReader`/`FastaIndex`);
+  added `__le__`/`__ge__` to `GenomicCoordinate`/`Kmer`/`Numeric` (previously
+  only `<`/`>`/`==` were bound, and Python doesn't auto-derive `<=`/`>=` from
+  those); fixed a stale "format 0.2" comment in `grove_view.hpp` (now format
+  0.3); documented why `VcfEntry`/`SampleGenotype` are read-only while the
+  other readers' entries are read-write; and added a missing `Raises` line to
+  `GenomicCoordinate`'s constructor docstring
+  ([#79](https://github.com/genogrove/pygenogrove/issues/79),
+  [#87](https://github.com/genogrove/pygenogrove/pull/87)).
+
 ### Fixed
 
 - **`Grove.link_if`/`link_with` reject `None` in `keys`.** A stray `None`
