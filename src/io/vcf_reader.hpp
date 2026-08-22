@@ -14,10 +14,11 @@
  * pybind11/stl.h's variant + map casters.
  *
  * Read-only (def_readonly), unlike SamEntry/BedEntry/GffEntry/FastaEntry
- * (def_readwrite): every field here is a nested container, so an in-place edit
- * like `entry.info["x"] = 1` would silently mutate a throwaway copy — read-only
- * avoids that false impression. The other readers' entries hold plain scalars,
- * where read-write is a harmless convenience instead.
+ * (def_readwrite): nested-container fields (info/format/samples/gt_alleles/
+ * fields) are read-only because an in-place edit like `entry.info["x"] = 1`
+ * would silently mutate a throwaway copy; scalar fields are read-only too,
+ * for consistency. The other readers hold only scalars, where read-write is
+ * a harmless convenience instead.
  */
 #pragma once
 

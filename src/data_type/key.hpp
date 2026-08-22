@@ -47,6 +47,10 @@ void bind_key(py::module_& m, const char* name) {
         .def(py::self == py::self)
         .def(py::self < py::self)
         .def(py::self > py::self)
+        // Round-trips through Python to reuse the value type's own __hash__
+        // rather than re-deriving each type's mixing logic here. A measurable
+        // cost on bulk hashing (e.g. set(query_result)) would be the signal to
+        // switch to a direct C++ call instead.
         .def("__hash__", [](const key_t& k) { return py::hash(py::cast(k.get_value())); });
 
     // Every grove carries a payload (the universal Grove's is JSON; BedKey/GffKey
