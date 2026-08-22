@@ -53,6 +53,12 @@ def test_sequence_metadata(tmp_path):
     assert idx.sequence_length("chr2") == 16
 
 
+def test_repr(tmp_path):
+    pg = _pg()
+    idx = _index(pg, tmp_path)
+    assert repr(idx) == "FastaIndex(n_sequences=2)"
+
+
 def test_membership_and_names(tmp_path):
     pg = _pg()
     idx = _index(pg, tmp_path)

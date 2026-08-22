@@ -11,6 +11,7 @@
  */
 #pragma once
 
+#include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 
 #include <type_traits>
@@ -36,13 +37,31 @@ void bind_key(py::module_& m, const char* name) {
             [](const key_t& k) { return k.get_value(); },
             "The key value (returned by value/copy, so mutating it cannot "
             "corrupt the grove's B+ tree ordering)")
-        .def("__str__", [](const key_t& k) { return k.to_string(); });
+        .def("__str__", [](const key_t& k) { return k.to_string(); })
+        .def("__repr__", [name](const key_t& k) {
+            return std::string(name) + "(" + k.to_string() + ")";
+        })
+        // Comparisons delegate to the wrapped value (ignoring .data), mirroring
+        // key_t's own operator==/</> semantics — matches the B+ tree's notion
+        // of identity.
+        .def(py::self == py::self)
+        .def(py::self < py::self)
+        .def(py::self > py::self)
+        // Round-trips through Python to reuse the value type's own __hash__
+        // rather than re-deriving each type's mixing logic here. A measurable
+        // cost on bulk hashing (e.g. set(query_result)) would be the signal to
+        // switch to a direct C++ call instead.
+        .def("__hash__", [](const key_t& k) { return py::hash(py::cast(k.get_value())); });
 
     // Every grove carries a payload (the universal Grove's is JSON; BedKey/GffKey
     // carry a typed record), so .data is always present.
     cls.def_property_readonly(
         "data",
         [](key_t& k) -> DataT& { return k.get_data(); },
+        // reference_internal only bites for a pybind11-wrapped return value
+        // (true for BedKey/GffKey's live reference). json_value's custom caster
+        // decodes straight to a native Python object, so it's a no-op there —
+        // see the docstring below.
         py::return_value_policy::reference_internal,
         "The associated data payload (not part of B+ tree ordering). On the typed "
         "BedKey/GffKey it is a live, mutable reference into grove storage "

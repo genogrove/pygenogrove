@@ -97,5 +97,8 @@ inline void bind_fasta_index(py::module_& m) {
              },
              "List of all sequence names, in index order.")
         .def("__len__", &gio::fasta_index::sequence_count)
-        .def("__contains__", &gio::fasta_index::has_sequence, py::arg("name"));
+        .def("__contains__", &gio::fasta_index::has_sequence, py::arg("name"))
+        .def("__repr__", [](const gio::fasta_index& idx) {
+            return "FastaIndex(n_sequences=" + std::to_string(idx.sequence_count()) + ")";
+        });
 }

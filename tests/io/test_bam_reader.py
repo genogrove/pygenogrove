@@ -111,6 +111,14 @@ def test_load_bam_into_grove(tmp_path):
     assert hits[0].data["strand"] == "+"
 
 
+def test_repr(tmp_path):
+    pg = _pg()
+    reader = pg.BamReader(_sam(tmp_path))
+    assert repr(reader) == "BamReader(records=0)"
+    list(reader)
+    assert repr(reader) == f"BamReader(records={reader.get_current_line()})"
+
+
 def test_clean_eof_error_message(tmp_path):
     pg = _pg()
     r = pg.BamReader(_sam(tmp_path))

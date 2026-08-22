@@ -1,6 +1,6 @@
 /*
  * Binding for ggs::grove_view<KeyT, DataT, EdgeT> — a read-only, *partial*
- * reader over a serialized (format 0.2) grove. Mirrors genogrove
+ * reader over a serialized (format 0.3) grove. Mirrors genogrove
  * structure/grove/grove_view.hpp. Where Grove.deserialize() eagerly loads every
  * block, a GroveView pages in only the blocks a query walks (cached, no
  * eviction) — query a large on-disk .gg without loading it whole.

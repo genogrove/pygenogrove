@@ -11,8 +11,14 @@
  *
  * INFO and per-sample FORMAT values are htslib-typed variants
  * (bool / list[int] / list[float] / str), converted to native Python objects by
- * pybind11/stl.h's variant + map casters. Read-only — the reader yields fresh
- * copies, so there is nothing to mutate back.
+ * pybind11/stl.h's variant + map casters.
+ *
+ * Read-only (def_readonly), unlike SamEntry/BedEntry/GffEntry/FastaEntry
+ * (def_readwrite): nested-container fields (info/format/samples/gt_alleles/
+ * fields) are read-only because an in-place edit like `entry.info["x"] = 1`
+ * would silently mutate a throwaway copy; scalar fields are read-only too,
+ * for consistency. The other readers hold only scalars, where read-write is
+ * a harmless convenience instead.
  */
 #pragma once
 
@@ -191,5 +197,8 @@ inline void bind_vcf_reader(py::module_& m) {
              "Error message from the most recent read; empty on clean EOF.")
         .def("get_current_line", &gio::vcf_reader::get_current_line,
              "1-based index of the most recently consumed record (counts records "
-             "dropped by skip_filtered too); 0 before the first read.");
+             "dropped by skip_filtered too); 0 before the first read.")
+        .def("__repr__", [](const gio::vcf_reader& r) {
+            return "VcfReader(records=" + std::to_string(r.get_current_line()) + ")";
+        });
 }

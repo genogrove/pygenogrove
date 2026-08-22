@@ -8,6 +8,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <string>
+
 #include <genogrove/data_type/query_result.hpp>
 
 #include "key_list.hpp"
@@ -35,6 +37,10 @@ void bind_query_result(py::module_& m, const char* name) {
                                "List of matching keys; each Key keeps this result "
                                "(and its Grove) alive.")
         .def("__len__", [](const qr_t& qr) { return qr.get_keys().size(); })
+        .def("__repr__", [name](const qr_t& qr) {
+            return std::string(name) + "(query=" + qr.get_query().to_string() +
+                   ", n=" + std::to_string(qr.get_keys().size()) + ")";
+        })
         .def("__iter__", [](const qr_t& qr) {
             return py::make_iterator(qr.get_keys().begin(), qr.get_keys().end());
         }, py::keep_alive<0, 1>());

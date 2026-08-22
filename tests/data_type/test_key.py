@@ -36,6 +36,34 @@ def test_value_is_a_copy():
     assert key.value.end == 200
 
 
+def test_repr():
+    pg = _pg()
+    grove = pg.Grove(3)
+    key = grove.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    assert repr(key) == f"Key({key.value})"
+
+
+def test_equality_and_hash_by_value_ignoring_data():
+    """Comparisons delegate to the wrapped value, ignoring .data and pointer
+    identity — two distinct Keys (different Groves, different data) with equal
+    values must compare equal and hash equal."""
+    pg = _pg()
+    a = pg.Grove(3).insert("chr1", pg.GenomicCoordinate(".", 100, 200), {"x": 1})
+    b = pg.Grove(3).insert("chr1", pg.GenomicCoordinate(".", 100, 200), {"x": 2})
+    assert a is not b
+    assert a == b
+    assert hash(a) == hash(b)
+
+
+def test_ordering_by_value():
+    pg = _pg()
+    grove = pg.Grove(3)
+    lo = grove.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    hi = grove.insert("chr1", pg.GenomicCoordinate(".", 300, 400))
+    assert lo < hi
+    assert hi > lo
+
+
 def test_keeps_grove_alive():
     """A Key holds its Grove alive: using it after the Grove handle is
     dropped must stay safe (reference_internal => keep_alive<0,1>).

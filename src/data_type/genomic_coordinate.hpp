@@ -42,6 +42,9 @@ inline void bind_genomic_coordinate(py::module_& m) {
             Start position (0-based, inclusive).
         end : int
             End position (0-based, inclusive).
+
+        Raises ValueError if strand is not one of '+', '-', '.', '*', or if
+        start > end.
     )pbdoc")
         .def(py::init<>())
         .def(py::init<char, size_t, size_t>(),
@@ -85,6 +88,12 @@ inline void bind_genomic_coordinate(py::module_& m) {
         .def(py::self < py::self)
         .def(py::self > py::self)
         .def(py::self == py::self)
+        .def("__le__", [](const gdt::genomic_coordinate& a, const gdt::genomic_coordinate& b) {
+            return !(a > b);
+        })
+        .def("__ge__", [](const gdt::genomic_coordinate& a, const gdt::genomic_coordinate& b) {
+            return !(a < b);
+        })
         .def("__hash__", [](const gdt::genomic_coordinate& c) {
             // == compares strand, start AND end, so mix all three.
             std::size_t h = std::hash<char>{}(c.get_strand());

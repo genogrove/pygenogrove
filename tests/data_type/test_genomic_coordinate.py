@@ -91,6 +91,16 @@ def test_comparison_by_strand():
     assert star < dot < plus < minus
 
 
+def test_comparison_le_ge():
+    pg = _pg()
+    a = pg.GenomicCoordinate("+", 100, 200)
+    b = pg.GenomicCoordinate("+", 100, 200)
+    c = pg.GenomicCoordinate("+", 150, 200)
+    assert a <= b and a >= b  # equal
+    assert a <= c and not a >= c
+    assert c >= a and not c <= a
+
+
 def test_overlap_same_strand_overlapping():
     pg = _pg()
     a = pg.GenomicCoordinate("+", 100, 200)

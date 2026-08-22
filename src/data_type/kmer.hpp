@@ -55,6 +55,8 @@ inline void bind_kmer(py::module_& m) {
         .def(py::self < py::self)
         .def(py::self > py::self)
         .def(py::self == py::self)
+        .def("__le__", [](const gdt::kmer& a, const gdt::kmer& b) { return !(a > b); })
+        .def("__ge__", [](const gdt::kmer& a, const gdt::kmer& b) { return !(a < b); })
         .def("__hash__", [](const gdt::kmer& km) {
             // == compares both encoding AND k, so the hash must mix both.
             std::size_t h = std::hash<uint64_t>{}(km.get_encoding());
