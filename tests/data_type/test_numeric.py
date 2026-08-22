@@ -43,6 +43,12 @@ def test_comparisons():
     assert not (pg.Numeric(5) < pg.Numeric(5))
 
 
+def test_comparison_le_ge():
+    pg = _pg()
+    assert pg.Numeric(5) <= pg.Numeric(10) and not pg.Numeric(5) >= pg.Numeric(10)
+    assert pg.Numeric(5) <= pg.Numeric(5) and pg.Numeric(5) >= pg.Numeric(5)
+
+
 def test_overlap_is_exact_equality():
     pg = _pg()
     assert pg.Numeric.overlaps(pg.Numeric(5), pg.Numeric(5)) is True

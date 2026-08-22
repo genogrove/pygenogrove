@@ -199,5 +199,8 @@ inline void bind_bam_reader(py::module_& m) {
         .def("get_error_message", &gio::bam_reader::get_error_message,
              "Error message from the most recent read; empty on clean EOF.")
         .def("get_current_line", &gio::bam_reader::get_current_line,
-             "Records consumed so far (advances on skipped/filtered records too).");
+             "Records consumed so far (advances on skipped/filtered records too).")
+        .def("__repr__", [](const gio::bam_reader& r) {
+            return "BamReader(records=" + std::to_string(r.get_current_line()) + ")";
+        });
 }

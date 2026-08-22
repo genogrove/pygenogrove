@@ -53,6 +53,8 @@ inline void bind_numeric(py::module_& m) {
         .def(py::self < py::self)
         .def(py::self > py::self)
         .def(py::self == py::self)
+        .def("__le__", [](const gdt::numeric& a, const gdt::numeric& b) { return !(a > b); })
+        .def("__ge__", [](const gdt::numeric& a, const gdt::numeric& b) { return !(a < b); })
         .def("__hash__", [](const gdt::numeric& n) {
             return std::hash<int>{}(n.get_value());
         })

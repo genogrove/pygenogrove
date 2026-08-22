@@ -64,6 +64,12 @@ def test_ordering_length_then_encoding():
     assert pg.Kmer("AAAA") < pg.Kmer("AAAC")        # encoding within equal length
 
 
+def test_comparison_le_ge():
+    pg = _pg()
+    assert pg.Kmer("AC") <= pg.Kmer("ACG") and not pg.Kmer("AC") >= pg.Kmer("ACG")
+    assert pg.Kmer("ACGT") <= pg.Kmer("ACGT") and pg.Kmer("ACGT") >= pg.Kmer("ACGT")
+
+
 def test_hashable_by_value():
     pg = _pg()
     # Normalized-equal k-mers hash equal; different length/sequence stays distinct.

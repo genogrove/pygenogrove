@@ -10,6 +10,8 @@
 
 #include <pybind11/pybind11.h>
 
+#include <string>
+
 #include <genogrove/data_type/flanking_query_result.hpp>
 
 namespace py = pybind11;
@@ -38,5 +40,10 @@ void bind_flanking_query_result(py::module_& m, const char* name) {
             "successor",
             [](const fqr_t& r) { return r.get_successor(); },
             py::return_value_policy::reference_internal,
-            "Nearest non-overlapping key after the query (a Key), or None.");
+            "Nearest non-overlapping key after the query (a Key), or None.")
+        .def("__repr__", [name](const fqr_t& r) {
+            auto side = [](auto* k) { return k ? k->to_string() : std::string("None"); };
+            return std::string(name) + "(predecessor=" + side(r.get_predecessor()) +
+                   ", successor=" + side(r.get_successor()) + ")";
+        });
 }

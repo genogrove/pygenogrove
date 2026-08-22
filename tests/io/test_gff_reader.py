@@ -193,6 +193,15 @@ def test_start_one_boundary(tmp_path):
     assert e.end == 100
 
 
+def test_repr(tmp_path):
+    pg = _pg()
+    path = _write(tmp_path / "a.gff3", GFF3[:1])
+    reader = pg.GffReader(path)
+    assert repr(reader) == "GffReader(line=0)"
+    list(reader)
+    assert repr(reader) == f"GffReader(line={reader.get_current_line()})"
+
+
 def test_reads_gzip(tmp_path):
     """A gzip-compressed GFF file is decompressed transparently."""
     pg = _pg()

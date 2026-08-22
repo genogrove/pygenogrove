@@ -228,6 +228,15 @@ def test_current_line_advances(tmp_path):
     assert reader.get_current_line() >= 2
 
 
+def test_repr(tmp_path):
+    pg = _pg()
+    path = _write(tmp_path / "a.bed", [("chr1", 0, 10)])
+    reader = pg.BedReader(path)
+    assert repr(reader) == "BedReader(line=0)"
+    list(reader)
+    assert repr(reader) == f"BedReader(line={reader.get_current_line()})"
+
+
 def test_reads_gzip(tmp_path):
     """A gzip-compressed BED file is decompressed transparently."""
     pg = _pg()

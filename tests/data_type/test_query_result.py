@@ -47,6 +47,14 @@ def test_key_ordering_preserved():
     assert count == len(results)
 
 
+def test_repr():
+    pg = _pg()
+    grove = pg.Grove(100)
+    grove.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    results = grove.intersect(pg.GenomicCoordinate(".", 150, 175), "chr1")
+    assert repr(results) == f"QueryResult(query={results.query}, n=1)"
+
+
 def test_empty_result():
     """An empty result has length 0 and yields nothing on iteration."""
     pg = _pg()

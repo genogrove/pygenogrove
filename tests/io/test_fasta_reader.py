@@ -69,6 +69,14 @@ def test_fasta_entry_construct():
     assert e.quality is None
 
 
+def test_repr(tmp_path):
+    pg = _pg()
+    reader = pg.FastaReader(_write(tmp_path, "x.fa", _FASTA))
+    assert repr(reader) == "FastaReader(line=0)"
+    list(reader)
+    assert repr(reader) == f"FastaReader(line={reader.get_current_line()})"
+
+
 def test_clean_eof_error_message(tmp_path):
     pg = _pg()
     r = pg.FastaReader(_write(tmp_path, "x.fa", _FASTA))

@@ -42,6 +42,14 @@ def test_query_before_all_keys_only_successor():
     assert r.successor.value == pg.GenomicCoordinate(".", 500, 600)
 
 
+def test_repr():
+    pg = _pg()
+    g = pg.Grove(8)
+    g.insert("chr1", pg.GenomicCoordinate(".", 500, 600))
+    r = g.flanking(pg.GenomicCoordinate(".", 100, 200), "chr1")
+    assert repr(r) == "FlankingResult(predecessor=None, successor=.:500-600)"
+
+
 def test_query_after_all_keys_only_predecessor():
     pg = _pg()
     g = pg.Grove(8)

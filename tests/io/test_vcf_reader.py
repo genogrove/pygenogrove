@@ -166,6 +166,14 @@ def test_reader_accessors_after_clean_iteration(tmp_path):
     assert reader.get_current_line() == 2
 
 
+def test_repr(tmp_path):
+    pg = _pg()
+    reader = pg.VcfReader(_write_vcf(tmp_path))
+    assert repr(reader) == "VcfReader(records=0)"
+    list(reader)
+    assert repr(reader) == f"VcfReader(records={reader.get_current_line()})"
+
+
 def test_missing_file_raises(tmp_path):
     pg = _pg()
     with pytest.raises((RuntimeError, IOError, OSError)):
