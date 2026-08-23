@@ -193,10 +193,14 @@ inline void bind_bam_reader(py::module_& m) {
         .def("__next__", [](py::object self) {
             return read_next_guarded<gio::bam_reader, gio::sam_entry>(self, "BamReader");
         })
-        .def("get_error_message", &gio::bam_reader::get_error_message,
-             "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", &gio::bam_reader::get_current_line,
-             "Records consumed so far (advances on skipped/filtered records too).")
+        .def("get_error_message", [](py::object self) {
+            return guarded_getter(self, "BamReader", "get_error_message",
+                                   &gio::bam_reader::get_error_message);
+        }, "Error message from the most recent read; empty on clean EOF.")
+        .def("get_current_line", [](py::object self) {
+            return guarded_getter(self, "BamReader", "get_current_line",
+                                   &gio::bam_reader::get_current_line);
+        }, "Records consumed so far (advances on skipped/filtered records too).")
         .def("__repr__", [](const gio::bam_reader& r) {
             return "BamReader(records=" + std::to_string(r.get_current_line()) + ")";
         });

@@ -198,11 +198,15 @@ inline void bind_vcf_reader(py::module_& m) {
              "Sample names in column order (empty for sites-only VCFs).")
         .def("get_contigs", &gio::vcf_reader::get_contigs,
              "Contig names declared in the header.")
-        .def("get_error_message", &gio::vcf_reader::get_error_message,
-             "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", &gio::vcf_reader::get_current_line,
-             "1-based index of the most recently consumed record (counts records "
-             "dropped by skip_filtered too); 0 before the first read.")
+        .def("get_error_message", [](py::object self) {
+            return guarded_getter(self, "VcfReader", "get_error_message",
+                                   &gio::vcf_reader::get_error_message);
+        }, "Error message from the most recent read; empty on clean EOF.")
+        .def("get_current_line", [](py::object self) {
+            return guarded_getter(self, "VcfReader", "get_current_line",
+                                   &gio::vcf_reader::get_current_line);
+        }, "1-based index of the most recently consumed record (counts records "
+           "dropped by skip_filtered too); 0 before the first read.")
         .def("__repr__", [](const gio::vcf_reader& r) {
             return "VcfReader(records=" + std::to_string(r.get_current_line()) + ")";
         });

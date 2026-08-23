@@ -89,10 +89,14 @@ inline void bind_fasta_reader(py::module_& m) {
         .def("__next__", [](py::object self) {
             return read_next_guarded<gio::fasta_reader, gio::fasta_entry>(self, "FastaReader");
         })
-        .def("get_error_message", &gio::fasta_reader::get_error_message,
-             "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", &gio::fasta_reader::get_current_line,
-             "1-based physical line number consumed so far; 0 before the first read.")
+        .def("get_error_message", [](py::object self) {
+            return guarded_getter(self, "FastaReader", "get_error_message",
+                                   &gio::fasta_reader::get_error_message);
+        }, "Error message from the most recent read; empty on clean EOF.")
+        .def("get_current_line", [](py::object self) {
+            return guarded_getter(self, "FastaReader", "get_current_line",
+                                   &gio::fasta_reader::get_current_line);
+        }, "1-based physical line number consumed so far; 0 before the first read.")
         .def("__repr__", [](const gio::fasta_reader& r) {
             return "FastaReader(line=" + std::to_string(r.get_current_line()) + ")";
         });

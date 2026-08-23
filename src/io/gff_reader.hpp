@@ -149,11 +149,15 @@ inline void bind_gff_reader(py::module_& m) {
         .def("__next__", [](py::object self) {
             return read_next_guarded<gio::gff_reader, gio::gff_entry>(self, "GffReader");
         })
-        .def("get_error_message", &gio::gff_reader::get_error_message,
-             "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", &gio::gff_reader::get_current_line,
-             "1-based physical line number consumed so far (comments/blanks "
-             "count); 0 before the first read.")
+        .def("get_error_message", [](py::object self) {
+            return guarded_getter(self, "GffReader", "get_error_message",
+                                   &gio::gff_reader::get_error_message);
+        }, "Error message from the most recent read; empty on clean EOF.")
+        .def("get_current_line", [](py::object self) {
+            return guarded_getter(self, "GffReader", "get_current_line",
+                                   &gio::gff_reader::get_current_line);
+        }, "1-based physical line number consumed so far (comments/blanks "
+           "count); 0 before the first read.")
         .def("__repr__", [](const gio::gff_reader& r) {
             return "GffReader(line=" + std::to_string(r.get_current_line()) + ")";
         });
