@@ -40,6 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no behavior change
   ([#80](https://github.com/genogrove/pygenogrove/issues/80),
   [#89](https://github.com/genogrove/pygenogrove/pull/89)).
+- **Documented `VcfEntry.alt`/`filter` copy-on-access.** Same "returned by copy
+  on each access" note as `info`/`format`/`samples` above — the last gap of
+  this shape in `VcfEntry`
+  ([#90](https://github.com/genogrove/pygenogrove/issues/90),
+  [#91](https://github.com/genogrove/pygenogrove/pull/91)).
 
 ### Fixed
 
