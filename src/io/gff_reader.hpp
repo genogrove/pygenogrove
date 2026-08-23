@@ -114,8 +114,9 @@ inline void bind_gff_reader(py::module_& m) {
         Plain and BGZF/gzip-compressed (`.gz`) files are both accepted. The reader
         owns an htslib file handle and is single-pass.
 
-        Not thread-safe — drive one reader per thread. A concurrent `__next__`
-        call from another thread raises RuntimeError rather than racing.
+        Not thread-safe — drive one reader per thread. Calling `__next__`,
+        `get_current_line`, or `get_error_message` from another thread while
+        `__next__` is in flight raises RuntimeError rather than racing.
 
         Parameters
         ----------

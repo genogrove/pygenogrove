@@ -163,8 +163,9 @@ inline void bind_vcf_reader(py::module_& m) {
     py::class_<gio::vcf_reader>(m, "VcfReader", py::dynamic_attr(), R"pbdoc(
         Single-pass iterator over a VCF/BCF file (plain, bgzip-ed, or binary BCF;
         htslib auto-detects). Yields VcfEntry. Not thread-safe — drive one reader
-        per thread. A concurrent `__next__` call from another thread raises
-        RuntimeError rather than racing.
+        per thread. Calling `__next__`, `get_current_line`, or
+        `get_error_message` from another thread while `__next__` is in flight
+        raises RuntimeError rather than racing.
 
             for v in pygenogrove.VcfReader("calls.vcf", skip_filtered=True):
                 ...
