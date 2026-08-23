@@ -202,6 +202,21 @@ def test_repr(tmp_path):
     assert repr(reader) == f"GffReader(line={reader.get_current_line()})"
 
 
+def test_concurrent_next_raises(tmp_path):
+    """__next__ guards against concurrent calls on the same reader (issue #84).
+    Pokes the internal flag directly rather than racing real threads — the
+    guard's check-then-set only needs to be correct, not literally raced."""
+    pg = _pg()
+    path = _write(tmp_path / "a.gff3", GFF3[:1])
+    reader = pg.GffReader(path)
+    reader._pygg_reading = True
+    with pytest.raises(RuntimeError):
+        next(reader)
+    # The guard doesn't get stuck: a normal call after the flag is cleared works.
+    reader._pygg_reading = False
+    assert next(reader) is not None
+
+
 def test_reads_gzip(tmp_path):
     """A gzip-compressed GFF file is decompressed transparently."""
     pg = _pg()

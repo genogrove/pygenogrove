@@ -20,6 +20,8 @@
 
 #include <genogrove/io/gff_reader.hpp>
 
+#include "reader_guard.hpp"
+
 namespace py = pybind11;
 namespace gio = genogrove::io;
 
@@ -100,7 +102,7 @@ inline void bind_gff_entry(py::module_& m) {
 
 inline void bind_gff_reader(py::module_& m) {
     // GffEntry must already be registered (bind_gff_entry) — GffReader yields it.
-    py::class_<gio::gff_reader>(m, "GffReader", R"pbdoc(
+    py::class_<gio::gff_reader>(m, "GffReader", py::dynamic_attr(), R"pbdoc(
         A single-pass iterator over the records of a GFF3/GTF file.
 
         Iterate it directly to get GffEntry objects::
@@ -111,6 +113,9 @@ inline void bind_gff_reader(py::module_& m) {
         The GFF3 vs GTF format is auto-detected per record (see GffEntry.format).
         Plain and BGZF/gzip-compressed (`.gz`) files are both accepted. The reader
         owns an htslib file handle and is single-pass.
+
+        Not thread-safe — drive one reader per thread. A concurrent `__next__`
+        call from another thread raises RuntimeError rather than racing.
 
         Parameters
         ----------
@@ -141,16 +146,9 @@ inline void bind_gff_reader(py::module_& m) {
              py::arg("path"), py::arg("skip_invalid_lines") = false,
              py::arg("validate_gtf") = false, py::arg("region") = "")
         .def("__iter__", [](gio::gff_reader& r) -> gio::gff_reader& { return r; })
-        .def("__next__", [](gio::gff_reader& r) {
-            gio::gff_entry entry;
-            if (!r.read_next(entry)) {
-                throw py::stop_iteration();
-            }
-            return entry;
-        },
-            // Disk read / parse touches no Python objects; the GIL is reacquired
-            // before the returned entry is converted.
-            py::call_guard<py::gil_scoped_release>())
+        .def("__next__", [](py::object self) {
+            return read_next_guarded<gio::gff_reader, gio::gff_entry>(self, "GffReader");
+        })
         .def("get_error_message", &gio::gff_reader::get_error_message,
              "Error message from the most recent read; empty on clean EOF.")
         .def("get_current_line", &gio::gff_reader::get_current_line,

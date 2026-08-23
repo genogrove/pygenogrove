@@ -32,6 +32,8 @@
 #include <genogrove/data_type/genomic_coordinate.hpp>
 #include <genogrove/io/vcf_reader.hpp>
 
+#include "reader_guard.hpp"
+
 namespace py = pybind11;
 namespace gio = genogrove::io;
 namespace gdt = genogrove::data_type;
@@ -158,10 +160,11 @@ inline void bind_vcf_reader(py::module_& m) {
         });
 
     // ---- The reader ----
-    py::class_<gio::vcf_reader>(m, "VcfReader", R"pbdoc(
+    py::class_<gio::vcf_reader>(m, "VcfReader", py::dynamic_attr(), R"pbdoc(
         Single-pass iterator over a VCF/BCF file (plain, bgzip-ed, or binary BCF;
         htslib auto-detects). Yields VcfEntry. Not thread-safe — drive one reader
-        per thread.
+        per thread. A concurrent `__next__` call from another thread raises
+        RuntimeError rather than racing.
 
             for v in pygenogrove.VcfReader("calls.vcf", skip_filtered=True):
                 ...
@@ -186,17 +189,9 @@ inline void bind_vcf_reader(py::module_& m) {
              "bgzip VCF or a BCF is required. Empty (default) reads the whole file.")
         .def("__iter__",
              [](gio::vcf_reader& r) -> gio::vcf_reader& { return r; })
-        .def("__next__",
-             [](gio::vcf_reader& r) {
-                 gio::vcf_entry entry;
-                 if (!r.read_next(entry)) {
-                     throw py::stop_iteration();
-                 }
-                 return entry;
-             },
-             // htslib decode / parse touches no Python objects; the GIL is
-             // reacquired before the returned entry is converted.
-             py::call_guard<py::gil_scoped_release>())
+        .def("__next__", [](py::object self) {
+            return read_next_guarded<gio::vcf_reader, gio::vcf_entry>(self, "VcfReader");
+        })
         .def("get_header", &gio::vcf_reader::get_header,
              "Full VCF header text (## meta lines + the #CHROM column line).")
         .def("get_sample_names", &gio::vcf_reader::get_sample_names,

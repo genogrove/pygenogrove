@@ -21,6 +21,8 @@
 
 #include <genogrove/io/bed_reader.hpp>
 
+#include "reader_guard.hpp"
+
 namespace py = pybind11;
 namespace gio = genogrove::io;
 
@@ -119,7 +121,7 @@ inline void bind_bed_entry(py::module_& m) {
 
 inline void bind_bed_reader(py::module_& m) {
     // BedEntry must already be registered (bind_bed_entry) — BedReader yields it.
-    py::class_<gio::bed_reader>(m, "BedReader", R"pbdoc(
+    py::class_<gio::bed_reader>(m, "BedReader", py::dynamic_attr(), R"pbdoc(
         A single-pass iterator over the records of a BED file.
 
         Iterate it directly to get BedEntry objects::
@@ -130,6 +132,9 @@ inline void bind_bed_reader(py::module_& m) {
         Plain and BGZF/gzip-compressed (`.gz`) files are both accepted (the
         format is auto-detected). The reader owns an htslib file handle and is
         single-pass — it cannot be restarted or iterated twice.
+
+        Not thread-safe — drive one reader per thread. A concurrent `__next__`
+        call from another thread raises RuntimeError rather than racing.
 
         Parameters
         ----------
@@ -158,16 +163,9 @@ inline void bind_bed_reader(py::module_& m) {
              py::arg("path"), py::arg("skip_invalid_lines") = false,
              py::arg("region") = "")
         .def("__iter__", [](gio::bed_reader& r) -> gio::bed_reader& { return r; })
-        .def("__next__", [](gio::bed_reader& r) {
-            gio::bed_entry entry;
-            if (!r.read_next(entry)) {
-                throw py::stop_iteration();
-            }
-            return entry;
-        },
-            // Disk read / parse touches no Python objects; the GIL is reacquired
-            // before the returned entry is converted.
-            py::call_guard<py::gil_scoped_release>())
+        .def("__next__", [](py::object self) {
+            return read_next_guarded<gio::bed_reader, gio::bed_entry>(self, "BedReader");
+        })
         .def("get_error_message", &gio::bed_reader::get_error_message,
              "Error message from the most recent read; empty on clean EOF.")
         .def("get_current_line", &gio::bed_reader::get_current_line,
