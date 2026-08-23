@@ -84,13 +84,15 @@ inline void bind_vcf_reader(py::module_& m) {
         .def_readonly("id", &gio::vcf_entry::id, "ID, empty when '.'.")
         .def_readonly("ref", &gio::vcf_entry::ref, "REF allele.")
         .def_readonly("alt", &gio::vcf_entry::alt,
-                      "ALT alleles (empty for monomorphic records).")
+                      "ALT alleles (empty for monomorphic records). "
+                      "list[str]; returned by copy on each access.")
         .def_readonly("qual", &gio::vcf_entry::qual,
                       "QUAL score (only valid when qual_missing is False).")
         .def_readonly("qual_missing", &gio::vcf_entry::qual_missing,
                       "True when QUAL is '.' (missing).")
         .def_readonly("filter", &gio::vcf_entry::filter,
-                      "FILTER entries; ['PASS'] when passed, empty when '.'.")
+                      "FILTER entries; ['PASS'] when passed, empty when '.'. "
+                      "list[str]; returned by copy on each access.")
         .def_readonly("info", &gio::vcf_entry::info,
                       "INFO fields (when parse_info): name -> "
                       "bool / list[int] / list[float] / str. dict; returned "
