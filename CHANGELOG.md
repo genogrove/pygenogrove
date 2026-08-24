@@ -48,6 +48,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Consistent GIL policy on `Grove`/`Registry`.** `Grove` released the GIL on
+  mutating ops (`insert_bulk`/`serialize`/`to_sif`) with no documented
+  thread-safety contract, while comparably-costed pure-C++ paths
+  (non-predicate `intersect`/`flanking`, `remove_key`, `compact`) held it
+  unnecessarily. `Grove`'s docstring now states it isn't thread-safe (use one
+  `Grove` per thread, or synchronize externally), and those four methods now
+  release the GIL to match. `Registry.serialize`/`deserialize` (mutex-protected,
+  pure I/O) now release the GIL too, and its unlocked `get`/`contains`/`size`/
+  `empty` read methods now document that they're unsafe against a concurrent
+  writer
+  ([#83](https://github.com/genogrove/pygenogrove/issues/83),
+  [#94](https://github.com/genogrove/pygenogrove/pull/94)).
 - **Streaming readers guard against concurrent iteration.** `BamReader`/
   `BedReader`/`GffReader`/`FastaReader`/`VcfReader`'s `__next__` released the
   GIL for the read, but `read_next()` mutates reader-owned, unsynchronized
