@@ -25,6 +25,8 @@
 #include <genogrove/data_type/genomic_coordinate.hpp>
 #include <genogrove/io/bam_reader.hpp>
 
+#include "reader_guard.hpp"
+
 namespace py = pybind11;
 namespace gio = genogrove::io;
 namespace gdt = genogrove::data_type;
@@ -144,7 +146,7 @@ inline void bind_sam_entry(py::module_& m) {
 
 inline void bind_bam_reader(py::module_& m) {
     // SamEntry must already be registered (bind_sam_entry) — BamReader yields it.
-    py::class_<gio::bam_reader>(m, "BamReader", R"pbdoc(
+    py::class_<gio::bam_reader>(m, "BamReader", py::dynamic_attr(), R"pbdoc(
         A single-pass iterator over the alignments of a SAM/BAM file.
 
         Iterate it directly to get SamEntry objects::
@@ -154,6 +156,10 @@ inline void bind_bam_reader(py::module_& m) {
 
         SAM/BAM are auto-detected by htslib. The reader owns an htslib handle and
         is single-pass — it cannot be restarted or iterated twice.
+
+        Not thread-safe — drive one reader per thread. Calling `__next__`,
+        `get_current_line`, or `get_error_message` from another thread while
+        `__next__` is in flight raises RuntimeError rather than racing.
 
         Parameters
         ----------
@@ -185,21 +191,17 @@ inline void bind_bam_reader(py::module_& m) {
              py::arg("skip_qc_fail") = false, py::arg("skip_duplicates") = false,
              py::arg("min_mapq") = 0)
         .def("__iter__", [](gio::bam_reader& r) -> gio::bam_reader& { return r; })
-        .def("__next__",
-             [](gio::bam_reader& r) {
-                 gio::sam_entry entry;
-                 if (!r.read_next(entry)) {
-                     throw py::stop_iteration();
-                 }
-                 return entry;
-             },
-             // The read (htslib decode / disk I/O) touches no Python objects;
-             // pybind reacquires the GIL before converting the returned entry.
-             py::call_guard<py::gil_scoped_release>())
-        .def("get_error_message", &gio::bam_reader::get_error_message,
-             "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", &gio::bam_reader::get_current_line,
-             "Records consumed so far (advances on skipped/filtered records too).")
+        .def("__next__", [](py::object self) {
+            return read_next_guarded<gio::bam_reader, gio::sam_entry>(self, "BamReader");
+        })
+        .def("get_error_message", [](py::object self) {
+            return guarded_getter(self, "BamReader", "get_error_message",
+                                   &gio::bam_reader::get_error_message);
+        }, "Error message from the most recent read; empty on clean EOF.")
+        .def("get_current_line", [](py::object self) {
+            return guarded_getter(self, "BamReader", "get_current_line",
+                                   &gio::bam_reader::get_current_line);
+        }, "Records consumed so far (advances on skipped/filtered records too).")
         .def("__repr__", [](const gio::bam_reader& r) {
             return "BamReader(records=" + std::to_string(r.get_current_line()) + ")";
         });

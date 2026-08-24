@@ -77,6 +77,27 @@ def test_repr(tmp_path):
     assert repr(reader) == f"FastaReader(line={reader.get_current_line()})"
 
 
+def test_concurrent_next_raises(tmp_path):
+    """__next__/get_current_line/get_error_message guard against concurrent
+    calls while another __next__ is in flight (issue #84). Pokes the internal
+    flag directly rather than racing real threads — the guard's check-then-set
+    only needs to be correct, not literally raced."""
+    pg = _pg()
+    reader = pg.FastaReader(_write(tmp_path, "x.fa", _FASTA))
+    reader._pygg_reading = True
+    with pytest.raises(RuntimeError):
+        next(reader)
+    with pytest.raises(RuntimeError):
+        reader.get_current_line()
+    with pytest.raises(RuntimeError):
+        reader.get_error_message()
+    # The guard doesn't get stuck: normal calls after the flag is cleared work.
+    reader._pygg_reading = False
+    assert next(reader) is not None
+    assert reader.get_current_line() >= 1
+    assert reader.get_error_message() == ""
+
+
 def test_clean_eof_error_message(tmp_path):
     pg = _pg()
     r = pg.FastaReader(_write(tmp_path, "x.fa", _FASTA))

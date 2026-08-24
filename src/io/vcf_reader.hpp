@@ -32,6 +32,8 @@
 #include <genogrove/data_type/genomic_coordinate.hpp>
 #include <genogrove/io/vcf_reader.hpp>
 
+#include "reader_guard.hpp"
+
 namespace py = pybind11;
 namespace gio = genogrove::io;
 namespace gdt = genogrove::data_type;
@@ -158,10 +160,12 @@ inline void bind_vcf_reader(py::module_& m) {
         });
 
     // ---- The reader ----
-    py::class_<gio::vcf_reader>(m, "VcfReader", R"pbdoc(
+    py::class_<gio::vcf_reader>(m, "VcfReader", py::dynamic_attr(), R"pbdoc(
         Single-pass iterator over a VCF/BCF file (plain, bgzip-ed, or binary BCF;
         htslib auto-detects). Yields VcfEntry. Not thread-safe — drive one reader
-        per thread.
+        per thread. Calling `__next__`, `get_current_line`, or
+        `get_error_message` from another thread while `__next__` is in flight
+        raises RuntimeError rather than racing.
 
             for v in pygenogrove.VcfReader("calls.vcf", skip_filtered=True):
                 ...
@@ -186,28 +190,24 @@ inline void bind_vcf_reader(py::module_& m) {
              "bgzip VCF or a BCF is required. Empty (default) reads the whole file.")
         .def("__iter__",
              [](gio::vcf_reader& r) -> gio::vcf_reader& { return r; })
-        .def("__next__",
-             [](gio::vcf_reader& r) {
-                 gio::vcf_entry entry;
-                 if (!r.read_next(entry)) {
-                     throw py::stop_iteration();
-                 }
-                 return entry;
-             },
-             // htslib decode / parse touches no Python objects; the GIL is
-             // reacquired before the returned entry is converted.
-             py::call_guard<py::gil_scoped_release>())
+        .def("__next__", [](py::object self) {
+            return read_next_guarded<gio::vcf_reader, gio::vcf_entry>(self, "VcfReader");
+        })
         .def("get_header", &gio::vcf_reader::get_header,
              "Full VCF header text (## meta lines + the #CHROM column line).")
         .def("get_sample_names", &gio::vcf_reader::get_sample_names,
              "Sample names in column order (empty for sites-only VCFs).")
         .def("get_contigs", &gio::vcf_reader::get_contigs,
              "Contig names declared in the header.")
-        .def("get_error_message", &gio::vcf_reader::get_error_message,
-             "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", &gio::vcf_reader::get_current_line,
-             "1-based index of the most recently consumed record (counts records "
-             "dropped by skip_filtered too); 0 before the first read.")
+        .def("get_error_message", [](py::object self) {
+            return guarded_getter(self, "VcfReader", "get_error_message",
+                                   &gio::vcf_reader::get_error_message);
+        }, "Error message from the most recent read; empty on clean EOF.")
+        .def("get_current_line", [](py::object self) {
+            return guarded_getter(self, "VcfReader", "get_current_line",
+                                   &gio::vcf_reader::get_current_line);
+        }, "1-based index of the most recently consumed record (counts records "
+           "dropped by skip_filtered too); 0 before the first read.")
         .def("__repr__", [](const gio::vcf_reader& r) {
             return "VcfReader(records=" + std::to_string(r.get_current_line()) + ")";
         });

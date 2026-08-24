@@ -48,6 +48,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Streaming readers guard against concurrent iteration.** `BamReader`/
+  `BedReader`/`GffReader`/`FastaReader`/`VcfReader`'s `__next__` released the
+  GIL for the read, but `read_next()` mutates reader-owned, unsynchronized
+  state (record/EOF counters, reused decode buffers) — two Python threads
+  sharing one reader (e.g. handed to a `ThreadPoolExecutor`) could genuinely
+  race on that state, corrupting yielded records or crashing the interpreter.
+  `__next__`, `get_current_line`, and `get_error_message` now raise a clear
+  `RuntimeError` on a concurrent call instead of racing; all five readers'
+  docstrings now document this ("not thread-safe — drive one reader per
+  thread"), matching `VcfReader`'s pre-existing note
+  ([#84](https://github.com/genogrove/pygenogrove/issues/84),
+  [#92](https://github.com/genogrove/pygenogrove/pull/92)).
 - **`Grove.link_if`/`link_with` reject `None` in `keys`.** A stray `None`
   element in the `keys` list previously became a silent null pointer
   (pybind11's `std::vector` caster has no per-element `None` guard),

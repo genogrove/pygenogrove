@@ -17,6 +17,8 @@
 
 #include <genogrove/io/fasta_reader.hpp>
 
+#include "reader_guard.hpp"
+
 namespace py = pybind11;
 namespace gio = genogrove::io;
 
@@ -54,7 +56,7 @@ inline void bind_fasta_entry(py::module_& m) {
 
 inline void bind_fasta_reader(py::module_& m) {
     // FastaEntry must already be registered (bind_fasta_entry).
-    py::class_<gio::fasta_reader>(m, "FastaReader", R"pbdoc(
+    py::class_<gio::fasta_reader>(m, "FastaReader", py::dynamic_attr(), R"pbdoc(
         A single-pass iterator over the records of a FASTA or FASTQ file.
 
         Iterate it directly to get FastaEntry objects::
@@ -65,6 +67,10 @@ inline void bind_fasta_reader(py::module_& m) {
         FASTA (`>`) and FASTQ (`@`) are auto-detected, and plain or
         gzip/BGZF-compressed (`.gz`) inputs are accepted. The reader owns an
         htslib handle and is single-pass — it cannot be restarted or iterated twice.
+
+        Not thread-safe — drive one reader per thread. Calling `__next__`,
+        `get_current_line`, or `get_error_message` from another thread while
+        `__next__` is in flight raises RuntimeError rather than racing.
 
         Parameters
         ----------
@@ -81,21 +87,17 @@ inline void bind_fasta_reader(py::module_& m) {
              py::arg("path"), py::arg("skip_empty_sequences") = false)
         .def("__iter__",
              [](gio::fasta_reader& r) -> gio::fasta_reader& { return r; })
-        .def("__next__",
-             [](gio::fasta_reader& r) {
-                 gio::fasta_entry entry;
-                 if (!r.read_next(entry)) {
-                     throw py::stop_iteration();
-                 }
-                 return entry;
-             },
-             // Disk read / parse touches no Python objects; the GIL is reacquired
-             // before the returned entry is converted.
-             py::call_guard<py::gil_scoped_release>())
-        .def("get_error_message", &gio::fasta_reader::get_error_message,
-             "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", &gio::fasta_reader::get_current_line,
-             "1-based physical line number consumed so far; 0 before the first read.")
+        .def("__next__", [](py::object self) {
+            return read_next_guarded<gio::fasta_reader, gio::fasta_entry>(self, "FastaReader");
+        })
+        .def("get_error_message", [](py::object self) {
+            return guarded_getter(self, "FastaReader", "get_error_message",
+                                   &gio::fasta_reader::get_error_message);
+        }, "Error message from the most recent read; empty on clean EOF.")
+        .def("get_current_line", [](py::object self) {
+            return guarded_getter(self, "FastaReader", "get_current_line",
+                                   &gio::fasta_reader::get_current_line);
+        }, "1-based physical line number consumed so far; 0 before the first read.")
         .def("__repr__", [](const gio::fasta_reader& r) {
             return "FastaReader(line=" + std::to_string(r.get_current_line()) + ")";
         });
