@@ -34,6 +34,10 @@ bind_registry(py::module_& m, const char* name) {
         ids (deduplicated). Access the single instance with instance().
 
         Global state — use reset() (or clear()) to wipe it, e.g. between tests.
+
+        Thread safety: intern/find/clear/serialize/deserialize are
+        mutex-protected. get/contains/size/empty are UNLOCKED fast paths, safe
+        only when no writer runs concurrently — see each method's docstring.
     )pbdoc");
 
     cls.def_static("instance", &reg_t::instance,
@@ -67,14 +71,21 @@ bind_registry(py::module_& m, const char* name) {
        .def("get",
             [](const reg_t& r, id_type id) { return r.get(id); },
             py::arg("id"),
-            "Return the payload for id. Raises IndexError if id is invalid.")
+            "Return the payload for id. Raises IndexError if id is invalid. "
+            "Unlocked — unsafe if a writer (intern/clear/reset/deserialize) "
+            "runs concurrently.")
        .def("contains",
             [](const reg_t& r, id_type id) { return r.contains(id); },
             py::arg("id"),
-            "Whether id refers to a valid entry.")
-       .def("size", &reg_t::size, "Number of interned entries.")
+            "Whether id refers to a valid entry. Unlocked — unsafe if a "
+            "writer (intern/clear/reset/deserialize) runs concurrently.")
+       .def("size", &reg_t::size,
+            "Number of interned entries. Unlocked — unsafe if a writer "
+            "(intern/clear/reset/deserialize) runs concurrently.")
        .def("__len__", &reg_t::size)
-       .def("empty", &reg_t::empty, "Whether the registry has no entries.")
+       .def("empty", &reg_t::empty,
+            "Whether the registry has no entries. Unlocked — unsafe if a "
+            "writer (intern/clear/reset/deserialize) runs concurrently.")
        .def("clear", &reg_t::clear,
             "Remove all interned data; ids restart from 0 afterward.")
        .def_static("reset", &reg_t::reset,
@@ -95,6 +106,10 @@ bind_registry(py::module_& m, const char* name) {
                 }
             },
             py::arg("path"),
+            // r.serialize() is mutex-protected in C++ and touches no Python
+            // objects (Payload is json_value here) — release the GIL so other
+            // Python threads aren't blocked on this I/O.
+            py::call_guard<py::gil_scoped_release>(),
             "Serialize the registry's (key, payload) entries to a binary file.")
        .def_static("deserialize",
             [](const std::string& path) -> reg_t& {
@@ -107,6 +122,7 @@ bind_registry(py::module_& m, const char* name) {
             },
             py::arg("path"),
             py::return_value_policy::reference,
+            py::call_guard<py::gil_scoped_release>(),
             R"pbdoc(
                 Load entries from a file written with serialize() INTO the
                 singleton (replacing its current data) and return it.

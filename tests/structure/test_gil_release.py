@@ -1,8 +1,9 @@
 """
-Concurrency smoke tests for the GIL-releasing I/O bindings (issue #31).
+Concurrency smoke tests for the GIL-releasing I/O bindings (issue #31, #83).
 
 `serialize` / `deserialize`, bulk insert, the reader `__next__`, and
-`FastaIndex` now release the GIL around their pure-C++ / htslib work. These
+`FastaIndex` now release the GIL around their pure-C++ / htslib work. `intersect`,
+`flanking`, `remove_key`, `compact`, and `Registry.serialize` do too (#83). These
 tests don't try to prove overlap (timing-dependent); they verify those paths
 stay correct when driven concurrently from many Python threads — i.e. releasing
 the GIL didn't corrupt anything or break the return / exception paths. A
@@ -10,6 +11,8 @@ misplaced release on something that touches Python would crash or corrupt here.
 
 Each thread uses its OWN objects: a reader/grove isn't shared-thread-safe; the
 realistic pattern is one driver per object, overlapping only the C++ work.
+`Registry` is a process-wide singleton, so its test instead overlaps read-only
+(mutex-protected) `serialize()` calls against one shared instance.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -77,6 +80,50 @@ def test_concurrent_reader(tmp_path):
         all_names = list(ex.map(read, range(8)))
 
     assert all(names == expected for names in all_names)
+
+
+def test_concurrent_flanking_remove_compact():
+    pg = _pg()
+
+    def build_and_shrink(_):
+        g = pg.Grove(3)
+        for j in range(50):
+            g.insert("chr1", pg.GenomicCoordinate(".", j * 10, j * 10 + 5),
+                     {"j": j})
+        # [96,97] falls in the gap between j=9's [90,95] and j=10's [100,105] —
+        # overlaps neither, so both flank it cleanly.
+        res = g.flanking(pg.GenomicCoordinate(".", 96, 97), "chr1")
+        assert res.predecessor.data["j"] == 9
+        assert res.successor.data["j"] == 10
+
+        removed = g.remove_key("chr1", res.predecessor)
+        assert removed
+        g.compact()
+        return g.size()
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        sizes = list(ex.map(build_and_shrink, range(8)))
+
+    assert sizes == [49] * 8
+
+
+def test_concurrent_registry_serialize(tmp_path):
+    pg = _pg()
+    reg = pg.Registry.instance()
+    reg.clear()
+    for name in ("chr1", "chr2", "chr3"):
+        reg.intern(name)
+
+    def dump(i):
+        path = str(tmp_path / f"r{i}.bin")
+        reg.serialize(path)
+        return (tmp_path / f"r{i}.bin").read_bytes()
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        blobs = list(ex.map(dump, range(8)))
+
+    assert all(b == blobs[0] for b in blobs)
+    reg.clear()
 
 
 def test_concurrent_fasta_fetch(tmp_path):
