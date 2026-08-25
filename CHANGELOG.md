@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Closed test coverage gaps: invalid grove order, readonly coordinate properties, bulk scale.**
+  `order < 3` rejection (`ValueError`) was untested for every grove family
+  (`Grove`/`NumericGrove`/`KmerGrove`/`BedGrove`/`GffGrove`); `GenomicCoordinate.start`/
+  `.end`/`.strand` direct-assignment rejection (`AttributeError`) was only covered
+  indirectly via `set_range`/`set_strand`; and bulk-insert tests topped out at
+  n=50, never forcing more than one or two levels of B+ tree splitting. A new
+  n=5000 `insert_bulk` test closes that last gap
+  ([#82](https://github.com/genogrove/pygenogrove/issues/82),
+  [#96](https://github.com/genogrove/pygenogrove/pull/96)).
+
 ### Changed
 
 - **Documented the `BedGrove`/`GffGrove` edge-metadata gap; bound `BamReader`

@@ -28,6 +28,14 @@ def test_creation_and_insert():
     assert key.data is None
 
 
+def test_rejects_invalid_order():
+    """order < 3 raises ValueError (C++ ctor: 'grove order must be >= 3')."""
+    pg = _pg()
+    for order in (-1, 0, 1, 2):
+        with pytest.raises(ValueError):
+            pg.KmerGrove(order)
+
+
 def test_membership_lookup():
     pg = _pg()
     g = pg.KmerGrove(8)

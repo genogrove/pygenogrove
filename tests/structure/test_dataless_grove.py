@@ -28,6 +28,14 @@ def test_default_order():
     assert grove.get_order() == 3
 
 
+def test_rejects_invalid_order():
+    """order < 3 raises ValueError (C++ ctor: 'grove order must be >= 3')."""
+    pg = _pg()
+    for order in (-1, 0, 1, 2):
+        with pytest.raises(ValueError):
+            pg.Grove(order)
+
+
 def test_insert_and_query():
     """Inserting an interval makes it discoverable and returns its Key."""
     pg = _pg()

@@ -33,6 +33,14 @@ def test_default_order():
     assert pg.GffGrove().get_order() == 3
 
 
+def test_rejects_invalid_order():
+    """order < 3 raises ValueError (C++ ctor: 'grove order must be >= 3')."""
+    pg = _pg()
+    for order in (-1, 0, 1, 2):
+        with pytest.raises(ValueError):
+            pg.GffGrove(order)
+
+
 def test_str_repr_use_class_name():
     """__str__/__repr__ identify the grove by its Python class name."""
     pg = _pg()
