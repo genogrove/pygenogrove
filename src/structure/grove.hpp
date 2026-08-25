@@ -80,7 +80,32 @@ void bind_grove(py::module_& m, const char* grove_name,
     bind_query_result<KeyT, DataT>(m, qr_name);
     bind_flanking_query_result<KeyT, DataT>(m, fr_name);
 
-    auto cls = py::class_<grove_t>(m, grove_name, R"pbdoc(
+    auto cls = py::class_<grove_t>(m, grove_name,
+        std::is_void_v<EdgeT> ? R"pbdoc(
+        A B+ tree container for efficient genomic interval storage and querying.
+
+        The grove supports multi-index operations, where each index (e.g., chromosome)
+        maintains its own B+ tree structure.
+
+        Plain (unlabelled) graph edges only — no edge metadata, so a binary .gg
+        stays readable by a plain C++ grove<key_type, data_type> (no edge_data_type).
+        add_edge(source, target) and get_neighbors/get_in_neighbors are available;
+        add_edge(source, target, data), get_edges, get_edge_list, get_in_edges,
+        get_in_edge_list, get_neighbors_if, get_in_neighbors_if, and link_with are
+        not. remove_edges_if(predicate) IS available, but its predicate receives
+        only the target Key (no metadata argument) — a different signature from
+        the universal Grove's. Use the universal Grove for edge-metadata support.
+
+        Not thread-safe: the C++ core has no internal synchronization. Use one
+        Grove per thread, or synchronize external access yourself if multiple
+        threads must share one instance.
+
+        Parameters
+        ----------
+        order : int, optional
+            Maximum branching factor of the B+ tree (default: 3, minimum: 3).
+            Controls the maximum number of keys per node (order - 1).
+    )pbdoc" : R"pbdoc(
         A B+ tree container for efficient genomic interval storage and querying.
 
         The grove supports multi-index operations, where each index (e.g., chromosome)

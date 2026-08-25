@@ -111,6 +111,13 @@ def test_load_bam_into_grove(tmp_path):
     assert hits[0].data["strand"] == "+"
 
 
+def test_header_and_reference_names(tmp_path):
+    pg = _pg()
+    reader = pg.BamReader(_sam(tmp_path))
+    assert "@SQ\tSN:chr1\tLN:100000" in reader.get_header()
+    assert reader.get_reference_names() == ["chr1"]
+
+
 def test_repr(tmp_path):
     pg = _pg()
     reader = pg.BamReader(_sam(tmp_path))
