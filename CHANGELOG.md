@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Documented the `BedGrove`/`GffGrove` edge-metadata gap; bound `BamReader`
+  header methods.** `BedGrove`/`GffGrove` (`EdgeT=void`) silently lacked the
+  labelled-edge methods that `Grove`/`NumericGrove`/`KmerGrove` have, with an
+  identical class docstring giving no hint of the gap — deliberate (keeps
+  their binary `.gg` readable by a plain C++ `grove<key_type, data_type>`),
+  but previously undocumented. They now get a distinct docstring stating the
+  gap. Also bound `BamReader.get_header()`/`get_reference_names()`, mirroring
+  `VcfReader.get_header()`/`get_contigs()` — the underlying C++ methods
+  already existed
+  ([#78](https://github.com/genogrove/pygenogrove/issues/78),
+  [#95](https://github.com/genogrove/pygenogrove/pull/95)).
 - **`Key` equality/ordering/hashing moved from identity-based to value-based.**
   `Key` previously had no bound comparisons or hash, so Python's default
   pointer-identity semantics applied (distinct `Key` objects were never equal,
