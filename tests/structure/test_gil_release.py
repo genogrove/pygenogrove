@@ -133,11 +133,14 @@ def test_concurrent_registry_serialize(tmp_path):
 def test_concurrent_registry_deserialize(tmp_path):
     # Registry is a process-wide singleton, so threads can't each get their own
     # instance the way Grove tests do; instead every thread deserializes the SAME
-    # file into the shared singleton. Since all threads load identical content,
-    # concurrent replacement can't corrupt the result (unlike a real writer race
-    # against different data, which is genuinely unsafe and not what this checks)
-    # — this only proves the GIL release on deserialize() doesn't crash or leave
-    # the singleton in a torn state under concurrent calls.
+    # file into the shared singleton — deserialize() itself is mutex-protected,
+    # so concurrent replacement can't corrupt the result (unlike a real writer
+    # race against different data, which is genuinely unsafe and not what this
+    # checks). Validation happens only after every worker has finished: get()/
+    # size() are UNLOCKED reads, so calling them from inside a worker — while
+    # another thread's deserialize() may still be mid-swap under the mutex —
+    # would itself be the unsafe unlocked-read-vs-writer race the docstrings
+    # warn about, not a check that GIL release is safe.
     pg = _pg()
     reg = pg.Registry.instance()
     reg.clear()
@@ -148,13 +151,13 @@ def test_concurrent_registry_deserialize(tmp_path):
         reg.serialize(path)
 
         def load(_):
-            loaded = pg.Registry.deserialize(path)
-            return loaded.size(), loaded.get(0)
+            pg.Registry.deserialize(path)
 
         with ThreadPoolExecutor(max_workers=8) as ex:
-            results = list(ex.map(load, range(8)))
+            list(ex.map(load, range(8)))
 
-        assert all(r == (3, "chr1") for r in results)
+        assert reg.size() == 3
+        assert reg.get(0) == "chr1"
     finally:
         reg.clear()
 
