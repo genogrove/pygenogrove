@@ -66,11 +66,11 @@ def test_insert_bulk_presorted():
 
 
 def test_insert_bulk_large_scale():
-    """n=5000 at order 8: a light regression/perf smoke test for deep
+    """n=5000 at order 3: a light regression/perf smoke test for deep
     multi-level tree splits — existing bulk-insert tests top out in the
     hundreds, which never forces more than one or two levels of splitting."""
     pg = _pg()
-    g = pg.BedGrove(8)
+    g = pg.BedGrove(3)
     n = 5000
     keys = g.insert_bulk("chr1", _items(pg, n), presorted=True)
 
