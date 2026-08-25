@@ -194,6 +194,10 @@ inline void bind_bam_reader(py::module_& m) {
         .def("__next__", [](py::object self) {
             return read_next_guarded<gio::bam_reader, gio::sam_entry>(self, "BamReader");
         })
+        .def("get_header", &gio::bam_reader::get_header,
+             "Full SAM header text (@HD/@SQ/@RG/@PG lines).")
+        .def("get_reference_names", &gio::bam_reader::get_reference_names,
+             "Reference sequence names declared in the header.")
         .def("get_error_message", [](py::object self) {
             return guarded_getter(self, "BamReader", "get_error_message",
                                    &gio::bam_reader::get_error_message);
