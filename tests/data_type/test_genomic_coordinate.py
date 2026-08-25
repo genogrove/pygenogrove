@@ -169,6 +169,18 @@ def test_set_range_and_set_strand():
     assert c.strand == "-"
 
 
+def test_properties_reject_direct_assignment():
+    """start/end/strand are def_property_readonly — only set_range/set_strand mutate."""
+    pg = _pg()
+    c = pg.GenomicCoordinate("+", 100, 200)
+    with pytest.raises(AttributeError):
+        c.start = 5
+    with pytest.raises(AttributeError):
+        c.end = 5
+    with pytest.raises(AttributeError):
+        c.strand = "-"
+
+
 def test_set_range_rejects_inverted():
     pg = _pg()
     c = pg.GenomicCoordinate("+", 100, 200)

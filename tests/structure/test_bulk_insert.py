@@ -65,6 +65,23 @@ def test_insert_bulk_presorted():
     assert len(list(g.intersect(pg.GenomicCoordinate(".", 0, 50 * 100), "chr1"))) == 50
 
 
+def test_insert_bulk_large_scale():
+    """n=5000 at order 8: a light regression/perf smoke test for deep
+    multi-level tree splits — existing bulk-insert tests top out in the
+    hundreds, which never forces more than one or two levels of splitting."""
+    pg = _pg()
+    g = pg.BedGrove(8)
+    n = 5000
+    keys = g.insert_bulk("chr1", _items(pg, n), presorted=True)
+
+    assert len(keys) == n
+    assert g.size() == n
+    assert [k.value.start for k in keys[:5]] == [i * 100 for i in range(5)]
+    assert [k.value.start for k in keys[-5:]] == [i * 100 for i in range(n - 5, n)]
+    assert [k.data.name for k in keys[:5]] == [f"f{i}" for i in range(5)]
+    assert len(list(g.intersect(pg.GenomicCoordinate(".", 0, n * 100), "chr1"))) == n
+
+
 def test_insert_bulk_sorts_unsorted_input():
     """insert_bulk (presorted=False) sorts the batch AND keeps each datum with
     its interval. Feeds descending input so the internal sort must reorder pairs;
