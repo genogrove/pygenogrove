@@ -82,7 +82,9 @@ bind_registry(py::module_& m, const char* name) {
        .def("size", &reg_t::size,
             "Number of interned entries. Unlocked — unsafe if a writer "
             "(intern/clear/reset/deserialize) runs concurrently.")
-       .def("__len__", &reg_t::size)
+       .def("__len__", &reg_t::size,
+            "Aliases size(). Unlocked — unsafe if a writer "
+            "(intern/clear/reset/deserialize) runs concurrently.")
        .def("empty", &reg_t::empty,
             "Whether the registry has no entries. Unlocked — unsafe if a "
             "writer (intern/clear/reset/deserialize) runs concurrently.")

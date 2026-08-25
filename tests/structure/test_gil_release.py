@@ -3,16 +3,18 @@ Concurrency smoke tests for the GIL-releasing I/O bindings (issue #31, #83).
 
 `serialize` / `deserialize`, bulk insert, the reader `__next__`, and
 `FastaIndex` now release the GIL around their pure-C++ / htslib work. `intersect`,
-`flanking`, `remove_key`, `compact`, and `Registry.serialize` do too (#83). These
-tests don't try to prove overlap (timing-dependent); they verify those paths
-stay correct when driven concurrently from many Python threads — i.e. releasing
-the GIL didn't corrupt anything or break the return / exception paths. A
-misplaced release on something that touches Python would crash or corrupt here.
+`flanking`, `remove_key`, `compact`, and `Registry.serialize`/`deserialize` do
+too (#83). These tests don't try to prove overlap (timing-dependent); they
+verify those paths stay correct when driven concurrently from many Python
+threads — i.e. releasing the GIL didn't corrupt anything or break the return /
+exception paths. A misplaced release on something that touches Python would
+crash or corrupt here.
 
 Each thread uses its OWN objects: a reader/grove isn't shared-thread-safe; the
 realistic pattern is one driver per object, overlapping only the C++ work.
-`Registry` is a process-wide singleton, so its test instead overlaps read-only
-(mutex-protected) `serialize()` calls against one shared instance.
+`Registry` is a process-wide singleton, so its tests instead overlap read-only
+(mutex-protected) `serialize()` calls, or repeated `deserialize()` of the same
+file, against one shared instance.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -111,19 +113,50 @@ def test_concurrent_registry_serialize(tmp_path):
     pg = _pg()
     reg = pg.Registry.instance()
     reg.clear()
-    for name in ("chr1", "chr2", "chr3"):
-        reg.intern(name)
+    try:
+        for name in ("chr1", "chr2", "chr3"):
+            reg.intern(name)
 
-    def dump(i):
-        path = str(tmp_path / f"r{i}.bin")
-        reg.serialize(path)
-        return (tmp_path / f"r{i}.bin").read_bytes()
+        def dump(i):
+            path = str(tmp_path / f"r{i}.bin")
+            reg.serialize(path)
+            return (tmp_path / f"r{i}.bin").read_bytes()
 
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        blobs = list(ex.map(dump, range(8)))
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            blobs = list(ex.map(dump, range(8)))
 
-    assert all(b == blobs[0] for b in blobs)
+        assert all(b == blobs[0] for b in blobs)
+    finally:
+        reg.clear()
+
+
+def test_concurrent_registry_deserialize(tmp_path):
+    # Registry is a process-wide singleton, so threads can't each get their own
+    # instance the way Grove tests do; instead every thread deserializes the SAME
+    # file into the shared singleton. Since all threads load identical content,
+    # concurrent replacement can't corrupt the result (unlike a real writer race
+    # against different data, which is genuinely unsafe and not what this checks)
+    # — this only proves the GIL release on deserialize() doesn't crash or leave
+    # the singleton in a torn state under concurrent calls.
+    pg = _pg()
+    reg = pg.Registry.instance()
     reg.clear()
+    try:
+        for name in ("chr1", "chr2", "chr3"):
+            reg.intern(name)
+        path = str(tmp_path / "r.bin")
+        reg.serialize(path)
+
+        def load(_):
+            loaded = pg.Registry.deserialize(path)
+            return loaded.size(), loaded.get(0)
+
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            results = list(ex.map(load, range(8)))
+
+        assert all(r == (3, "chr1") for r in results)
+    finally:
+        reg.clear()
 
 
 def test_concurrent_fasta_fetch(tmp_path):

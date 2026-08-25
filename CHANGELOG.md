@@ -57,7 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   release the GIL to match. `Registry.serialize`/`deserialize` (mutex-protected,
   pure I/O) now release the GIL too, and its unlocked `get`/`contains`/`size`/
   `empty` read methods now document that they're unsafe against a concurrent
-  writer
+  writer. **Behavior change:** the GIL previously *incidentally* serialized
+  `intersect`/`flanking`/`remove_key` calls from multiple threads sharing one
+  `Grove`; now that they release it, that incidental protection is gone — the
+  new "not thread-safe" docstring is the documented contract going forward, not
+  just a note
   ([#83](https://github.com/genogrove/pygenogrove/issues/83),
   [#94](https://github.com/genogrove/pygenogrove/pull/94)).
 - **Streaming readers guard against concurrent iteration.** `BamReader`/
