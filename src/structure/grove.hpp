@@ -89,9 +89,12 @@ void bind_grove(py::module_& m, const char* grove_name,
 
         Plain (unlabelled) graph edges only — no edge metadata, so a binary .gg
         stays readable by a plain C++ grove<key_type, data_type> (no edge_data_type).
-        add_edge(source, target) and get_neighbors are available; add_edge(source,
-        target, data), get_edges, get_edge_list, get_neighbors_if, and link_with
-        are not. Use the universal Grove for edge-metadata support.
+        add_edge(source, target) and get_neighbors/get_in_neighbors are available;
+        add_edge(source, target, data), get_edges, get_edge_list, get_in_edges,
+        get_in_edge_list, get_neighbors_if, get_in_neighbors_if, and link_with are
+        not. remove_edges_if(predicate) IS available, but its predicate receives
+        only the target Key (no metadata argument) — a different signature from
+        the universal Grove's. Use the universal Grove for edge-metadata support.
 
         Not thread-safe: the C++ core has no internal synchronization. Use one
         Grove per thread, or synchronize external access yourself if multiple

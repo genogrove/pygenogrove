@@ -160,6 +160,8 @@ inline void bind_bam_reader(py::module_& m) {
         Not thread-safe — drive one reader per thread. Calling `__next__`,
         `get_current_line`, or `get_error_message` from another thread while
         `__next__` is in flight raises RuntimeError rather than racing.
+        `get_header`/`get_reference_names` read data fixed at construction and
+        are safe to call from any thread at any time — they need no such guard.
 
         Parameters
         ----------
