@@ -86,6 +86,10 @@ void bind_grove(py::module_& m, const char* grove_name,
         The grove supports multi-index operations, where each index (e.g., chromosome)
         maintains its own B+ tree structure.
 
+        Not thread-safe: the C++ core has no internal synchronization. Use one
+        Grove per thread, or synchronize external access yourself if multiple
+        threads must share one instance.
+
         Parameters
         ----------
         order : int, optional
@@ -285,6 +289,9 @@ void bind_grove(py::module_& m, const char* grove_name,
     cls.def("intersect",
             py::overload_cast<const KeyT&>(&grove_t::intersect),
             py::arg("query"), py::keep_alive<0, 1>(),
+            // Pure C++ tree traversal, touches no Python objects — release
+            // the GIL, matching insert_bulk/serialize/to_sif's policy.
+            py::call_guard<py::gil_scoped_release>(),
             R"pbdoc(
                 Find all intervals that overlap with the query across all indices.
             )pbdoc")
@@ -292,6 +299,7 @@ void bind_grove(py::module_& m, const char* grove_name,
             py::overload_cast<const KeyT&, std::string_view>(
                 &grove_t::intersect),
             py::arg("query"), py::arg("index"), py::keep_alive<0, 1>(),
+            py::call_guard<py::gil_scoped_release>(),
             R"pbdoc(
                 Find all intervals that overlap with the query in a specific index.
             )pbdoc")
@@ -303,6 +311,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                  return g.flanking(query, index);
              },
              py::arg("query"), py::arg("index"), py::keep_alive<0, 1>(),
+             // Pure C++, no predicate callback — release the GIL (the
+             // predicate-taking overload below correctly keeps it).
+             py::call_guard<py::gil_scoped_release>(),
              R"pbdoc(
                  Find the nearest non-overlapping keys on either side of the query
                  within an index (the predecessor and successor).
@@ -522,6 +533,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                 return g.remove_key(index, key);
             },
             py::arg("index"), py::arg("key").none(true),
+            // Pure C++, no Python objects touched — release the GIL, matching
+            // the comparable-cost serialize()/to_sif() policy.
+            py::call_guard<py::gil_scoped_release>(),
             R"pbdoc(
                 Remove a key from the index's B+ tree, rebalancing as needed.
 
@@ -533,6 +547,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                 pointers — see its warning).
             )pbdoc")
        .def("compact", &grove_t::compact,
+            py::call_guard<py::gil_scoped_release>(),
             R"pbdoc(
                 Reclaim the dead storage slots left by remove_key() (storage
                 shrinks to exactly the live key count).

@@ -1,15 +1,20 @@
 """
-Concurrency smoke tests for the GIL-releasing I/O bindings (issue #31).
+Concurrency smoke tests for the GIL-releasing I/O bindings (issue #31, #83).
 
 `serialize` / `deserialize`, bulk insert, the reader `__next__`, and
-`FastaIndex` now release the GIL around their pure-C++ / htslib work. These
-tests don't try to prove overlap (timing-dependent); they verify those paths
-stay correct when driven concurrently from many Python threads — i.e. releasing
-the GIL didn't corrupt anything or break the return / exception paths. A
-misplaced release on something that touches Python would crash or corrupt here.
+`FastaIndex` now release the GIL around their pure-C++ / htslib work. `intersect`,
+`flanking`, `remove_key`, `compact`, and `Registry.serialize`/`deserialize` do
+too (#83). These tests don't try to prove overlap (timing-dependent); they
+verify those paths stay correct when driven concurrently from many Python
+threads — i.e. releasing the GIL didn't corrupt anything or break the return /
+exception paths. A misplaced release on something that touches Python would
+crash or corrupt here.
 
 Each thread uses its OWN objects: a reader/grove isn't shared-thread-safe; the
 realistic pattern is one driver per object, overlapping only the C++ work.
+`Registry` is a process-wide singleton, so its tests instead overlap read-only
+(mutex-protected) `serialize()` calls, or repeated `deserialize()` of the same
+file, against one shared instance.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -77,6 +82,84 @@ def test_concurrent_reader(tmp_path):
         all_names = list(ex.map(read, range(8)))
 
     assert all(names == expected for names in all_names)
+
+
+def test_concurrent_flanking_remove_compact():
+    pg = _pg()
+
+    def build_and_shrink(_):
+        g = pg.Grove(3)
+        for j in range(50):
+            g.insert("chr1", pg.GenomicCoordinate(".", j * 10, j * 10 + 5),
+                     {"j": j})
+        # [96,97] falls in the gap between j=9's [90,95] and j=10's [100,105] —
+        # overlaps neither, so both flank it cleanly.
+        res = g.flanking(pg.GenomicCoordinate(".", 96, 97), "chr1")
+        assert res.predecessor.data["j"] == 9
+        assert res.successor.data["j"] == 10
+
+        removed = g.remove_key("chr1", res.predecessor)
+        assert removed
+        g.compact()
+        return g.size()
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        sizes = list(ex.map(build_and_shrink, range(8)))
+
+    assert sizes == [49] * 8
+
+
+def test_concurrent_registry_serialize(tmp_path):
+    pg = _pg()
+    reg = pg.Registry.instance()
+    reg.clear()
+    try:
+        for name in ("chr1", "chr2", "chr3"):
+            reg.intern(name)
+
+        def dump(i):
+            path = str(tmp_path / f"r{i}.bin")
+            reg.serialize(path)
+            return (tmp_path / f"r{i}.bin").read_bytes()
+
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            blobs = list(ex.map(dump, range(8)))
+
+        assert all(b == blobs[0] for b in blobs)
+    finally:
+        reg.clear()
+
+
+def test_concurrent_registry_deserialize(tmp_path):
+    # Registry is a process-wide singleton, so threads can't each get their own
+    # instance the way Grove tests do; instead every thread deserializes the SAME
+    # file into the shared singleton — deserialize() itself is mutex-protected,
+    # so concurrent replacement can't corrupt the result (unlike a real writer
+    # race against different data, which is genuinely unsafe and not what this
+    # checks). Validation happens only after every worker has finished: get()/
+    # size() are UNLOCKED reads, so calling them from inside a worker — while
+    # another thread's deserialize() may still be mid-swap under the mutex —
+    # would itself be the unsafe unlocked-read-vs-writer race the docstrings
+    # warn about, not a check that GIL release is safe.
+    pg = _pg()
+    reg = pg.Registry.instance()
+    reg.clear()
+    try:
+        for name in ("chr1", "chr2", "chr3"):
+            reg.intern(name)
+        path = str(tmp_path / "r.bin")
+        reg.serialize(path)
+
+        def load(_):
+            pg.Registry.deserialize(path)
+
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            list(ex.map(load, range(8)))
+
+        assert reg.size() == 3
+        assert reg.get(0) == "chr1"
+    finally:
+        reg.clear()
 
 
 def test_concurrent_fasta_fetch(tmp_path):
