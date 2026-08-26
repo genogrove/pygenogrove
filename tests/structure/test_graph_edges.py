@@ -27,7 +27,7 @@ def _chain(g, *spans, index="chr1"):
 
 
 # --------------------------------------------------------------------------- #
-# #1 Labelled edges (JSON edge metadata)
+# Labelled edges (JSON edge metadata)
 # --------------------------------------------------------------------------- #
 
 def test_add_edge_with_metadata():
@@ -250,7 +250,7 @@ def test_serialization_preserves_edge_metadata(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# #2 Edge removal / bulk linking (available on every grove)
+# Edge removal / bulk linking (available on every grove)
 # --------------------------------------------------------------------------- #
 
 def test_remove_edges_from():
