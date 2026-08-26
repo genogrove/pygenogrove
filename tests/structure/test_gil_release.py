@@ -1,10 +1,10 @@
 """
-Concurrency smoke tests for the GIL-releasing I/O bindings (issue #31, #83).
+Concurrency smoke tests for the GIL-releasing I/O bindings.
 
 `serialize` / `deserialize`, bulk insert, the reader `__next__`, and
 `FastaIndex` now release the GIL around their pure-C++ / htslib work. `intersect`,
 `flanking`, `remove_key`, `compact`, and `Registry.serialize`/`deserialize` do
-too (#83). These tests don't try to prove overlap (timing-dependent); they
+too. These tests don't try to prove overlap (timing-dependent); they
 verify those paths stay correct when driven concurrently from many Python
 threads — i.e. releasing the GIL didn't corrupt anything or break the return /
 exception paths. A misplaced release on something that touches Python would

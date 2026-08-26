@@ -219,10 +219,8 @@ def test_grove_supports_bulk_with_json_payload():
 
 def test_bulk_inserted_key_keeps_grove_alive():
     """A Key from insert_bulk's returned list must pin the grove. Holding ONLY one
-    returned key across grove drop + GC must stay safe — regression guard for
-    issue #37 (a failure here is a use-after-free crash). Before the fix only the
-    returned list was pinned, so an extracted key dangled once the list and grove
-    were gone.
+    returned key across grove drop + GC must stay safe: a failure here is a
+    silent use-after-free crash, not a failed assertion.
     """
     pg = _pg()
     g = pg.Grove(3)

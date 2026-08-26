@@ -250,8 +250,8 @@ def test_get_neighbors_none_raises():
 
 
 def test_graph_read_remove_methods_reject_none():
-    """The read/remove graph methods reject a None key (previously they silently
-    returned False/0, masking caller bugs). Hardening from the bindings audit."""
+    """The read/remove graph methods reject a None key with a clear error,
+    rather than silently returning False/0 and masking a caller bug."""
     pg = _pg()
     g = pg.Grove(3)
     a = g.insert("chr1", pg.GenomicCoordinate(".", 10, 20))

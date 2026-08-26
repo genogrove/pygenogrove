@@ -1,5 +1,5 @@
 """
-SIF (Simple Interaction Format) export — Grove.to_sif(path) (#34).
+SIF (Simple Interaction Format) export — Grove.to_sif(path).
 
 A thin pass-through over genogrove's node-less grove_to_sif(ostream) (v0.24.7).
 It writes the grove's B+ tree structure (nodelink / leaflink lines) and the

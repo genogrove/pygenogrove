@@ -41,7 +41,7 @@ inline void bind_fasta_index(py::module_& m) {
                  // (-> RuntimeError) if the file can't be opened or indexed.
                  //
                  // htslib's fai_load() is not thread-safe, so concurrent opens
-                 // race and abort (issue #50). Serialize construction with a
+                 // race and abort. Serialize construction with a
                  // process-wide lock; the GIL stays released (below) so a long
                  // multi-GB index build still won't freeze unrelated threads,
                  // and fetch() on separate handles remains fully concurrent.

@@ -1,9 +1,9 @@
 """
 Tests for the completed graph overlay on the universal Grove:
 
-  * labelled edges (#1) — grove<gc, json_value, json_value>: add_edge(s, t, data),
+  * labelled edges — grove<gc, json_value, json_value>: add_edge(s, t, data),
     get_edges, get_neighbors_if, link_with.
-  * edge removal / bulk linking (#2, available on every grove): remove_edges_from,
+  * edge removal / bulk linking (available on every grove): remove_edges_from,
     remove_edges_to, remove_all_edges, clear_graph, graph_empty, link_if.
 
 Mirrors genogrove graph_overlay_test.cpp's metadata + link_if cases. The basic
@@ -93,7 +93,7 @@ def test_get_edge_list_none_metadata():
 
 
 def test_get_edge_list_target_keeps_grove_alive():
-    """A target Key from get_edge_list keeps the Grove alive (UAF guard, #37)."""
+    """A target Key from get_edge_list keeps the Grove alive (UAF guard)."""
     pg = _pg()
     g = pg.Grove(3)
     a, b = _chain(g, (10, 20), (30, 40))
@@ -137,7 +137,7 @@ def test_get_in_edge_list_empty_for_target_with_no_edges():
 
 
 def test_get_in_edge_list_source_keeps_grove_alive():
-    """A source Key from get_in_edge_list keeps the Grove alive (UAF guard, #37;
+    """A source Key from get_in_edge_list keeps the Grove alive (UAF guard;
     mirrors test_get_edge_list_target_keeps_grove_alive for the reverse
     direction)."""
     pg = _pg()
@@ -334,7 +334,7 @@ def test_link_if_none_in_keys_raises_type_error():
 
 
 # --------------------------------------------------------------------------- #
-# remove_edges_if — predicate-filtered edge removal (#33)
+# remove_edges_if — predicate-filtered edge removal
 # --------------------------------------------------------------------------- #
 
 def test_remove_edges_if_by_metadata():

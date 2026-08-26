@@ -95,7 +95,7 @@ def test_view_traverses_graph_edges(tmp_path):
 
 def test_view_reverse_traversal(tmp_path):
     """get_in_neighbors / out_degree / in_degree mirror the forward direction
-    through a view, resolving sources' blocks on demand (genogrove #535/#539)."""
+    through a view, resolving sources' blocks on demand."""
     pg = _pg()
 
     g = pg.Grove(3)
@@ -113,7 +113,7 @@ def test_view_reverse_traversal(tmp_path):
     assert view.out_degree(dst) == 0
     assert view.in_degree(dst) == 2
     # exact order, not sorted -- incoming-edge order is preserved across
-    # serialize/deserialize (genogrove #545), so this also guards regressions
+    # serialize/deserialize, so this also guards regressions
     assert [k.value.start for k in view.get_in_neighbors(dst)] == [100, 5000]
 
     src = list(view.intersect(_coord(pg, 100, 200), "chr1"))[0]
@@ -124,7 +124,7 @@ def test_view_reverse_traversal(tmp_path):
 
 def test_view_reads_edge_metadata(tmp_path):
     """get_edges / get_neighbors_if surface edge payloads through a view
-    without a full deserialize (genogrove #480)."""
+    without a full deserialize."""
     pg = _pg()
 
     g = pg.Grove(3)
@@ -165,7 +165,7 @@ def test_view_reads_edge_metadata(tmp_path):
 
 def test_view_reads_in_edge_metadata(tmp_path):
     """get_in_edges / get_in_neighbors_if / get_in_edge_list mirror their
-    forward-direction counterparts through a view (genogrove #535)."""
+    forward-direction counterparts through a view."""
     pg = _pg()
 
     g = pg.Grove(3)
@@ -183,7 +183,7 @@ def test_view_reads_in_edge_metadata(tmp_path):
     dst = list(view.intersect(_coord(pg, 500, 600), "chr1"))[0]
 
     # ordered lists, not dicts -- incoming-edge order is preserved across
-    # serialize/deserialize (genogrove #545), and dict equality would hide an
+    # serialize/deserialize, and dict equality would hide an
     # order regression
     paired = [(n.value.start, e) for n, e in zip(view.get_in_neighbors(dst), view.get_in_edges(dst))]
     assert paired == [(100, {"w": 1}), (300, {"w": 10})]
@@ -208,8 +208,8 @@ def test_view_reads_in_edge_metadata(tmp_path):
 
 
 def test_view_get_edge_list(tmp_path):
-    """get_edge_list zips get_neighbors with get_edges through a view
-    (genogrove #505), paging targets in on demand and pinning them alive."""
+    """get_edge_list zips get_neighbors with get_edges through a view,
+    paging targets in on demand and pinning them alive."""
     pg = _pg()
 
     g = pg.Grove(3)
@@ -236,8 +236,7 @@ def test_view_get_edge_list(tmp_path):
 
 
 def test_view_order_and_index_names(tmp_path):
-    """get_order / get_index_names expose the directory without extra reads
-    (genogrove #510)."""
+    """get_order / get_index_names expose the directory without extra reads."""
     pg = _pg()
 
     g = pg.Grove(5)

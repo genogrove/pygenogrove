@@ -101,7 +101,7 @@ def test_roundtrip_empty_bed_grove(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# Error paths — symmetric with the dataless grove suite (#6). BedGrove and Grove
+# Error paths — symmetric with the dataless grove suite. BedGrove and Grove
 # share the same serialize/deserialize binding, so these are defense-in-depth.
 # --------------------------------------------------------------------------- #
 

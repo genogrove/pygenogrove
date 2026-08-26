@@ -79,7 +79,7 @@ def test_repr(tmp_path):
 
 def test_concurrent_next_raises(tmp_path):
     """__next__/get_current_line/get_error_message guard against concurrent
-    calls while another __next__ is in flight (issue #84). Pokes the internal
+    calls while another __next__ is in flight. Pokes the internal
     flag directly rather than racing real threads — the guard's check-then-set
     only needs to be correct, not literally raced."""
     pg = _pg()

@@ -1,15 +1,14 @@
 """
 Out-of-order ``insert()`` keeps every key spatially queryable.
 
-Regression coverage for pygenogrove #68 / genogrove #517: insert routing used
-the node's bounding box (a subtree *minimum* for interval-like keys) instead of
-the subtree maximum, so a key that did not sort last landed in a leaf too far
-right. ``size()`` and the graph overlay still saw it; ``intersect()`` did not.
-Fixed in genogrove v0.25.6 (genogrove #518).
+Interval-key routing must track each subtree's true maximum, not just its
+minimum: a key inserted out of order can only reach the correct leaf if
+routing accounts for the subtree's current maximum. ``size()`` and the graph
+overlay reflect every inserted key regardless; ``intersect()`` is the one
+that depends on correct routing.
 
-Both the in-memory path and the ``deserialize()`` path are exercised — the
-latter is the workflow #68 was filed on, and the only trigger for the subtree
-maxima rebuild v0.25.6 added to deserialization.
+Both the in-memory path and the ``deserialize()`` path are exercised, since
+deserialization must independently rebuild the same subtree maxima.
 """
 
 import pytest
@@ -29,9 +28,10 @@ COORDS = [(i * 100, i * 100 + 50) for i in range(500)]
 
 # Stride rotation: seven ascending passes, each picking every 7th coordinate.
 # Unique (every coordinate inserted exactly once), deterministic, and every
-# pass after the first inserts *below* the tree's current maximum — which is
-# the misroute case. Do not "simplify" this back into sorted order: appending
-# in sorted order is the one insert pattern the bug never affected.
+# pass after the first inserts *below* the tree's current maximum, which is
+# the case that requires correct subtree-maximum tracking. Do not "simplify"
+# this back into sorted order — sorted appends never exercise out-of-order
+# routing at all.
 INSERT_ORDER = [c for offset in range(7) for c in COORDS[offset::7]]
 
 
@@ -53,7 +53,7 @@ def test_unsorted_insert_stays_queryable():
 
 
 def test_insert_into_deserialized_grove_stays_queryable(tmp_path):
-    """The #68 reproducer: augment a grove loaded from disk, then query it."""
+    """Augment a grove loaded from disk with out-of-order inserts, then query it."""
     pg = _pg()
     g = pg.Grove(3)
     for start, end in INSERT_ORDER:

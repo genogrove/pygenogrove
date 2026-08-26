@@ -2,7 +2,7 @@
  * pinned_key_list — build a Python list of Key objects from a range of key
  * pointers, tying EACH returned Key's lifetime to `parent` (reference_internal).
  *
- * Why this exists (issue #37): genogrove returns vectors of raw key pointers
+ * Why this exists: genogrove returns vectors of raw key pointers
  * (e.g. grove::get_neighbors, the bulk insert_data path, query_result::get_keys)
  * that point into a Grove's pointer-stable std::deque. Casting such a vector
  * with py::return_value_policy::reference_internal pins only the resulting list

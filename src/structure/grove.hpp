@@ -55,8 +55,8 @@ inline constexpr bool grove_data_optional = false;
 // Raises TypeError if any element of `keys` is None. The edge-graph methods'
 // single-Key arguments (source/target/key) use py::arg(...).none(false) for
 // this; std::vector's caster has no per-element equivalent and silently turns
-// a None element into nullptr, so link_if()/link_with() check by hand (issue
-// #77). (remove_key()'s `key` intentionally allows None via .none(true) —
+// a None element into nullptr, so link_if()/link_with() check by hand.
+// (remove_key()'s `key` intentionally allows None via .none(true) —
 // unrelated to this check.)
 template <typename KeyPtr>
 void check_no_none_keys(const std::vector<KeyPtr>& keys, const char* arg_name) {
@@ -211,7 +211,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                                    : g.insert_data(index, std::move(items), ggs::bulk);
                     }
                     // Pin each returned Key to the Grove so extracted keys can't
-                    // dangle after the list is dropped — issue #37.
+                    // dangle after the list is dropped.
                     return pinned_key_list(keys, self);
                 },
                 py::arg("index"), py::arg("items"), py::arg("presorted") = false,
@@ -292,7 +292,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                                        : g.insert_data(index, std::move(items),
                                                        ggs::bulk);
                         }
-                        // Pin each returned Key to the Grove — issue #37.
+                        // Pin each returned Key to the Grove.
                         return pinned_key_list(keys, self);
                     },
                     py::arg("index"), py::arg("entries"),
@@ -410,7 +410,7 @@ void bind_grove(py::module_& m, const char* grove_name,
         .def("get_neighbors",
              [](py::object self, key_t* source) {
                  // Pin each Key to the Grove so an extracted neighbor can't
-                 // dangle after the list is dropped — issue #37.
+                 // dangle after the list is dropped.
                  return pinned_key_list(
                      self.cast<grove_t&>().get_neighbors(source), self);
              },
@@ -424,7 +424,7 @@ void bind_grove(py::module_& m, const char* grove_name,
         .def("get_in_neighbors",
              [](py::object self, key_t* target) {
                  // Pin each Key to the Grove so an extracted neighbor can't
-                 // dangle after the list is dropped — issue #37.
+                 // dangle after the list is dropped.
                  return pinned_key_list(
                      self.cast<grove_t&>().get_in_neighbors(target), self);
              },
@@ -510,7 +510,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                  reclaims the dead slots — so it is >= indexed_vertex_count().
              )pbdoc");
 
-    // ---- Predicate-filtered edge removal (every grove; #33) ----
+    // ---- Predicate-filtered edge removal (every grove) ----
     // genogrove's remove_edges_if takes a generic predicate over `const edge&`
     // ({ target, metadata }); we adapt it to a Python callable. The predicate
     // re-enters Python, so the GIL stays held (no call_guard). The Python-facing
@@ -645,7 +645,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                     const auto& g = self.cast<const grove_t&>();
                     py::list out;
                     for (const auto& e : g.get_edge_list(source)) {
-                        // Pin each target Key to the Grove — issue #37.
+                        // Pin each target Key to the Grove.
                         out.append(py::make_tuple(
                             py::cast(e.target,
                                      py::return_value_policy::reference_internal,
@@ -680,7 +680,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                     const auto& g = self.cast<const grove_t&>();
                     py::list out;
                     for (const auto& e : g.get_in_edge_list(target)) {
-                        // Pin each source Key to the Grove — issue #37.
+                        // Pin each source Key to the Grove.
                         out.append(py::make_tuple(
                             py::cast(e.source,
                                      py::return_value_policy::reference_internal,
@@ -703,7 +703,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                    std::function<bool(const EdgeT&)> predicate) {
                     // The predicate calls back into Python — keep the GIL held.
                     // Pin each Key to the Grove so extracted keys can't dangle
-                    // after the list is dropped — issue #37.
+                    // after the list is dropped.
                     return pinned_key_list(
                         self.cast<const grove_t&>().get_neighbors_if(
                             source, std::move(predicate)),
@@ -724,7 +724,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                    std::function<bool(const EdgeT&)> predicate) {
                     // The predicate calls back into Python — keep the GIL held.
                     // Pin each Key to the Grove so extracted keys can't dangle
-                    // after the list is dropped — issue #37.
+                    // after the list is dropped.
                     return pinned_key_list(
                         self.cast<const grove_t&>().get_in_neighbors_if(
                             target, std::move(predicate)),

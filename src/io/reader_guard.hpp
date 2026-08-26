@@ -2,7 +2,7 @@
  * read_next_guarded / guarded_getter — thread-safety guard shared by the
  * streaming file readers. read_next() and the getters below it all touch
  * reader-owned, unsynchronized state; a concurrent call from another thread
- * would race on it (issue #84). A flag checked-then-set while the GIL is
+ * would race on it. A flag checked-then-set while the GIL is
  * still held closes that — the GIL serializes the check-and-set, no lock
  * needed. Assumes GIL-enabled CPython (not free-threaded/PEP 703 builds,
  * which this project doesn't target).
