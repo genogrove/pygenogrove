@@ -91,9 +91,8 @@ def test_keys_keep_grove_alive():
 def test_keys_property_keeps_grove_alive():
     """The .keys property (distinct from __iter__) must pin each extracted Key to
     the grove. Holding ONLY a key pulled from .keys across grove drop + GC must
-    stay safe — regression guard for issue #37 (a failure here is a use-after-
-    free crash, not a failed assertion). Before the fix only the list was pinned,
-    so an extracted key dangled once the list and grove were gone.
+    stay safe: a failure here is a silent use-after-free crash, not a failed
+    assertion.
     """
     pg = _pg()
     grove = pg.Grove(3)

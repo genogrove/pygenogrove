@@ -123,7 +123,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
             "get_neighbors",
             [](py::object self, key_t* source) {
                 // Pin each Key to the view so an extracted neighbor can't dangle
-                // after the list is dropped — issue #37. Loads each target's
+                // after the list is dropped. Loads each target's
                 // block on demand (the cross-chromosome hop).
                 return pinned_key_list(
                     self.cast<view_t&>().get_neighbors(source), self);
@@ -141,7 +141,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
             "get_in_neighbors",
             [](py::object self, key_t* target) {
                 // Pin each Key to the view so an extracted neighbor can't dangle
-                // after the list is dropped — issue #37. Loads each source's
+                // after the list is dropped. Loads each source's
                 // block on demand, exactly like get_neighbors.
                 return pinned_key_list(
                     self.cast<view_t&>().get_in_neighbors(target), self);
@@ -172,7 +172,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
 
         // ---- Flanking (nearest non-overlapping neighbours) ----
         // Same result as the eager Grove.flanking(), but pages in only the
-        // blocks on the descent path (genogrove #483). keep_alive<0, 1>: the
+        // blocks on the descent path. keep_alive<0, 1>: the
         // returned FlankingResult (and its Keys) point into the view's block
         // cache, so the view must outlive it. No call_guard — paging mutates the
         // cache and the view is not thread-safe, so the GIL stays held.
@@ -242,7 +242,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
     //      universal GroveView the metadata is any JSON-serializable value).
     //      Mirrors the same methods on the mutable Grove, but query-only: a view
     //      surfaces edge payloads paged in with each source's block, without a
-    //      full deserialize (genogrove #480). ----
+    //      full deserialize. ----
     if constexpr (!std::is_void_v<EdgeT>) {
         cls.def(
             "get_edges",
@@ -280,7 +280,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                 // metadata) pairs (.first/.second) and resolves each target's
                 // block on demand — so a null source throws (like get_neighbors),
                 // unlike the metadata-only get_edges. Pin each target Key to the
-                // view so it can't dangle after the list is dropped — issue #37.
+                // view so it can't dangle after the list is dropped.
                 py::list out;
                 for (auto& e : self.cast<view_t&>().get_edge_list(source)) {
                     out.append(py::make_tuple(
@@ -308,7 +308,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                 // each source's block on demand, so a null target throws
                 // (like get_in_neighbors), unlike the metadata-only
                 // get_in_edges. Pin each source Key to the view so it can't
-                // dangle after the list is dropped — issue #37.
+                // dangle after the list is dropped.
                 py::list out;
                 for (auto& e : self.cast<view_t&>().get_in_edge_list(target)) {
                     out.append(py::make_tuple(
@@ -335,7 +335,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                std::function<bool(const EdgeT&)> predicate) {
                 // The predicate calls back into Python — keep the GIL held. Pin
                 // each Key to the view so an extracted neighbor can't dangle
-                // after the list is dropped — issue #37. Resolves each surviving
+                // after the list is dropped. Resolves each surviving
                 // target's block on demand, like get_neighbors.
                 return pinned_key_list(
                     self.cast<view_t&>().get_neighbors_if(source,
@@ -358,7 +358,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                std::function<bool(const EdgeT&)> predicate) {
                 // The predicate calls back into Python — keep the GIL held. Pin
                 // each Key to the view so an extracted neighbor can't dangle
-                // after the list is dropped — issue #37. Resolves each surviving
+                // after the list is dropped. Resolves each surviving
                 // source's block on demand, like get_in_neighbors.
                 return pinned_key_list(
                     self.cast<view_t&>().get_in_neighbors_if(target,

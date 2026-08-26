@@ -200,7 +200,7 @@ def test_skip_invalid_lines(tmp_path):
 def test_invalid_first_line_honors_skip(tmp_path):
     """skip_invalid_lines governs the FIRST record too: with it off, a malformed
     leading line raises at construction; with it on, the line is skipped during
-    iteration rather than throwing. Mirrors genogrove #492/#497.
+    iteration rather than throwing.
     """
     pg = _pg()
     path = _write(tmp_path / "badfirst.bed",
@@ -239,7 +239,7 @@ def test_repr(tmp_path):
 
 def test_concurrent_next_raises(tmp_path):
     """__next__/get_current_line/get_error_message guard against concurrent
-    calls while another __next__ is in flight (issue #84). Pokes the internal
+    calls while another __next__ is in flight. Pokes the internal
     flag directly rather than racing real threads — the guard's check-then-set
     only needs to be correct, not literally raced."""
     pg = _pg()

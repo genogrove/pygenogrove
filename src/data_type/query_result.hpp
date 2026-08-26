@@ -30,7 +30,7 @@ void bind_query_result(py::module_& m, const char* name) {
                                [](py::object self) {
                                    // Pin each Key to this QueryResult (which keeps
                                    // its Grove alive) so an extracted Key can't
-                                   // dangle after the list is dropped — issue #37.
+                                   // dangle after the list is dropped.
                                    return pinned_key_list(
                                        self.cast<const qr_t&>().get_keys(), self);
                                },

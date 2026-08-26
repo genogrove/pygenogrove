@@ -1,6 +1,6 @@
 """
 Tests for GroveView.flanking() — nearest non-overlapping neighbours over a
-serialized .gg, paging in only the descent-path blocks (genogrove #483).
+serialized .gg, paging in only the descent-path blocks.
 
 The flanking logic itself is covered against the eager Grove in test_flanking.py;
 here we only exercise the new view surface: parity with Grove.flanking(), the
