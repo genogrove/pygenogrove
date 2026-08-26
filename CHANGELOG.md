@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Stripped commit-message-style narrative from code comments.** Comments and
+  docstrings across `src/` and `tests/` cited issue/PR numbers (`issue #37`,
+  `genogrove #492/#497`, `(#33)`) or narrated a fix's before-vs-after history
+  ("Before the fix only the returned list was pinned...") instead of
+  describing current behavior — internal/doc-only, no behavior change
+  ([#97](https://github.com/genogrove/pygenogrove/issues/97),
+  [#98](https://github.com/genogrove/pygenogrove/pull/98)).
 - **Documented the `BedGrove`/`GffGrove` edge-metadata gap; bound `BamReader`
   header methods.** `BedGrove`/`GffGrove` (`EdgeT=void`) silently lacked the
   labelled-edge methods that `Grove`/`NumericGrove`/`KmerGrove` have, with an
