@@ -12,6 +12,8 @@ crash or corrupt here.
 
 Each thread uses its OWN objects: a reader/grove isn't shared-thread-safe; the
 realistic pattern is one driver per object, overlapping only the C++ work.
+`FastaIndex` is the exception — it carries an internal lock, so one shared
+handle is also exercised.
 `Registry` is a process-wide singleton, so its tests instead overlap read-only
 (mutex-protected) `serialize()` calls, or repeated `deserialize()` of the same
 file, against one shared instance.
@@ -178,3 +180,24 @@ def test_concurrent_fasta_fetch(tmp_path):
         results = list(ex.map(fetch, range(8)))
 
     assert all(r == ("ACGT", "TTTTGGGGCCCC") for r in results)
+
+
+def test_concurrent_fasta_fetch_shared_handle(tmp_path):
+    """One FastaIndex shared by many threads: the internal lock serializes the
+    faidx calls, so every fetch (and metadata lookup) returns the right bases
+    even though the GIL is released around each one."""
+    pg = _pg()
+    fa = tmp_path / "g.fa"
+    fa.write_text(">chr1\nACGTACGTACGT\n>chr2\nTTTTGGGGCCCC\n")
+    idx = pg.FastaIndex(str(fa))
+
+    def fetch(i):
+        # Alternate sequences so concurrent calls keep moving the cursor.
+        name, expect = ("chr1", "ACGT") if i % 2 == 0 else ("chr2", "TTTT")
+        out = [idx.fetch(name, 0, 4) == expect for _ in range(200)]
+        out.append(idx.fetch("chr2") == "TTTTGGGGCCCC")
+        out.append(idx.sequence_length(name) == 12 and name in idx and len(idx) == 2)
+        return all(out)
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        assert all(ex.map(fetch, range(64)))

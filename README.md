@@ -513,7 +513,10 @@ FastaReader(path, skip_empty_sequences=False)
 ### FastaIndex (random-access FASTA)
 
 `FastaIndex` provides random-access region fetches over a FASTA file, backed by an
-`.fai` index (built on first open — the directory must be writable then).
+`.fai` index (built on first open — the directory must be writable then). One
+handle may be shared between threads: calls on it are serialized by an internal
+lock while the GIL is released, so open one handle per thread for parallel
+throughput.
 
 ```python
 import pygenogrove as pg
