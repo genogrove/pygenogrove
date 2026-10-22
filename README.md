@@ -514,9 +514,9 @@ FastaReader(path, skip_empty_sequences=False)
 
 `FastaIndex` provides random-access region fetches over a FASTA file, backed by an
 `.fai` index (built on first open — the directory must be writable then). One
-handle may be shared between threads: calls on it are serialized by an internal
-lock while the GIL is released, so open one handle per thread for parallel
-throughput.
+handle may be shared between threads: `fetch` calls on it are serialized by an
+internal lock while the GIL is released (the metadata getters are lock-free), so
+open one handle per thread for parallel fetch throughput.
 
 ```python
 import pygenogrove as pg

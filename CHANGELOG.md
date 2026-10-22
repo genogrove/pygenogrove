@@ -9,15 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`FastaIndex` is now safe to share between threads.** Every method released
-  the GIL around its htslib faidx call with nothing serializing access to the
-  one BGZF cursor inside the handle, so two threads fetching from a shared
-  `FastaIndex` could read wrong bases or crash inside htslib. The bound object
-  now pairs the index with a per-handle mutex taken only after the GIL is
-  dropped and released before it is reacquired (no lock-order inversion); the
-  docstring and README state the contract (a shared handle is safe, open one
-  per thread for parallel throughput), and a shared-handle concurrency test
-  covers fetch and the metadata getters
+- **`FastaIndex` is now safe to share between threads.** `fetch` released the
+  GIL with nothing serializing the handle's single BGZF cursor, so concurrent
+  fetches on one shared `FastaIndex` could return wrong bases or crash. `fetch`
+  is now serialized by a per-handle lock; the metadata getters stay unlocked
   ([#101](https://github.com/genogrove/pygenogrove/issues/101),
   [#106](https://github.com/genogrove/pygenogrove/pull/106)).
 
