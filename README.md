@@ -21,6 +21,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 
 # The built module will be in build/pygenogrove.so (or .pyd on Windows)
+# A GCC 13 dev image with htslib and Python headers: docker/gcc13-dev.Dockerfile
 ```
 
 ### Using pip 

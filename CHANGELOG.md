@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **GCC 13 dev Dockerfile.** `docker/gcc13-dev.Dockerfile` gives a reproducible
+  toolchain (GCC 13.3, htslib 1.21, Python headers, pytest) for local builds and
+  CLion's Docker toolchain
+  ([#107](https://github.com/genogrove/pygenogrove/pull/107)).
+
 ### Fixed
 
 - **`FastaIndex` is now safe to share between threads.** `fetch` released the
