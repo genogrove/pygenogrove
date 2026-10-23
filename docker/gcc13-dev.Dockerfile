@@ -3,8 +3,9 @@
 #
 # docker build -t pygenogrove-dev:gcc13 -f docker/gcc13-dev.Dockerfile docker
 # docker run --rm -it -v "$PWD":/src -w /src pygenogrove-dev:gcc13 bash
-#   cmake -S . -B build -G Ninja && cmake --build build
-#   PYTHONPATH=build pytest tests/
+#   cmake -S . -B build/linux -G Ninja && cmake --build build/linux
+#   PYTHONPATH=build/linux pytest tests/
+# (build/linux keeps clear of a host-side cache in build/.)
 # CLion: Settings > Toolchains > Docker, image pygenogrove-dev:gcc13.
 FROM gcc:13.3
 
