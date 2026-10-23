@@ -2,9 +2,10 @@
 # and a Python with headers so pybind11 can configure.
 #
 # docker build -t pygenogrove-dev:gcc13 -f docker/gcc13-dev.Dockerfile docker
-# CLion: Settings > Toolchains > Docker, image pygenogrove-dev:gcc13; then
-# cmake -S . -B build -G Ninja && cmake --build build
-# PYTHONPATH=build pytest tests/
+# docker run --rm -it -v "$PWD":/src -w /src pygenogrove-dev:gcc13 bash
+#   cmake -S . -B build -G Ninja && cmake --build build
+#   PYTHONPATH=build pytest tests/
+# CLion: Settings > Toolchains > Docker, image pygenogrove-dev:gcc13.
 FROM gcc:13.3
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
