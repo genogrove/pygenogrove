@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`FastaIndex` is now safe to share between threads.** `fetch` released the
+  GIL with nothing serializing the handle's single BGZF cursor, so concurrent
+  fetches on one shared `FastaIndex` could return wrong bases or crash. `fetch`
+  is now serialized by a per-handle lock; the metadata getters stay unlocked
+  ([#101](https://github.com/genogrove/pygenogrove/issues/101),
+  [#106](https://github.com/genogrove/pygenogrove/pull/106)).
+
 ## [0.9.0] - 2026-08-26
 
 ### Added

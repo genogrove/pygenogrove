@@ -1,12 +1,10 @@
 /*
  * Bindings for the random-access FASTA index (faidx). Mirrors
- * genogrove/io/fasta_index.hpp — a thin wrapper over htslib's faidx API.
+ * genogrove/io/fasta_index.hpp.
  *
- * FastaIndex(path) opens a FASTA file and loads (or creates) its .fai index,
- * then serves region/whole-sequence fetches and per-sequence metadata. It
- * pairs with GenomicCoordinate: fetch a feature's bases with
- * idx.fetch(coord_index, gc.start, gc.end + 1) — fetch() is 0-based half-open
- * [start, end), GenomicCoordinate is 0-based closed [start, end].
+ * fetch() releases the GIL and shares one BGZF cursor per handle, so it is
+ * serialized by a per-handle mutex taken only after the GIL is released. The
+ * metadata getters are read-only lookups and stay unlocked.
  */
 #pragma once
 
@@ -23,8 +21,19 @@
 namespace py = pybind11;
 namespace gio = genogrove::io;
 
+namespace pygg {
+
+struct fasta_index_handle : gio::fasta_index {
+    using gio::fasta_index::fasta_index;
+    mutable std::mutex fetch_mutex;
+};
+
+}  // namespace pygg
+
 inline void bind_fasta_index(py::module_& m) {
-    py::class_<gio::fasta_index>(m, "FastaIndex", R"pbdoc(
+    using handle_t = pygg::fasta_index_handle;
+
+    py::class_<handle_t>(m, "FastaIndex", R"pbdoc(
         Random-access reader for a FASTA file, backed by an .fai index.
 
         Opening builds the index if it is missing (this writes a sibling
@@ -33,31 +42,30 @@ inline void bind_fasta_index(py::module_& m) {
         bases of a GenomicCoordinate (0-based closed ``[start, end]``), call
         ``idx.fetch(index, gc.start, gc.end + 1)``.
 
+        One handle may be shared between threads: fetch() calls on it are
+        serialized by an internal lock (the GIL is released for the htslib
+        work); the metadata getters are lock-free reads. For parallel fetch
+        throughput open one handle per thread.
+
         Non-copyable; the underlying htslib handle is closed when the object is
         garbage-collected.
     )pbdoc")
         .def(py::init([](const std::string& path) {
-                 // std::string -> std::filesystem::path; throws std::runtime_error
-                 // (-> RuntimeError) if the file can't be opened or indexed.
-                 //
-                 // htslib's fai_load() is not thread-safe, so concurrent opens
-                 // race and abort. Serialize construction with a
-                 // process-wide lock; the GIL stays released (below) so a long
-                 // multi-GB index build still won't freeze unrelated threads,
-                 // and fetch() on separate handles remains fully concurrent.
+                 // fai_load() is not thread-safe: serialize construction.
                  static std::mutex fai_load_mutex;
                  std::lock_guard<std::mutex> lock(fai_load_mutex);
-                 return std::make_unique<gio::fasta_index>(path);
+                 return std::make_unique<handle_t>(path);
              }),
              py::arg("path"),
-             // Building a missing .fai for a multi-GB genome is pure htslib I/O.
              py::call_guard<py::gil_scoped_release>(),
              "Open a FASTA file and load (or create) its .fai index.")
         .def("fetch",
-             py::overload_cast<const std::string&, std::size_t, std::size_t>(
-                 &gio::fasta_index::fetch, py::const_),
+             [](const handle_t& h, const std::string& name, std::size_t start,
+                std::size_t end) {
+                 std::lock_guard<std::mutex> lock(h.fetch_mutex);
+                 return h.fetch(name, start, end);
+             },
              py::arg("name"), py::arg("start"), py::arg("end"),
-             // faidx disk read; returns a std::string converted after reacquire.
              py::call_guard<py::gil_scoped_release>(),
              R"pbdoc(
                  fetch(name, start, end) -> str
@@ -67,10 +75,11 @@ inline void bind_fasta_index(py::module_& m) {
                  region is invalid (start >= end, or beyond htslib's limit).
              )pbdoc")
         .def("fetch",
-             py::overload_cast<const std::string&>(&gio::fasta_index::fetch,
-                                                   py::const_),
+             [](const handle_t& h, const std::string& name) {
+                 std::lock_guard<std::mutex> lock(h.fetch_mutex);
+                 return h.fetch(name);
+             },
              py::arg("name"),
-             // Whole-sequence faidx read (can be very large); GIL released.
              py::call_guard<py::gil_scoped_release>(),
              R"pbdoc(
                  fetch(name) -> str
@@ -87,7 +96,7 @@ inline void bind_fasta_index(py::module_& m) {
         .def("has_sequence", &gio::fasta_index::has_sequence, py::arg("name"),
              "Whether `name` is present in the index.")
         .def("names",
-             [](const gio::fasta_index& idx) {
+             [](const handle_t& idx) {
                  std::vector<std::string> out;
                  out.reserve(idx.sequence_count());
                  for (std::size_t i = 0; i < idx.sequence_count(); ++i) {
@@ -98,7 +107,7 @@ inline void bind_fasta_index(py::module_& m) {
              "List of all sequence names, in index order.")
         .def("__len__", &gio::fasta_index::sequence_count)
         .def("__contains__", &gio::fasta_index::has_sequence, py::arg("name"))
-        .def("__repr__", [](const gio::fasta_index& idx) {
+        .def("__repr__", [](const handle_t& idx) {
             return "FastaIndex(n_sequences=" + std::to_string(idx.sequence_count()) + ")";
         });
 }
