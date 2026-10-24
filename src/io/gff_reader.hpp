@@ -2,13 +2,12 @@
  * Bindings for the GFF/GTF value types defined in genogrove io/gff_reader.hpp:
  * the gff_entry record, its detected gff_format, and the GTF helper accessors.
  *
- * Exposed so a data-carrying grove (grove<interval, gff_entry>) can store,
- * query, and serialize GFF/GTF records. The gff_reader file iterator itself is
- * bound separately (future work).
+ * Exposed so a data-carrying grove (grove<genomic_coordinate, gff_entry>) can
+ * store, query, and serialize GFF/GTF records. The gff_reader file iterator is
+ * bound below.
  *
  * NOTE: <genogrove/io/gff_reader.hpp> transitively pulls in <htslib/bgzf.h>,
- * but htslib is already a transitive build dependency. We only touch the POD
- * struct/enum here, never the reader/BGZF handle.
+ * but htslib is already a transitive build dependency.
  */
 #pragma once
 
