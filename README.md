@@ -262,9 +262,11 @@ pg.Kmer.is_valid("ACGN")                            # False
 ```
 
 `Numeric`: `value` (read-only; `set_value` pre-insertion only), `overlaps(a, b)`,
-comparisons, `str`/`repr`. `Kmer`: `Kmer(sequence)` or `Kmer(encoding, k)`,
-`encoding` / `k` / `len()`, `overlaps(a, b)`, static `is_valid(sequence)` and
-`max_k` (32). Invalid bases or `k > 32` raise `ValueError`.
+comparisons, `str`/`repr`. The value is a 32-bit int (`-2**31 .. 2**31-1`);
+anything outside raises `TypeError`, so millisecond timestamps don't fit.
+`Kmer`: `Kmer(sequence)` or `Kmer(encoding, k)`, `encoding` / `k` / `len()`,
+`overlaps(a, b)`, static `is_valid(sequence)` and `max_k` (32). Invalid bases or
+`k > 32` raise `ValueError`.
 
 ### BedGrove (typed BED grove)
 

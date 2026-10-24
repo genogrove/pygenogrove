@@ -29,6 +29,18 @@ def test_default_constructor_is_int_min():
     assert pg.Numeric() == pg.Numeric(-(2**31))
 
 
+def test_value_is_32_bit():
+    pg = _pg()
+    assert pg.Numeric(2**31 - 1).value == 2**31 - 1
+    assert pg.Numeric(-(2**31)).value == -(2**31)
+    with pytest.raises(TypeError):
+        pg.Numeric(2**31)
+    with pytest.raises(TypeError):
+        pg.Numeric(-(2**31) - 1)
+    with pytest.raises(TypeError):
+        pg.Numeric(0).set_value(2**31)
+
+
 def test_equality():
     pg = _pg()
     assert pg.Numeric(5) == pg.Numeric(5)

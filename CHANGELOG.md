@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`Numeric` documents its 32-bit range.** `Numeric` wraps a C++ `int`, so values
+  outside `-2**31 .. 2**31-1` are rejected with `TypeError` (millisecond epoch
+  timestamps don't fit). The docstrings and README now say so, and a test pins
+  both bounds ([#102](https://github.com/genogrove/pygenogrove/issues/102),
+  [#110](https://github.com/genogrove/pygenogrove/pull/110)).
 - **`FastaIndex` is now safe to share between threads.** `fetch` released the
   GIL with nothing serializing the handle's single BGZF cursor, so concurrent
   fetches on one shared `FastaIndex` could return wrong bases or crash. `fetch`
