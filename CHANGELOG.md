@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [#583](https://github.com/genogrove/genogrove/pull/583)),
   `FiletypeDetector.detect_filetype` is now a staticmethod: call it on the class
   without constructing a detector. Instance calls still work
-  ([#105](https://github.com/genogrove/pygenogrove/issues/105)).
+  ([#105](https://github.com/genogrove/pygenogrove/issues/105),
+  [#109](https://github.com/genogrove/pygenogrove/pull/109)).
 - **Packaging metadata fixed; Python 3.9 dropped, 3.14 added.** The license
   metadata wrongly said MIT: the project is GPL-3.0-or-later (inherited from
   genogrove) and now ships the `LICENSE` text. Wheels and CI cover Python
