@@ -2,7 +2,7 @@
  * Binding for gdt::genomic_coordinate — the stranded genomic interval key type.
  * Mirrors genogrove/include/genogrove/data_type/genomic_coordinate.hpp.
  *
- * Like Interval but strand-aware: overlap requires both coordinate overlap AND
+ * A strand-aware interval: overlap requires both coordinate overlap AND
  * strand compatibility ('*' is a wildcard matching any strand). Sorting is
  * coordinate-first (start, then end, then strand with order * < . < + < -).
  */
@@ -44,7 +44,7 @@ inline void bind_genomic_coordinate(py::module_& m) {
             End position (0-based, inclusive).
 
         Raises ValueError if strand is not one of '+', '-', '.', '*', or if
-        start > end.
+        start > end; TypeError if start or end is negative.
     )pbdoc")
         .def(py::init<>())
         .def(py::init<char, size_t, size_t>(),

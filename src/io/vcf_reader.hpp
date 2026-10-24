@@ -208,7 +208,8 @@ inline void bind_vcf_reader(py::module_& m) {
                                    &gio::vcf_reader::get_current_line);
         }, "1-based index of the most recently consumed record (counts records "
            "dropped by skip_filtered too); 0 before the first read.")
-        .def("__repr__", [](const gio::vcf_reader& r) {
-            return "VcfReader(records=" + std::to_string(r.get_current_line()) + ")";
+        .def("__repr__", [](py::object self) {
+            return "VcfReader(records=" + std::to_string(guarded_getter(
+                self, "VcfReader", "__repr__", &gio::vcf_reader::get_current_line)) + ")";
         });
 }

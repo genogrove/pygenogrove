@@ -3,9 +3,8 @@
  * bed_entry and its sub-structures (block_info, thick_info, rgb_color).
  *
  * These are plain data carriers parsed from BED files, exposed so a
- * data-carrying grove (grove<interval, bed_entry>) can store, query, and
- * serialize them. The bed_reader file iterator itself is bound separately
- * (future work).
+ * data-carrying grove (grove<genomic_coordinate, bed_entry>) can store, query,
+ * and serialize them. The bed_reader file iterator is bound below.
  *
  * NOTE: <genogrove/io/bed_reader.hpp> transitively pulls in <htslib/bgzf.h>,
  * but htslib is already a transitive build dependency (genogrove links it
@@ -79,7 +78,7 @@ inline void bind_bed_entry(py::module_& m) {
 
         Coordinates are BED-native: 0-based, half-open [start, end). This is
         the raw record's own coordinate system and is distinct from the closed
-        [start, end] of Interval used as the grove key. Optional fields are
+        [start, end] of the GenomicCoordinate grove key. Optional fields are
         None when absent.
 
         Parameters
@@ -176,7 +175,8 @@ inline void bind_bed_reader(py::module_& m) {
                                    &gio::bed_reader::get_current_line);
         }, "1-based physical line number consumed so far (comments/blanks "
            "count); 0 before the first read.")
-        .def("__repr__", [](const gio::bed_reader& r) {
-            return "BedReader(line=" + std::to_string(r.get_current_line()) + ")";
+        .def("__repr__", [](py::object self) {
+            return "BedReader(line=" + std::to_string(guarded_getter(
+                self, "BedReader", "__repr__", &gio::bed_reader::get_current_line)) + ")";
         });
 }

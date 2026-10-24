@@ -36,7 +36,7 @@ inline void bind_gff_entry(py::module_& m) {
         A single GFF3/GTF record (one line of a GFF file).
 
         Coordinates are GFF-native: 1-based, both endpoints inclusive. This is
-        distinct from both `Interval` (0-based closed) and `BedEntry` (0-based
+        distinct from both `GenomicCoordinate` (0-based closed) and `BedEntry` (0-based
         half-open), so convert deliberately when building the grove key.
         Optional columns are None when absent ('.').
 
@@ -159,7 +159,8 @@ inline void bind_gff_reader(py::module_& m) {
                                    &gio::gff_reader::get_current_line);
         }, "1-based physical line number consumed so far (comments/blanks "
            "count); 0 before the first read.")
-        .def("__repr__", [](const gio::gff_reader& r) {
-            return "GffReader(line=" + std::to_string(r.get_current_line()) + ")";
+        .def("__repr__", [](py::object self) {
+            return "GffReader(line=" + std::to_string(guarded_getter(
+                self, "GffReader", "__repr__", &gio::gff_reader::get_current_line)) + ")";
         });
 }

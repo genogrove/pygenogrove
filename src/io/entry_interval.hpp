@@ -1,12 +1,13 @@
 /*
- * interval_from_entry — derive the grove's canonical Interval key (0-based,
- * closed [start, end]) from a file-format entry's native coordinates.
+ * interval_from_entry / genomic_coordinate_from_entry — derive the grove's
+ * GenomicCoordinate key value (0-based, closed [start, end], plus strand) from
+ * a file-format entry's native coordinates.
  *
  * Each file format uses a different coordinate convention; this is the one
  * place that conversion lives, so the entry-deriving overloads of
  * Grove.insert()/insert_bulk() are foolproof and users never hand-convert:
- *   - BED  is 0-based half-open [start, end)   -> Interval(start, end - 1)
- *   - GFF  is 1-based inclusive [start, end]   -> Interval(start - 1, end - 1)
+ *   - BED  is 0-based half-open [start, end)   -> [start, end - 1]
+ *   - GFF  is 1-based inclusive [start, end]   -> [start - 1, end - 1]
  *
  * Adding a conversion overload here automatically enables the entry-deriving
  * insert overloads for that data type (gated by the has_entry_interval concept).

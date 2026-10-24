@@ -208,7 +208,8 @@ inline void bind_bam_reader(py::module_& m) {
             return guarded_getter(self, "BamReader", "get_current_line",
                                    &gio::bam_reader::get_current_line);
         }, "Records consumed so far (advances on skipped/filtered records too).")
-        .def("__repr__", [](const gio::bam_reader& r) {
-            return "BamReader(records=" + std::to_string(r.get_current_line()) + ")";
+        .def("__repr__", [](py::object self) {
+            return "BamReader(records=" + std::to_string(guarded_getter(
+                self, "BamReader", "__repr__", &gio::bam_reader::get_current_line)) + ")";
         });
 }

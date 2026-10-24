@@ -32,6 +32,13 @@ def test_dict_payload_roundtrips():
     assert hit.data == payload
 
 
+def test_payload_follows_json_semantics():
+    pg = _pg()
+    g = pg.Grove()
+    k = g.insert("chr1", _c(pg, "+", 100, 200), {1: "a", "t": (1, 2)})
+    assert k.data == {"1": "a", "t": [1, 2]}
+
+
 def test_omitted_data_defaults_to_none():
     """insert without a data argument stores None (data is optional)."""
     pg = _pg()

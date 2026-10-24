@@ -252,9 +252,12 @@ def test_concurrent_next_raises(tmp_path):
         reader.get_current_line()
     with pytest.raises(RuntimeError):
         reader.get_error_message()
+    with pytest.raises(RuntimeError):
+        repr(reader)
     # The guard doesn't get stuck: normal calls after the flag is cleared work.
     reader._pygg_reading = False
     assert next(reader) is not None
+    assert repr(reader) == "BedReader(line=1)"
     assert reader.get_current_line() >= 1
     assert reader.get_error_message() == ""
 
