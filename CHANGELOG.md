@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **API polish from the bindings audit.** `GroveView.open` releases the GIL like
+  `Grove.deserialize`; `repr()` of a Bed/Gff/Fasta/Bam/Vcf reader now goes
+  through the concurrency guard and raises `RuntimeError` instead of racing an
+  in-flight `__next__`. Docstrings drop the removed `Interval` and the stale
+  "format 0.2", `GenomicCoordinate` lists `TypeError` for negative coordinates,
+  and `Grove.insert` notes that payloads follow `json.dumps` semantics
+  ([#103](https://github.com/genogrove/pygenogrove/issues/103),
+  [#111](https://github.com/genogrove/pygenogrove/pull/111)).
 - **Bundled genogrove bumped to
   [v0.26.3](https://github.com/genogrove/genogrove/releases/tag/v0.26.3)** (from
   v0.26.1; exception-safe root insert, genogrove
