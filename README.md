@@ -609,7 +609,7 @@ Currently exposed features:
 
 ## License
 
-This project inherits the license from the genogrove C++ library and is therefore licensed under the GPLv3 license. 
+This project inherits the license from the genogrove C++ library and is therefore licensed under GPL-3.0-or-later (see `LICENSE`).
 
 ## Related Projects
 
