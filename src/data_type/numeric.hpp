@@ -21,7 +21,7 @@ namespace gdt = genogrove::data_type;
 
 inline void bind_numeric(py::module_& m) {
     py::class_<gdt::numeric>(m, "Numeric", R"pbdoc(
-        A simple integer point key: wraps a single int value (not a range).
+        A simple integer point key: wraps a single 32-bit int value (not a range).
 
         Overlap is exact equality (numeric(5) overlaps numeric(5) only), so a
         NumericGrove behaves as a B+ tree for point lookups. Ordering is by the
@@ -30,8 +30,14 @@ inline void bind_numeric(py::module_& m) {
         Parameters
         ----------
         value : int
-            The wrapped integer value. Defaults to INT_MIN (the aggregation
-            sentinel) when omitted.
+            The wrapped integer value, in -2**31 .. 2**31-1. Defaults to INT_MIN
+            (the aggregation sentinel) when omitted.
+
+        Raises
+        ------
+        TypeError
+            If `value` is outside the 32-bit range (e.g. millisecond epoch
+            timestamps do not fit).
     )pbdoc")
         .def(py::init<>())
         .def(py::init<int>(), py::arg("value"))
@@ -39,7 +45,7 @@ inline void bind_numeric(py::module_& m) {
                                "The wrapped integer value (read-only — see set_value)")
         .def("set_value", &gdt::numeric::set_value, py::arg("value"),
              R"pbdoc(
-                 Set the integer value.
+                 Set the integer value (32-bit; out-of-range raises TypeError).
 
                  Do NOT call this on a Numeric already inserted into a Grove —
                  the value participates in B+ tree ordering, so mutating a stored
