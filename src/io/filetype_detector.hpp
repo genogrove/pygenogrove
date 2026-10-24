@@ -44,7 +44,6 @@ inline void bind_filetype_detector(py::module_& m) {
         Detects a file's format and compression from its extension + magic bytes.
     )pbdoc")
         .def(py::init<>())
-        // staticmethod: callable on the class or on an instance.
         .def_static("detect_filetype",
              [](const std::string& path) {
                  return gio::filetype_detector::detect_filetype(path);  // std::string -> fs::path

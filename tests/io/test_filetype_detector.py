@@ -22,7 +22,8 @@ def test_detect_filetype_callable_on_instance(tmp_path):
     pg = _pg()
     p = tmp_path / "peaks.bed"
     p.write_text("chr1\t100\t200\n")
-    assert pg.FiletypeDetector().detect_filetype(str(p)) == _detect(pg, p)
+    result = pg.FiletypeDetector().detect_filetype(str(p))
+    assert result == (pg.Filetype.BED, pg.CompressionType.NONE)
 
 
 def test_detect_plain_bed(tmp_path):

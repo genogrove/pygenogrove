@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bundled genogrove bumped to
   [v0.26.3](https://github.com/genogrove/genogrove/releases/tag/v0.26.3)** (from
   v0.26.1; exception-safe root insert, genogrove
-  [#581](https://github.com/genogrove/genogrove/pull/581)). Following upstream making it `static` (genogrove
+  [#581](https://github.com/genogrove/genogrove/pull/581)). Following upstream
+  making it `static` (genogrove
   [#583](https://github.com/genogrove/genogrove/pull/583)),
   `FiletypeDetector.detect_filetype` is now a staticmethod: call it on the class
   without constructing a detector. Instance calls still work
