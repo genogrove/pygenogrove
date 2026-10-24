@@ -159,7 +159,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                     data : object
                         The associated data payload (copied into the grove). On the
                         universal Grove this is any JSON-serializable value
-                        (dict / list / scalar / None) and defaults to None.
+                        (dict / list / scalar / None) and defaults to None. It
+                        round-trips through json.dumps/json.loads, so non-str
+                        dict keys come back as str and tuples as lists.
 
                     Returns
                     -------
@@ -224,8 +226,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                     ----------
                     index : str
                         The index name (e.g., chromosome name).
-                    items : list[tuple[Interval, object]]
-                        The (interval, data) records to insert.
+                    items : list[tuple[value, object]]
+                        The (value, data) records to insert; value is this grove's
+                        key value type (GenomicCoordinate, Numeric or Kmer).
                     presorted : bool, optional
                         If False (default) the records are sorted by interval
                         first. If True, they are assumed already sorted ascending
@@ -242,7 +245,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                 )pbdoc");
 
         // ---- Entry-deriving OVERLOADS of insert / insert_bulk: pass a file
-        //      entry (or a list of them) and the Interval key is derived from
+        //      entry (or a list of them) and the GenomicCoordinate key is derived from
         //      the entry's native coordinates, so you never hand-convert
         //      (BED 0-based half-open, GFF 1-based inclusive). pybind resolves
         //      these against the explicit (interval, data) forms by signature.
@@ -368,9 +371,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                  values (e.g. GenomicCoordinate); the predicate is applied at every
                  leaf candidate before the overlap/distance checks.
 
-                 The canonical use is strand-aware neighbours on a
-                 GenomicCoordinateGrove — the nearest non-overlapping key on the
-                 same strand:
+                 The canonical use is strand-aware neighbours on a Grove — the
+                 nearest non-overlapping key on the same strand:
 
                      g.flanking(q, "chr1",
                                 lambda cand, q: cand.strand == q.strand)

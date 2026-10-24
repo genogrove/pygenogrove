@@ -98,7 +98,8 @@ inline void bind_fasta_reader(py::module_& m) {
             return guarded_getter(self, "FastaReader", "get_current_line",
                                    &gio::fasta_reader::get_current_line);
         }, "1-based physical line number consumed so far; 0 before the first read.")
-        .def("__repr__", [](const gio::fasta_reader& r) {
-            return "FastaReader(line=" + std::to_string(r.get_current_line()) + ")";
+        .def("__repr__", [](py::object self) {
+            return "FastaReader(line=" + std::to_string(guarded_getter(
+                self, "FastaReader", "__repr__", &gio::fasta_reader::get_current_line)) + ")";
         });
 }

@@ -42,6 +42,14 @@ def test_constructor_rejects_inverted_interval():
         pg.GenomicCoordinate("+", 200, 100)
 
 
+def test_constructor_rejects_negative_coordinates():
+    pg = _pg()
+    with pytest.raises(TypeError):
+        pg.GenomicCoordinate("+", -1, 100)
+    with pytest.raises(TypeError):
+        pg.GenomicCoordinate("+", 0, -1)
+
+
 def test_constructor_accepts_all_valid_strands():
     pg = _pg()
     for strand in ("+", "-", ".", "*"):

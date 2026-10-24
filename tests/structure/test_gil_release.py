@@ -53,6 +53,25 @@ def test_concurrent_serialize_deserialize(tmp_path):
     assert sorted(r["i"] for r in results) == list(range(8))
 
 
+def test_concurrent_view_open(tmp_path):
+    pg = _pg()
+    g = pg.Grove(4)
+    for j in range(50):
+        g.insert("chr1", pg.GenomicCoordinate(".", j * 10, j * 10 + 5), {"j": j})
+    path = str(tmp_path / "v.gg")
+    g.serialize(path)
+
+    def open_and_query(_):
+        view = pg.GroveView.open(path)
+        hits = list(view.intersect(pg.GenomicCoordinate(".", 20, 21), "chr1"))
+        return [h.data["j"] for h in hits]
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        results = list(ex.map(open_and_query, range(8)))
+
+    assert results == [[2]] * 8
+
+
 def test_concurrent_bulk_insert():
     pg = _pg()
 

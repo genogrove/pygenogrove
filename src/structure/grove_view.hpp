@@ -46,7 +46,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
     using key_t = gdt::key<KeyT, DataT>;
 
     auto cls = py::class_<view_t>(m, view_name, R"pbdoc(
-        A read-only, partial reader over a serialized (format 0.2) .gg grove.
+        A read-only, partial reader over a serialized (format 0.3) .gg grove.
 
         Unlike Grove.deserialize(), which loads the whole grove into memory, a
         GroveView reads only the block directory up front, then pages in
@@ -84,6 +84,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                     new view_t(view_t::open(path, data_offset)));
             },
             py::arg("path"), py::arg("data_offset") = 0,
+            py::call_guard<py::gil_scoped_release>(),
             R"pbdoc(
                 open(path, data_offset=0) -> GroveView
 
