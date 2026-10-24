@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core>=0.8"]
+requires = ["scikit-build-core>=0.11"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -8,7 +8,7 @@ version = "0.9.0"
 description = "Python bindings for the genogrove C++ library - a specialized B+ tree for genomic intervals"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "GPL-3.0-or-later" }
+license = "GPL-3.0-or-later"
 authors = [
     { name = "Richard A. Schaefer", email = "richard.schaefer@northwestern.edu" },
     { name = "Rendong Yang", email = "rendong.yang@northwestern.edu" },
@@ -19,7 +19,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -62,7 +61,7 @@ build-verbosity = 1
 test-command = "python -c \"import pygenogrove; print(pygenogrove.__version__, pygenogrove.__genogrove_version__)\""
 
 [tool.cibuildwheel.linux]
-# manylinux_2_28 (AlmaLinux 8) ships gcc 12 — needed for the C++20 build.
+# manylinux_2_28 (AlmaLinux 8): its GCC toolset is new enough for the C++20 build.
 manylinux-x86_64-image = "manylinux_2_28"
 # Build htslib from source into /usr/local so genogrove can link it; auditwheel
 # then bundles libhts into the repaired wheel.
