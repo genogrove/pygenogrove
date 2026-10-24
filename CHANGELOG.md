@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Packaging metadata fixed; Python 3.9 dropped, 3.14 added.** The license
+  metadata wrongly said MIT: the project is GPL-3.0-or-later (inherited from
+  genogrove) and now ships the `LICENSE` text. Wheels and CI cover Python
+  3.10–3.14 (3.9 is EOL and no longer built), pybind11 is bumped to 3.1.0, and
+  the dead Documentation URL is fixed
+  ([#104](https://github.com/genogrove/pygenogrove/issues/104),
+  [#108](https://github.com/genogrove/pygenogrove/pull/108)).
 - **GCC 13 dev Dockerfile.** `docker/gcc13-dev.Dockerfile` gives a reproducible
   toolchain (GCC 13.3, htslib 1.21, Python headers, pytest) for local builds and
   CLion's Docker toolchain
