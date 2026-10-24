@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core>=0.8", "pybind11>=2.13.0"]
+requires = ["scikit-build-core>=0.11.3"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -7,8 +7,8 @@ name = "pygenogrove"
 version = "0.9.0"
 description = "Python bindings for the genogrove C++ library - a specialized B+ tree for genomic intervals"
 readme = "README.md"
-requires-python = ">=3.9"
-license = { text = "MIT" }
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
 authors = [
     { name = "Richard A. Schaefer", email = "richard.schaefer@northwestern.edu" },
     { name = "Rendong Yang", email = "rendong.yang@northwestern.edu" },
@@ -19,19 +19,18 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: C++",
 ]
 
 [project.urls]
 Homepage = "https://github.com/genogrove/pygenogrove"
-Documentation = "https://genogrove.readthedocs.com"
+Documentation = "https://genogrove.readthedocs.io"
 Repository = "https://github.com/genogrove/pygenogrove"
 Issues = "https://github.com/genogrove/pygenogrove/issues"
 
@@ -55,14 +54,14 @@ sdist.include = ["external/genogrove/**"]
 
 [tool.cibuildwheel]
 # Match the CI test matrix; no PyPy, no musllinux (htslib isn't provisioned there).
-build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
 skip = "*musllinux*"
 build-verbosity = 1
 # Smoke-test every built wheel: it imports and reports both versions.
 test-command = "python -c \"import pygenogrove; print(pygenogrove.__version__, pygenogrove.__genogrove_version__)\""
 
 [tool.cibuildwheel.linux]
-# manylinux_2_28 (AlmaLinux 8) ships gcc 12 — needed for the C++20 build.
+# manylinux_2_28 (AlmaLinux 8): its GCC toolset is new enough for the C++20 build.
 manylinux-x86_64-image = "manylinux_2_28"
 # Build htslib from source into /usr/local so genogrove can link it; auditwheel
 # then bundles libhts into the repaired wheel.
@@ -85,9 +84,8 @@ python_files = ["test_*.py"]
 
 [tool.black]
 line-length = 100
-target-version = ["py39", "py310", "py311", "py312"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
