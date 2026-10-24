@@ -546,9 +546,12 @@ fa.fetch("chr1", gc.start, gc.end + 1)
 ```python
 import pygenogrove as pg
 
-ftype, comp = pg.FiletypeDetector().detect_filetype("peaks.bed.gz")
+ftype, comp = pg.FiletypeDetector.detect_filetype("peaks.bed.gz")
 # (Filetype.BED, CompressionType.GZIP)
 ```
+
+`detect_filetype` is a staticmethod; calling it on an instance
+(`pg.FiletypeDetector().detect_filetype(...)`) also works.
 
 - `Filetype`: `BED` / `BEDGRAPH` / `GFF` / `GTF` / `VCF` / `SAM` / `BAM` /
   `FASTA` / `FASTQ` / `GG` / `UNKNOWN`.

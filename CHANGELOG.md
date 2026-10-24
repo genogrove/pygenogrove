@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Bundled genogrove bumped to
+  [v0.26.3](https://github.com/genogrove/genogrove/releases/tag/v0.26.3)** (from
+  v0.26.1; exception-safe root insert, genogrove
+  [#581](https://github.com/genogrove/genogrove/pull/581)). Following upstream making it `static` (genogrove
+  [#583](https://github.com/genogrove/genogrove/pull/583)),
+  `FiletypeDetector.detect_filetype` is now a staticmethod: call it on the class
+  without constructing a detector. Instance calls still work
+  ([#105](https://github.com/genogrove/pygenogrove/issues/105)).
 - **Packaging metadata fixed; Python 3.9 dropped, 3.14 added.** The license
   metadata wrongly said MIT: the project is GPL-3.0-or-later (inherited from
   genogrove) and now ships the `LICENSE` text. Wheels and CI cover Python

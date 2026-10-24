@@ -44,9 +44,10 @@ inline void bind_filetype_detector(py::module_& m) {
         Detects a file's format and compression from its extension + magic bytes.
     )pbdoc")
         .def(py::init<>())
-        .def("detect_filetype",
-             [](gio::filetype_detector& d, const std::string& path) {
-                 return d.detect_filetype(path);  // std::string -> fs::path
+        // staticmethod: callable on the class or on an instance.
+        .def_static("detect_filetype",
+             [](const std::string& path) {
+                 return gio::filetype_detector::detect_filetype(path);  // std::string -> fs::path
              },
              py::arg("path"),
              R"pbdoc(
@@ -55,5 +56,6 @@ inline void bind_filetype_detector(py::module_& m) {
                  Infer the file format and compression of `path`. Returns a tuple,
                  e.g. (Filetype.BED, CompressionType.GZIP) for "peaks.bed.gz".
                  Unrecognized inputs yield Filetype.UNKNOWN / CompressionType.UNKNOWN.
+                 Static; no FiletypeDetector instance is needed.
              )pbdoc");
 }
