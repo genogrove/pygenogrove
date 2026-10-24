@@ -9,7 +9,7 @@ Python bindings for the [genogrove](https://github.com/genogrove/genogrove) C++ 
 Requirements:
 - C++20 compatible compiler
 - CMake 3.15+
-- Python 3.8+
+- Python 3.10+
 
 ```bash
 # Clone with submodules
