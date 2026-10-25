@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Reader concurrency guard is native C++ state.** The in-flight flag that makes
+  a concurrent `__next__`/getter call on a shared `BedReader`/`GffReader`/
+  `FastaReader`/`BamReader`/`VcfReader` raise `RuntimeError` is now an
+  `std::atomic<bool>` on the C++ object, set with an atomic exchange. The
+  `_pygg_reading` Python attribute is gone and reader instances no longer carry
+  a `__dict__`, so the guard cannot be cleared from Python
+  ([#93](https://github.com/genogrove/pygenogrove/issues/93),
+  [#112](https://github.com/genogrove/pygenogrove/pull/112)).
 - **API polish from the bindings audit.** `GroveView.open` releases the GIL like
   `Grove.deserialize`; `repr()` of a Bed/Gff/Fasta/Bam/Vcf reader now goes
   through the concurrency guard and raises `RuntimeError` instead of racing an
