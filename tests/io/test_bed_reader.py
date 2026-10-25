@@ -249,26 +249,29 @@ def test_concurrent_next_raises(tmp_path):
     bed = tmp_path / "big.bed"
     bed.write_text("".join(f"chr1\t{j}\t{j + 1}\tf{j}\n" for j in range(n)))
     reader = pg.BedReader(str(bed))
-    seen, guard_hits, lock = [], [], threading.Lock()
+    seen, guard_hits, errors, lock = [], [], [], threading.Lock()
 
     def worker():
-        while True:
-            try:
-                e = next(reader)
-            except RuntimeError:
+        try:
+            while True:
+                try:
+                    e = next(reader)
+                except RuntimeError:
+                    with lock:
+                        guard_hits.append(1)
+                    time.sleep(0)  # yield the GIL so the reading thread can finish
+                    continue
+                except StopIteration:
+                    return
                 with lock:
-                    guard_hits.append(1)
-                time.sleep(0)  # yield the GIL so the reading thread can finish
-                continue
-            except StopIteration:
-                return
-            with lock:
-                seen.append(e.start)
-            try:
-                assert reader.get_current_line() >= 1
-                assert repr(reader).startswith("BedReader(line=")
-            except RuntimeError:
-                pass  # another thread's __next__ was in flight
+                    seen.append(e.start)
+                try:
+                    assert reader.get_current_line() >= 1
+                    assert repr(reader).startswith("BedReader(line=")
+                except RuntimeError:
+                    pass  # another thread's __next__ was in flight
+        except BaseException as exc:  # a thread exception would otherwise only warn
+            errors.append(exc)
 
     threads = [threading.Thread(target=worker) for _ in range(4)]
     for t in threads:
@@ -276,6 +279,7 @@ def test_concurrent_next_raises(tmp_path):
     for t in threads:
         t.join(timeout=120)
     assert not any(t.is_alive() for t in threads)
+    assert not errors
     assert sorted(seen) == list(range(n))  # no record lost or duplicated
     assert guard_hits  # the guard fired at least once
     assert reader.get_error_message() == ""
