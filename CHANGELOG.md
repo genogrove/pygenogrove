@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-24
+
 ### Changed
 
 - **Reader concurrency guard is native C++ state.** The in-flight flag that makes
