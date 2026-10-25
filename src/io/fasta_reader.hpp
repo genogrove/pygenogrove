@@ -56,7 +56,8 @@ inline void bind_fasta_entry(py::module_& m) {
 
 inline void bind_fasta_reader(py::module_& m) {
     // FastaEntry must already be registered (bind_fasta_entry).
-    py::class_<gio::fasta_reader>(m, "FastaReader", py::dynamic_attr(), R"pbdoc(
+    using fasta_reader_t = guarded_reader<gio::fasta_reader>;
+    py::class_<fasta_reader_t>(m, "FastaReader", R"pbdoc(
         A single-pass iterator over the records of a FASTA or FASTQ file.
 
         Iterate it directly to get FastaEntry objects::
@@ -82,24 +83,24 @@ inline void bind_fasta_reader(py::module_& m) {
         .def(py::init([](const std::string& path, bool skip_empty_sequences) {
                  gio::fasta_reader_options opts;
                  opts.skip_empty_sequences = skip_empty_sequences;
-                 return std::make_unique<gio::fasta_reader>(path, opts);
+                 return std::make_unique<fasta_reader_t>(path, opts);
              }),
              py::arg("path"), py::arg("skip_empty_sequences") = false)
         .def("__iter__",
-             [](gio::fasta_reader& r) -> gio::fasta_reader& { return r; })
-        .def("__next__", [](py::object self) {
-            return read_next_guarded<gio::fasta_reader, gio::fasta_entry>(self, "FastaReader");
+             [](fasta_reader_t& r) -> fasta_reader_t& { return r; })
+        .def("__next__", [](fasta_reader_t& r) {
+            return read_next_guarded<gio::fasta_reader, gio::fasta_entry>(r, "FastaReader");
         })
-        .def("get_error_message", [](py::object self) {
-            return guarded_getter(self, "FastaReader", "get_error_message",
-                                   &gio::fasta_reader::get_error_message);
+        .def("get_error_message", [](const fasta_reader_t& r) {
+            return guarded_getter(r, "FastaReader", "get_error_message",
+                                  &gio::fasta_reader::get_error_message);
         }, "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", [](py::object self) {
-            return guarded_getter(self, "FastaReader", "get_current_line",
-                                   &gio::fasta_reader::get_current_line);
+        .def("get_current_line", [](const fasta_reader_t& r) {
+            return guarded_getter(r, "FastaReader", "get_current_line",
+                                  &gio::fasta_reader::get_current_line);
         }, "1-based physical line number consumed so far; 0 before the first read.")
-        .def("__repr__", [](py::object self) {
+        .def("__repr__", [](const fasta_reader_t& r) {
             return "FastaReader(line=" + std::to_string(guarded_getter(
-                self, "FastaReader", "__repr__", &gio::fasta_reader::get_current_line)) + ")";
+                r, "FastaReader", "__repr__", &gio::fasta_reader::get_current_line)) + ")";
         });
 }

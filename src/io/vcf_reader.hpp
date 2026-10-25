@@ -160,7 +160,8 @@ inline void bind_vcf_reader(py::module_& m) {
         });
 
     // ---- The reader ----
-    py::class_<gio::vcf_reader>(m, "VcfReader", py::dynamic_attr(), R"pbdoc(
+    using vcf_reader_t = guarded_reader<gio::vcf_reader>;
+    py::class_<vcf_reader_t>(m, "VcfReader", R"pbdoc(
         Single-pass iterator over a VCF/BCF file (plain, bgzip-ed, or binary BCF;
         htslib auto-detects). Yields VcfEntry. Not thread-safe — drive one reader
         per thread. Calling `__next__`, `get_current_line`, or
@@ -178,7 +179,7 @@ inline void bind_vcf_reader(py::module_& m) {
                  opts.parse_samples = parse_samples;
                  opts.skip_filtered = skip_filtered;
                  opts.region = region;
-                 return std::make_unique<gio::vcf_reader>(path, opts);
+                 return std::make_unique<vcf_reader_t>(path, opts);
              }),
              py::arg("path"), py::arg("parse_info") = true,
              py::arg("parse_samples") = true, py::arg("skip_filtered") = false,
@@ -189,9 +190,9 @@ inline void bind_vcf_reader(py::module_& m) {
              "when set, only overlapping records are yielded and a CSI/TBI-indexed "
              "bgzip VCF or a BCF is required. Empty (default) reads the whole file.")
         .def("__iter__",
-             [](gio::vcf_reader& r) -> gio::vcf_reader& { return r; })
-        .def("__next__", [](py::object self) {
-            return read_next_guarded<gio::vcf_reader, gio::vcf_entry>(self, "VcfReader");
+             [](vcf_reader_t& r) -> vcf_reader_t& { return r; })
+        .def("__next__", [](vcf_reader_t& r) {
+            return read_next_guarded<gio::vcf_reader, gio::vcf_entry>(r, "VcfReader");
         })
         .def("get_header", &gio::vcf_reader::get_header,
              "Full VCF header text (## meta lines + the #CHROM column line).")
@@ -199,17 +200,17 @@ inline void bind_vcf_reader(py::module_& m) {
              "Sample names in column order (empty for sites-only VCFs).")
         .def("get_contigs", &gio::vcf_reader::get_contigs,
              "Contig names declared in the header.")
-        .def("get_error_message", [](py::object self) {
-            return guarded_getter(self, "VcfReader", "get_error_message",
-                                   &gio::vcf_reader::get_error_message);
+        .def("get_error_message", [](const vcf_reader_t& r) {
+            return guarded_getter(r, "VcfReader", "get_error_message",
+                                  &gio::vcf_reader::get_error_message);
         }, "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", [](py::object self) {
-            return guarded_getter(self, "VcfReader", "get_current_line",
-                                   &gio::vcf_reader::get_current_line);
+        .def("get_current_line", [](const vcf_reader_t& r) {
+            return guarded_getter(r, "VcfReader", "get_current_line",
+                                  &gio::vcf_reader::get_current_line);
         }, "1-based index of the most recently consumed record (counts records "
            "dropped by skip_filtered too); 0 before the first read.")
-        .def("__repr__", [](py::object self) {
+        .def("__repr__", [](const vcf_reader_t& r) {
             return "VcfReader(records=" + std::to_string(guarded_getter(
-                self, "VcfReader", "__repr__", &gio::vcf_reader::get_current_line)) + ")";
+                r, "VcfReader", "__repr__", &gio::vcf_reader::get_current_line)) + ")";
         });
 }

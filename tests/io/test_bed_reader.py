@@ -9,6 +9,8 @@ Python iterator surface.
 import gzip
 import shutil
 import subprocess
+import threading
+import time
 
 import pytest
 
@@ -238,27 +240,44 @@ def test_repr(tmp_path):
 
 
 def test_concurrent_next_raises(tmp_path):
-    """__next__/get_current_line/get_error_message guard against concurrent
-    calls while another __next__ is in flight. Pokes the internal
-    flag directly rather than racing real threads — the guard's check-then-set
-    only needs to be correct, not literally raced."""
+    """Several threads sharing ONE reader: an overlapping __next__ raises
+    RuntimeError instead of racing, every record is still yielded exactly once,
+    and the getters/repr stay callable (raising the same RuntimeError while a
+    read is in flight). The flag is C++ state — Python cannot clear it (#93)."""
     pg = _pg()
-    path = _write(tmp_path / "a.bed", [("chr1", 0, 10)])
-    reader = pg.BedReader(path)
-    reader._pygg_reading = True
-    with pytest.raises(RuntimeError):
-        next(reader)
-    with pytest.raises(RuntimeError):
-        reader.get_current_line()
-    with pytest.raises(RuntimeError):
-        reader.get_error_message()
-    with pytest.raises(RuntimeError):
-        repr(reader)
-    # The guard doesn't get stuck: normal calls after the flag is cleared work.
-    reader._pygg_reading = False
-    assert next(reader) is not None
-    assert repr(reader) == "BedReader(line=1)"
-    assert reader.get_current_line() >= 1
+    n = 5000
+    bed = tmp_path / "big.bed"
+    bed.write_text("".join(f"chr1\t{j}\t{j + 1}\tf{j}\n" for j in range(n)))
+    reader = pg.BedReader(str(bed))
+    seen, guard_hits, lock = [], [], threading.Lock()
+
+    def worker():
+        while True:
+            try:
+                e = next(reader)
+            except RuntimeError:
+                with lock:
+                    guard_hits.append(1)
+                time.sleep(0)  # yield the GIL so the reading thread can finish
+                continue
+            except StopIteration:
+                return
+            with lock:
+                seen.append(e.start)
+            try:
+                assert reader.get_current_line() >= 1
+                assert repr(reader).startswith("BedReader(line=")
+            except RuntimeError:
+                pass  # another thread's __next__ was in flight
+
+    threads = [threading.Thread(target=worker) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=120)
+    assert not any(t.is_alive() for t in threads)
+    assert sorted(seen) == list(range(n))  # no record lost or duplicated
+    assert guard_hits  # the guard fired at least once
     assert reader.get_error_message() == ""
 
 
