@@ -146,7 +146,8 @@ inline void bind_sam_entry(py::module_& m) {
 
 inline void bind_bam_reader(py::module_& m) {
     // SamEntry must already be registered (bind_sam_entry) — BamReader yields it.
-    py::class_<gio::bam_reader>(m, "BamReader", py::dynamic_attr(), R"pbdoc(
+    using bam_reader_t = guarded_reader<gio::bam_reader>;
+    py::class_<bam_reader_t>(m, "BamReader", R"pbdoc(
         A single-pass iterator over the alignments of a SAM/BAM file.
 
         Iterate it directly to get SamEntry objects::
@@ -185,31 +186,31 @@ inline void bind_bam_reader(py::module_& m) {
                  opts.skip_qc_fail = skip_qc_fail;
                  opts.skip_duplicates = skip_duplicates;
                  opts.min_mapq = min_mapq;
-                 return std::make_unique<gio::bam_reader>(path, opts);
+                 return std::make_unique<bam_reader_t>(path, opts);
              }),
              py::arg("path"), py::arg("skip_unmapped") = true,
              py::arg("skip_secondary") = false,
              py::arg("skip_supplementary") = false,
              py::arg("skip_qc_fail") = false, py::arg("skip_duplicates") = false,
              py::arg("min_mapq") = 0)
-        .def("__iter__", [](gio::bam_reader& r) -> gio::bam_reader& { return r; })
-        .def("__next__", [](py::object self) {
-            return read_next_guarded<gio::bam_reader, gio::sam_entry>(self, "BamReader");
+        .def("__iter__", [](bam_reader_t& r) -> bam_reader_t& { return r; })
+        .def("__next__", [](bam_reader_t& r) {
+            return read_next_guarded<gio::bam_reader, gio::sam_entry>(r, "BamReader");
         })
         .def("get_header", &gio::bam_reader::get_header,
              "Full SAM header text (@HD/@SQ/@RG/@PG lines).")
         .def("get_reference_names", &gio::bam_reader::get_reference_names,
              "Reference sequence names declared in the header.")
-        .def("get_error_message", [](py::object self) {
-            return guarded_getter(self, "BamReader", "get_error_message",
-                                   &gio::bam_reader::get_error_message);
+        .def("get_error_message", [](const bam_reader_t& r) {
+            return guarded_getter(r, "BamReader", "get_error_message",
+                                  &gio::bam_reader::get_error_message);
         }, "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", [](py::object self) {
-            return guarded_getter(self, "BamReader", "get_current_line",
-                                   &gio::bam_reader::get_current_line);
+        .def("get_current_line", [](const bam_reader_t& r) {
+            return guarded_getter(r, "BamReader", "get_current_line",
+                                  &gio::bam_reader::get_current_line);
         }, "Records consumed so far (advances on skipped/filtered records too).")
-        .def("__repr__", [](py::object self) {
+        .def("__repr__", [](const bam_reader_t& r) {
             return "BamReader(records=" + std::to_string(guarded_getter(
-                self, "BamReader", "__repr__", &gio::bam_reader::get_current_line)) + ")";
+                r, "BamReader", "__repr__", &gio::bam_reader::get_current_line)) + ")";
         });
 }

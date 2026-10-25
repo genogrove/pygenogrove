@@ -101,7 +101,8 @@ inline void bind_gff_entry(py::module_& m) {
 
 inline void bind_gff_reader(py::module_& m) {
     // GffEntry must already be registered (bind_gff_entry) — GffReader yields it.
-    py::class_<gio::gff_reader>(m, "GffReader", py::dynamic_attr(), R"pbdoc(
+    using gff_reader_t = guarded_reader<gio::gff_reader>;
+    py::class_<gff_reader_t>(m, "GffReader", R"pbdoc(
         A single-pass iterator over the records of a GFF3/GTF file.
 
         Iterate it directly to get GffEntry objects::
@@ -141,25 +142,25 @@ inline void bind_gff_reader(py::module_& m) {
                  opts.skip_invalid_lines = skip_invalid_lines;
                  opts.validate_gtf = validate_gtf;
                  opts.region = region;
-                 return std::make_unique<gio::gff_reader>(path, opts);
+                 return std::make_unique<gff_reader_t>(path, opts);
              }),
              py::arg("path"), py::arg("skip_invalid_lines") = false,
              py::arg("validate_gtf") = false, py::arg("region") = "")
-        .def("__iter__", [](gio::gff_reader& r) -> gio::gff_reader& { return r; })
-        .def("__next__", [](py::object self) {
-            return read_next_guarded<gio::gff_reader, gio::gff_entry>(self, "GffReader");
+        .def("__iter__", [](gff_reader_t& r) -> gff_reader_t& { return r; })
+        .def("__next__", [](gff_reader_t& r) {
+            return read_next_guarded<gio::gff_reader, gio::gff_entry>(r, "GffReader");
         })
-        .def("get_error_message", [](py::object self) {
-            return guarded_getter(self, "GffReader", "get_error_message",
-                                   &gio::gff_reader::get_error_message);
+        .def("get_error_message", [](const gff_reader_t& r) {
+            return guarded_getter(r, "GffReader", "get_error_message",
+                                  &gio::gff_reader::get_error_message);
         }, "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", [](py::object self) {
-            return guarded_getter(self, "GffReader", "get_current_line",
-                                   &gio::gff_reader::get_current_line);
+        .def("get_current_line", [](const gff_reader_t& r) {
+            return guarded_getter(r, "GffReader", "get_current_line",
+                                  &gio::gff_reader::get_current_line);
         }, "1-based physical line number consumed so far (comments/blanks "
            "count); 0 before the first read.")
-        .def("__repr__", [](py::object self) {
+        .def("__repr__", [](const gff_reader_t& r) {
             return "GffReader(line=" + std::to_string(guarded_getter(
-                self, "GffReader", "__repr__", &gio::gff_reader::get_current_line)) + ")";
+                r, "GffReader", "__repr__", &gio::gff_reader::get_current_line)) + ")";
         });
 }

@@ -120,7 +120,8 @@ inline void bind_bed_entry(py::module_& m) {
 
 inline void bind_bed_reader(py::module_& m) {
     // BedEntry must already be registered (bind_bed_entry) — BedReader yields it.
-    py::class_<gio::bed_reader>(m, "BedReader", py::dynamic_attr(), R"pbdoc(
+    using bed_reader_t = guarded_reader<gio::bed_reader>;
+    py::class_<bed_reader_t>(m, "BedReader", R"pbdoc(
         A single-pass iterator over the records of a BED file.
 
         Iterate it directly to get BedEntry objects::
@@ -158,25 +159,25 @@ inline void bind_bed_reader(py::module_& m) {
                  gio::bed_reader_options opts;
                  opts.skip_invalid_lines = skip_invalid_lines;
                  opts.region = region;
-                 return std::make_unique<gio::bed_reader>(path, opts);
+                 return std::make_unique<bed_reader_t>(path, opts);
              }),
              py::arg("path"), py::arg("skip_invalid_lines") = false,
              py::arg("region") = "")
-        .def("__iter__", [](gio::bed_reader& r) -> gio::bed_reader& { return r; })
-        .def("__next__", [](py::object self) {
-            return read_next_guarded<gio::bed_reader, gio::bed_entry>(self, "BedReader");
+        .def("__iter__", [](bed_reader_t& r) -> bed_reader_t& { return r; })
+        .def("__next__", [](bed_reader_t& r) {
+            return read_next_guarded<gio::bed_reader, gio::bed_entry>(r, "BedReader");
         })
-        .def("get_error_message", [](py::object self) {
-            return guarded_getter(self, "BedReader", "get_error_message",
-                                   &gio::bed_reader::get_error_message);
+        .def("get_error_message", [](const bed_reader_t& r) {
+            return guarded_getter(r, "BedReader", "get_error_message",
+                                  &gio::bed_reader::get_error_message);
         }, "Error message from the most recent read; empty on clean EOF.")
-        .def("get_current_line", [](py::object self) {
-            return guarded_getter(self, "BedReader", "get_current_line",
-                                   &gio::bed_reader::get_current_line);
+        .def("get_current_line", [](const bed_reader_t& r) {
+            return guarded_getter(r, "BedReader", "get_current_line",
+                                  &gio::bed_reader::get_current_line);
         }, "1-based physical line number consumed so far (comments/blanks "
            "count); 0 before the first read.")
-        .def("__repr__", [](py::object self) {
+        .def("__repr__", [](const bed_reader_t& r) {
             return "BedReader(line=" + std::to_string(guarded_getter(
-                self, "BedReader", "__repr__", &gio::bed_reader::get_current_line)) + ")";
+                r, "BedReader", "__repr__", &gio::bed_reader::get_current_line)) + ")";
         });
 }
