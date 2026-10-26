@@ -53,6 +53,7 @@ def test_equality_and_hash_by_value_ignoring_data():
     assert a is not b
     assert a == b
     assert hash(a) == hash(b)
+    assert hash(a) == hash(a.value)
 
 
 def test_ordering_by_value():
