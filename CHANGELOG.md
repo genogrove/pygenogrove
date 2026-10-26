@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Bundled genogrove bumped to
+  [v0.26.4](https://github.com/genogrove/genogrove/releases/tag/v0.26.4)** (from
+  v0.26.3). `GenomicCoordinate`, `Numeric`, `Kmer` and `Key.__hash__` now call
+  upstream's `std::hash` specializations (genogrove
+  [#586](https://github.com/genogrove/genogrove/pull/586)) instead of local
+  copies of the mixing logic; `hash(key)` no longer round-trips through a
+  temporary Python wrapper, so bulk hashing (`set(keys)`) is ~5x faster. Hash
+  values are unchanged
+  ([#88](https://github.com/genogrove/pygenogrove/issues/88),
+  [#114](https://github.com/genogrove/pygenogrove/pull/114)).
+
 ## [0.9.1] - 2026-10-24
 
 ### Changed
