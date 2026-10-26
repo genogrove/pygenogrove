@@ -1,6 +1,6 @@
 /*
- * Binding for gdt::key<KeyT, DataT> — a key wrapping a key value (interval,
- * genomic_coordinate, …) plus an optional associated-data payload. Mirrors
+ * Binding for gdt::key<KeyT, DataT> — a key wrapping a key value
+ * (genomic_coordinate, numeric, kmer) plus an optional associated-data payload. Mirrors
  * genogrove data_type/key.hpp.
  *
  * Generic over the key type KeyT: instantiated per concrete key type (and per
