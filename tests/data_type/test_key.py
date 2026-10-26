@@ -53,6 +53,22 @@ def test_equality_and_hash_by_value_ignoring_data():
     assert a is not b
     assert a == b
     assert hash(a) == hash(b)
+    assert hash(a) == hash(a.value)
+
+
+@pytest.mark.parametrize(
+    ("grove", "value"),
+    [
+        ("Grove", lambda pg: pg.GenomicCoordinate("+", 100, 200)),
+        ("NumericGrove", lambda pg: pg.Numeric(42)),
+        ("KmerGrove", lambda pg: pg.Kmer("ACGT")),
+    ],
+)
+def test_hash_matches_value_for_every_key_type(grove, value):
+    """Key.__hash__ is the wrapped value's hash for every bound key type."""
+    pg = _pg()
+    key = getattr(pg, grove)(3).insert("idx", value(pg))
+    assert hash(key) == hash(key.value)
 
 
 def test_ordering_by_value():

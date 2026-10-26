@@ -95,11 +95,7 @@ inline void bind_genomic_coordinate(py::module_& m) {
             return !(a < b);
         })
         .def("__hash__", [](const gdt::genomic_coordinate& c) {
-            // == compares strand, start AND end, so mix all three.
-            std::size_t h = std::hash<char>{}(c.get_strand());
-            h ^= std::hash<size_t>{}(c.get_start()) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            h ^= std::hash<size_t>{}(c.get_end()) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            return h;
+            return std::hash<gdt::genomic_coordinate>{}(c);
         })
         .def_static("overlaps", &gdt::genomic_coordinate::overlaps,
                    py::arg("a"),
