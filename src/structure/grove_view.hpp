@@ -1,6 +1,6 @@
 /*
  * Binding for ggs::grove_view<KeyT, DataT, EdgeT> — a read-only, *partial*
- * reader over a serialized (format 0.3) grove. Mirrors genogrove
+ * reader over a serialized (format 0.4) grove. Mirrors genogrove
  * structure/grove/grove_view.hpp. Where Grove.deserialize() eagerly loads every
  * block, a GroveView pages in only the blocks a query walks (cached, no
  * eviction) — query a large on-disk .gg without loading it whole.
@@ -46,7 +46,7 @@ void bind_grove_view(py::module_& m, const char* view_name) {
     using key_t = gdt::key<KeyT, DataT>;
 
     auto cls = py::class_<view_t>(m, view_name, R"pbdoc(
-        A read-only, partial reader over a serialized (format 0.3) .gg grove.
+        A read-only, partial reader over a serialized (format 0.4) .gg grove.
 
         Unlike Grove.deserialize(), which loads the whole grove into memory, a
         GroveView reads only the block directory up front, then pages in
