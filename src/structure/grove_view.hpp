@@ -92,8 +92,9 @@ void bind_grove_view(py::module_& m, const char* view_name) {
                 written by Grove.serialize() (a bare grove stream; data_offset=0).
                 Pass a non-zero data_offset only for a .gg embedded after a
                 leading header (e.g. a genogrove CLI index). Raises RuntimeError
-                if the file cannot be opened, the magic is wrong, the source is
-                not seekable, or the directory is malformed.
+                if the file cannot be opened, the magic is wrong, the file's key
+                type does not match this view class, the source is not seekable,
+                or the directory is malformed.
             )pbdoc")
 
         // keep_alive<0, 1>: the returned QueryResult (and the Keys it yields)

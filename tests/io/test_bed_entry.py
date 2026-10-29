@@ -113,5 +113,16 @@ def test_block_info():
     assert list(e.blocks.sizes) == [50]
 
 
+def test_to_coordinate():
+    """to_coordinate: half-open -> closed, strand from BED6 else '.', empty range raises."""
+    pg = _pg()
+    e = pg.BedEntry("chr1", 100, 200)
+    assert e.to_coordinate() == pg.GenomicCoordinate(".", 100, 199)
+    e.strand = "-"
+    assert e.to_coordinate() == pg.GenomicCoordinate("-", 100, 199)
+    with pytest.raises(ValueError):
+        pg.BedEntry("chr1", 100, 100).to_coordinate()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

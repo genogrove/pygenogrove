@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Bundled genogrove bumped to
+  [v0.27.0](https://github.com/genogrove/genogrove/releases/tag/v0.27.0)** (from
+  v0.26.4). **Breaking: the `.gg` format changed (0.4).** `Grove.serialize` now
+  writes a fixed-width little-endian layout with a key-type tag in the header, so
+  `.gg` files written by earlier versions can no longer be read — re-create them.
+  `deserialize`/`GroveView.open` raise `RuntimeError` on a key-type mismatch or a
+  structurally corrupt file instead of misparsing it.
+- `GffEntry.get_gene_id()` / `get_transcript_id()` now fall back to GFF3 `ID` /
+  `Parent` when the GTF attribute is absent (GFF3 records only).
+
+### Added
+
+- `GffEntry.get_parent_ids()` — every comma-separated GFF3 `Parent` id.
+- `BedEntry.to_coordinate()` / `GffEntry.to_coordinate()` — the strand-aware
+  `GenomicCoordinate` key `Grove.insert` derives from the record, matching
+  `SamEntry`/`VcfEntry`.
+
 ## [0.9.2] - 2026-10-25
 
 ### Changed
