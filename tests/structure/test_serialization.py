@@ -146,5 +146,19 @@ def test_serialize_to_unwritable_path_raises(tmp_path):
         g.serialize(bad)
 
 
+def test_key_type_mismatch_raises(tmp_path):
+    """A .gg written for one key kind is rejected by another kind's grove/view."""
+    pg = _pg()
+    g = pg.Grove(4)
+    g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    path = str(tmp_path / "gc.gg")
+    g.serialize(path)
+
+    with pytest.raises(RuntimeError):
+        pg.NumericGrove.deserialize(path)
+    with pytest.raises(RuntimeError):
+        pg.NumericGroveView.open(path)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
