@@ -19,6 +19,7 @@
 
 #include <genogrove/io/gff_reader.hpp>
 
+#include "entry_interval.hpp"
 #include "reader_guard.hpp"
 
 namespace py = pybind11;
@@ -83,15 +84,28 @@ inline void bind_gff_entry(py::module_& m) {
         .def("get_attribute", &gio::gff_entry::get_attribute, py::arg("key"),
              "Return the value of a column-9 attribute, or None if absent.")
         .def("get_gene_id", &gio::gff_entry::get_gene_id,
-             "GTF `gene_id` attribute, or None.")
+             "GTF `gene_id` attribute, or None. GFF3 falls back to a gene's "
+             "`ID` or a transcript's single `Parent`.")
         .def("get_transcript_id", &gio::gff_entry::get_transcript_id,
-             "GTF `transcript_id` attribute, or None.")
+             "GTF `transcript_id` attribute, or None. GFF3 falls back to the "
+             "single `Parent` of an exon/CDS/UTR feature (None if it has "
+             "several; see get_parent_ids).")
+        .def("get_parent_ids", &gio::gff_entry::get_parent_ids,
+             "list[str] of the comma-separated GFF3 `Parent` ids (empty if "
+             "absent).")
         .def("get_exon_number", &gio::gff_entry::get_exon_number,
              "GTF `exon_number` attribute as int, or None.")
         .def("get_gene_name", &gio::gff_entry::get_gene_name,
              "GTF `gene_name` attribute, or None.")
         .def("get_gene_biotype", &gio::gff_entry::get_gene_biotype,
              "GTF `gene_biotype`/`gene_type` attribute, or None.")
+        .def("to_coordinate",
+             [](const gio::gff_entry& e) { return genomic_coordinate_from_entry(e); },
+             R"pbdoc(
+                 Derive the GenomicCoordinate key (strand from column 7, '?' or
+                 unset -> '.'; 1-based inclusive [start, end] -> 0-based closed
+                 [start-1, end-1]). Raises ValueError if start < 1 or end < start.
+             )pbdoc")
         .def("__repr__", [](const gio::gff_entry& e) {
             return "GffEntry(seqid='" + e.seqid + "', start=" +
                    std::to_string(e.start) + ", end=" + std::to_string(e.end) +

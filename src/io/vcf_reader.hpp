@@ -127,9 +127,7 @@ inline void bind_vcf_reader(py::module_& m) {
                          "VcfEntry spans no reference bases; cannot derive a "
                          "coordinate");
                  }
-                 // VCF has no strand -> '.'; half-open [start, end) -> closed
-                 // [start, end - 1].
-                 return gdt::genomic_coordinate('.', e.start, e.end - 1);
+                 return e.to_coordinate();  // upstream leaves end > start to the caller
              },
              R"pbdoc(
                  Derive the GenomicCoordinate key for this variant (unstranded

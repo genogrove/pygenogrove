@@ -107,15 +107,7 @@ inline void bind_sam_entry(py::module_& m) {
         .def("consumes_reference", &gio::sam_entry::consumes_reference,
              "Covers >= 1 reference base (False for unmapped / pure soft-clip).")
         .def("to_coordinate",
-             [](const gio::sam_entry& e) {
-                 if (!e.consumes_reference()) {
-                     throw std::invalid_argument(
-                         "SamEntry covers no reference bases (unmapped or "
-                         "zero-ref-consuming CIGAR); cannot derive a coordinate");
-                 }
-                 // htslib half-open [start, end) -> closed [start, end - 1]
-                 return gdt::genomic_coordinate(e.get_strand(), e.start, e.end - 1);
-             },
+             &gio::sam_entry::to_coordinate,
              R"pbdoc(
                  Derive the strand-aware GenomicCoordinate key for this alignment
                  (strand from the FLAG; 0-based half-open [start, end) -> closed

@@ -20,6 +20,7 @@
 
 #include <genogrove/io/bed_reader.hpp>
 
+#include "entry_interval.hpp"
 #include "reader_guard.hpp"
 
 namespace py = pybind11;
@@ -111,6 +112,13 @@ inline void bind_bed_entry(py::module_& m) {
                        "Optional[RgbColor] display color (BED9+)")
         .def_readwrite("blocks", &gio::bed_entry::blocks,
                        "Optional[BlockInfo] block structure (BED12)")
+        .def("to_coordinate",
+             [](const gio::bed_entry& e) { return genomic_coordinate_from_entry(e); },
+             R"pbdoc(
+                 Derive the GenomicCoordinate key (strand from BED6, else '.';
+                 0-based half-open [start, end) -> closed [start, end-1]).
+                 Raises ValueError if end <= start.
+             )pbdoc")
         .def("__repr__", [](const gio::bed_entry& e) {
             return "BedEntry(chrom='" + e.chrom + "', start=" +
                    std::to_string(e.start) + ", end=" +

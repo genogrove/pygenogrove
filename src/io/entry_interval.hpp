@@ -28,17 +28,9 @@ namespace gdt = genogrove::data_type;
 namespace gio = genogrove::io;
 
 // BED: 0-based half-open [start, end) -> 0-based closed [start, end - 1].
-// A real BED feature has end > start; an empty/inverted range has no closed
-// representation, so reject it explicitly (rather than letting `end-1`
-// underflow into a huge interval, or producing an inverted one).
+// Delegates to upstream, which throws std::invalid_argument if end <= start.
 inline gdt::interval interval_from_entry(const gio::bed_entry& e) {
-    if (e.end <= e.start) {
-        throw std::invalid_argument(
-            "BedEntry has an empty/invalid range [" + std::to_string(e.start) +
-            ", " + std::to_string(e.end) +
-            "); cannot derive a closed GenomicCoordinate key (BED end must be > start)");
-    }
-    return gdt::interval(e.start, e.end - 1);
+    return e.to_interval();
 }
 
 // GFF/GTF: 1-based inclusive [start, end] -> 0-based closed [start - 1, end - 1].
@@ -51,7 +43,7 @@ inline gdt::interval interval_from_entry(const gio::gff_entry& e) {
             ", " + std::to_string(e.end) +
             "]; cannot derive a closed GenomicCoordinate key (need start >= 1, end >= start)");
     }
-    return gdt::interval(e.start - 1, e.end - 1);
+    return e.to_interval();
 }
 
 // True for data types that have an interval_from_entry overload (so the grove

@@ -109,6 +109,31 @@ def test_gff3_helper_methods():
     assert e.get_attribute("ID") == "gene1"
 
 
+def _gff3(pg, type_, attrs):
+    e = pg.GffEntry("chr1", 1000, 2000, type_)
+    e.format = pg.GffFormat.GFF3
+    e.attributes = attrs
+    return e
+
+
+def test_gff3_id_fallbacks_and_parent_ids():
+    """GFF3 records resolve gene/transcript ids from ID/Parent; get_parent_ids splits Parent."""
+    pg = _pg()
+    gene = _gff3(pg, "gene", {"ID": "gene1"})
+    assert gene.get_gene_id() == "gene1"
+    assert gene.get_parent_ids() == []
+
+    mrna = _gff3(pg, "mRNA", {"ID": "t1", "Parent": "gene1"})
+    assert mrna.get_gene_id() == "gene1"
+
+    exon = _gff3(pg, "exon", {"Parent": "t1"})
+    assert exon.get_transcript_id() == "t1"
+
+    multi = _gff3(pg, "exon", {"Parent": "t1,t2"})
+    assert multi.get_parent_ids() == ["t1", "t2"]
+    assert multi.get_transcript_id() is None
+
+
 def test_generic_attribute_getter():
     """get_attribute returns the value or None. Mirrors genericAttributeGetter."""
     pg = _pg()
@@ -144,6 +169,19 @@ def test_fields_are_mutable():
     e.start = 5
     e.end = 50
     assert (e.seqid, e.source, e.start, e.end) == ("chr2", "ensembl", 5, 50)
+
+
+def test_to_coordinate():
+    """to_coordinate: 1-based inclusive -> 0-based closed, '?'/unset -> '.', bad range raises."""
+    pg = _pg()
+    e = pg.GffEntry("chr1", 1000, 2000, "gene")
+    assert e.to_coordinate() == pg.GenomicCoordinate(".", 999, 1999)
+    e.strand = "+"
+    assert e.to_coordinate() == pg.GenomicCoordinate("+", 999, 1999)
+    e.strand = "?"
+    assert e.to_coordinate() == pg.GenomicCoordinate(".", 999, 1999)
+    with pytest.raises(ValueError):
+        pg.GffEntry("chr1", 0, 10, "gene").to_coordinate()
 
 
 if __name__ == "__main__":
