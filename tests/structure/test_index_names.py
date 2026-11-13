@@ -12,7 +12,9 @@ def _pg():
 
 def _inserts(pg):
     """(grove class, insert callable taking (grove, index, i)) for every eager grove."""
-    gc = lambda i: pg.GenomicCoordinate(".", 10 * i, 10 * i + 5)
+    def gc(i):
+        return pg.GenomicCoordinate(".", 10 * i, 10 * i + 5)
+
     return {
         "Grove": (pg.Grove, lambda g, idx, i: g.insert(idx, gc(i))),
         "BedGrove": (pg.BedGrove, lambda g, idx, i: g.insert(idx, gc(i), pg.BedEntry(idx, 10 * i, 10 * i + 6))),
@@ -45,3 +47,17 @@ def test_get_index_names_survives_round_trip(tmp_path):
     path = str(tmp_path / "g.gg")
     g.serialize(path)
     assert sorted(pg.Grove.deserialize(path).get_index_names()) == ["chr1", "chr2"]
+
+
+def test_index_disappears_when_its_last_key_is_removed():
+    """An index with no keys left is no longer listed (also after compact())."""
+    pg = _pg()
+    g = pg.Grove()
+    k1 = g.insert("chr1", pg.GenomicCoordinate(".", 1, 2))
+    g.insert("chr2", pg.GenomicCoordinate(".", 3, 4))
+    assert sorted(g.get_index_names()) == ["chr1", "chr2"]
+
+    assert g.remove_key("chr1", k1)
+    assert g.get_index_names() == ["chr2"]
+    g.compact()
+    assert g.get_index_names() == ["chr2"]
