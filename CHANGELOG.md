@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`get_index_names()` on the eager groves**: `Grove`, `BedGrove`, `GffGrove`, `NumericGrove` and `KmerGrove` list the names of the indices (e.g. chromosomes) they hold, in unspecified order, matching `GroveView.get_index_names()`. ([#118](https://github.com/genogrove/pygenogrove/issues/118), [#124](https://github.com/genogrove/pygenogrove/pull/124))
+
 ### Fixed
 
 - **`example.py` crashed with `IndexError` in its BED section**: the 2-arg `BedGrove.insert` gives the peaks a strand-aware key, but the example queried with `'.'`, which matches only `'.'`. It now queries with the `'*'` wildcard. The README is cut to install, one Quick Start example and a link to the [documentation](https://genogrove.readthedocs.io). ([#123](https://github.com/genogrove/pygenogrove/pull/123))

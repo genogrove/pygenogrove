@@ -138,7 +138,15 @@ void bind_grove(py::module_& m, const char* grove_name,
         .def("indexed_vertex_count", &grove_t::indexed_vertex_count,
              "Number of indexed intervals (B+ tree leaf keys)")
         .def("get_order", &grove_t::get_order,
-             "Get the order (branching factor) of the B+ tree");
+             "Get the order (branching factor) of the B+ tree")
+        .def("get_index_names", [](const grove_t& g) {
+                 std::vector<std::string> names;
+                 names.reserve(g.get_root_nodes().size());
+                 for (const auto& [name, root] : g.get_root_nodes()) names.push_back(name);
+                 return names;
+             },
+             "list[str] of every index (e.g. chromosome) name, in unspecified order "
+             "(mirrors GroveView.get_index_names()).");
 
     // ---- Insert (every grove carries a data payload) ----
     {
