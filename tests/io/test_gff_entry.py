@@ -56,11 +56,11 @@ def test_strand_must_be_single_char():
 
 
 def test_attributes_dict_round_trip():
-    """attributes is a dict[str, str] (column 9)."""
+    """attributes is a dict[str, list[str]] (column 9)."""
     pg = _pg()
     e = pg.GffEntry("chr1", 1000, 2000, "transcript")
-    e.attributes = {"gene_id": "ENSG1", "transcript_id": "ENST1"}
-    assert dict(e.attributes) == {"gene_id": "ENSG1", "transcript_id": "ENST1"}
+    e.attributes = {"gene_id": ["ENSG1"], "transcript_id": ["ENST1"]}
+    assert dict(e.attributes) == {"gene_id": ["ENSG1"], "transcript_id": ["ENST1"]}
 
 
 def test_gtf_helper_methods():
@@ -71,9 +71,9 @@ def test_gtf_helper_methods():
     pg = _pg()
     gene = pg.GffEntry("chr1", 1000, 2000, "gene")
     gene.attributes = {
-        "gene_id": "ENSG00000001",
-        "gene_name": "TEST1",
-        "gene_biotype": "protein_coding",
+        "gene_id": ["ENSG00000001"],
+        "gene_name": ["TEST1"],
+        "gene_biotype": ["protein_coding"],
     }
     assert gene.get_gene_id() == "ENSG00000001"
     assert gene.get_gene_name() == "TEST1"
@@ -82,9 +82,9 @@ def test_gtf_helper_methods():
 
     exon = pg.GffEntry("chr1", 1000, 1100, "exon")
     exon.attributes = {
-        "gene_id": "ENSG00000001",
-        "transcript_id": "ENST00000001",
-        "exon_number": "1",
+        "gene_id": ["ENSG00000001"],
+        "transcript_id": ["ENST00000001"],
+        "exon_number": ["1"],
     }
     assert exon.get_gene_id() == "ENSG00000001"
     assert exon.get_transcript_id() == "ENST00000001"
@@ -98,7 +98,7 @@ def test_gff3_helper_methods():
     """
     pg = _pg()
     e = pg.GffEntry("chr1", 1000, 2000, "gene")
-    e.attributes = {"ID": "gene1", "Name": "TEST1", "biotype": "protein_coding"}
+    e.attributes = {"ID": ["gene1"], "Name": ["TEST1"], "biotype": ["protein_coding"]}
     # GFF3 has no gene_id key.
     assert e.get_gene_id() is None
     # gene_name falls back to the GFF3 "Name" attribute.
@@ -106,7 +106,7 @@ def test_gff3_helper_methods():
     # gene_biotype falls back to the GFF3 "biotype" attribute.
     assert e.get_gene_biotype() == "protein_coding"
     # generic getter reaches the raw column-9 keys.
-    assert e.get_attribute("ID") == "gene1"
+    assert e.get_attributes("ID") == ["gene1"]
 
 
 def _gff3(pg, type_, attrs):
@@ -119,28 +119,29 @@ def _gff3(pg, type_, attrs):
 def test_gff3_id_fallbacks_and_parent_ids():
     """GFF3 records resolve gene/transcript ids from ID/Parent; get_parent_ids splits Parent."""
     pg = _pg()
-    gene = _gff3(pg, "gene", {"ID": "gene1"})
+    gene = _gff3(pg, "gene", {"ID": ["gene1"]})
     assert gene.get_gene_id() == "gene1"
     assert gene.get_parent_ids() == []
 
-    mrna = _gff3(pg, "mRNA", {"ID": "t1", "Parent": "gene1"})
+    mrna = _gff3(pg, "mRNA", {"ID": ["t1"], "Parent": ["gene1"]})
     assert mrna.get_gene_id() == "gene1"
 
-    exon = _gff3(pg, "exon", {"Parent": "t1"})
+    exon = _gff3(pg, "exon", {"Parent": ["t1"]})
     assert exon.get_transcript_id() == "t1"
 
-    multi = _gff3(pg, "exon", {"Parent": "t1,t2"})
+    multi = _gff3(pg, "exon", {"Parent": ["t1,t2"]})
     assert multi.get_parent_ids() == ["t1", "t2"]
     assert multi.get_transcript_id() is None
 
 
 def test_generic_attribute_getter():
-    """get_attribute returns the value or None. Mirrors genericAttributeGetter."""
+    """get_attributes returns every value in order, or []. Mirrors genericAttributeGetter."""
     pg = _pg()
     e = pg.GffEntry("chr1", 1000, 2000, "gene")
-    e.attributes = {"gene_id": "ENSG00000001"}
-    assert e.get_attribute("gene_id") == "ENSG00000001"
-    assert e.get_attribute("nonexistent") is None
+    e.attributes = {"gene_id": ["ENSG00000001"], "tag": ["basic", "CCDS"]}
+    assert e.get_attributes("gene_id") == ["ENSG00000001"]
+    assert e.get_attributes("tag") == ["basic", "CCDS"]   # repeated key keeps every value
+    assert e.get_attributes("nonexistent") == []
 
 
 def test_format_enum_and_predicates():

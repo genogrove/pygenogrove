@@ -148,7 +148,7 @@ def main():
     exon = pg.GffEntry("chr1", 1000, 2000, "exon")  # GFF coords are 1-based inclusive
     exon.source = "ensembl"
     exon.strand = "+"
-    exon.attributes = {"gene_id": "ENSG1", "transcript_id": "ENST1", "exon_number": "1"}
+    exon.attributes = {"gene_id": ["ENSG1"], "transcript_id": ["ENST1"], "exon_number": ["1"]}
     gff.insert("chr1", exon)  # 2-arg insert derives GenomicCoordinate('.', 999, 1999) from the GFF coords
 
     print("  Querying chr1 with GenomicCoordinate(.,1500,1600)...")

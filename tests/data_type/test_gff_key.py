@@ -51,7 +51,7 @@ def test_data_is_a_live_mutable_reference():
     _g, key = _key(pg)
 
     key.data.source = "ensembl"
-    key.data.attributes = {"gene_id": "ENSG2"}
+    key.data.attributes = {"gene_id": ["ENSG2"]}
     assert key.data.source == "ensembl"
     assert key.data.get_gene_id() == "ENSG2"
 

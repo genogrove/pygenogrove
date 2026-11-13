@@ -193,14 +193,14 @@ def test_bulk_on_gff_grove():
     items = []
     for i in range(20):
         e = pg.GffEntry("chr1", i * 100 + 1, i * 100 + 51, "gene")
-        e.attributes = {"idx": str(i)}
+        e.attributes = {"idx": [str(i)]}
         items.append((pg.GenomicCoordinate(".", i * 100, i * 100 + 50), e))
     keys = g.insert_bulk("chr1", items, presorted=True)
 
     assert len(keys) == 20
     assert g.size() == 20
     assert [k.value.start for k in keys] == [i * 100 for i in range(20)]
-    assert [k.data.get_attribute("idx") for k in keys] == [str(i) for i in range(20)]
+    assert [k.data.get_attributes("idx") for k in keys] == [[str(i)] for i in range(20)]
 
 
 def test_grove_supports_bulk_with_json_payload():

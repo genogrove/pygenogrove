@@ -58,9 +58,9 @@ def test_gff3_full_round_trip(tmp_path):
     e.phase = 1
     e.format = pg.GffFormat.GFF3
     e.attributes = {
-        "ID": "exon:ENSE00001",
-        "Parent": "transcript:ENST00001",
-        "gene_id": "ENSG00001",
+        "ID": ["exon:ENSE00001"],
+        "Parent": ["transcript:ENST00001"],
+        "gene_id": ["ENSG00001"],
     }
     g = pg.GffGrove(4)
     g.insert("chrX", pg.GenomicCoordinate(".", 1000, 2000), e)
@@ -73,9 +73,9 @@ def test_gff3_full_round_trip(tmp_path):
     assert out.phase == 1
     assert out.format == pg.GffFormat.GFF3
     assert dict(out.attributes) == {
-        "ID": "exon:ENSE00001",
-        "Parent": "transcript:ENST00001",
-        "gene_id": "ENSG00001",
+        "ID": ["exon:ENSE00001"],
+        "Parent": ["transcript:ENST00001"],
+        "gene_id": ["ENSG00001"],
     }
 
 
@@ -85,7 +85,7 @@ def test_gtf_round_trip(tmp_path):
     e = pg.GffEntry("chr2", 500, 600, "CDS")
     e.format = pg.GffFormat.GTF
     e.phase = 0
-    e.attributes = {"gene_id": "G1", "transcript_id": "T1"}
+    e.attributes = {"gene_id": ["G1"], "transcript_id": ["T1"], "tag": ["basic", "CCDS"]}
     g = pg.GffGrove(4)
     g.insert("chr2", pg.GenomicCoordinate(".", 500, 600), e)
 
@@ -94,8 +94,9 @@ def test_gtf_round_trip(tmp_path):
     assert out.format == pg.GffFormat.GTF
     assert out.is_gtf()
     assert not out.is_gff3()
-    assert out.attributes["gene_id"] == "G1"
-    assert out.attributes["transcript_id"] == "T1"
+    assert out.attributes["gene_id"] == ["G1"]
+    assert out.attributes["transcript_id"] == ["T1"]
+    assert out.attributes["tag"] == ["basic", "CCDS"]   # repeated key keeps every value, in order
 
 
 def test_empty_attributes_map(tmp_path):
@@ -117,15 +118,15 @@ def test_preserves_embedded_nul_in_attributes(tmp_path):
     NULs survive. Mirrors gffEntrySerialization::preservesEmbeddedNulInAttributes."""
     pg = _pg()
     e = pg.GffEntry("chr1", 5, 10, "feature")
-    e.attributes = {"k\x00ey": "va\x00lue"}
+    e.attributes = {"k\x00ey": ["va\x00lue"]}
     g = pg.GffGrove(3)
     g.insert("chr1", pg.GenomicCoordinate(".", 5, 10), e)
 
     restored = _roundtrip(pg, tmp_path, g)
     out = _only(restored, 7, 7)
     attrs = dict(out.attributes)
-    assert attrs == {"k\x00ey": "va\x00lue"}
-    assert len(list(attrs.values())[0]) == 6
+    assert attrs == {"k\x00ey": ["va\x00lue"]}
+    assert len(list(attrs.values())[0][0]) == 6
 
 
 def test_grove_round_trip(tmp_path):
@@ -135,12 +136,12 @@ def test_grove_round_trip(tmp_path):
 
     e1 = pg.GffEntry("chr1", 100, 200, "gene")
     e1.format = pg.GffFormat.GFF3
-    e1.attributes = {"ID": "gene1"}
+    e1.attributes = {"ID": ["gene1"]}
     e1.strand = "+"
 
     e2 = pg.GffEntry("chr1", 300, 400, "exon")
     e2.format = pg.GffFormat.GFF3
-    e2.attributes = {"Parent": "gene1"}
+    e2.attributes = {"Parent": ["gene1"]}
 
     g.insert("chr1", pg.GenomicCoordinate(".", 100, 200), e1)
     g.insert("chr1", pg.GenomicCoordinate(".", 300, 400), e2)
@@ -149,12 +150,12 @@ def test_grove_round_trip(tmp_path):
 
     d1 = _only(restored, 150, 150)
     assert d1.type == "gene"
-    assert d1.attributes["ID"] == "gene1"
+    assert d1.attributes["ID"] == ["gene1"]
     assert d1.strand == "+"
 
     d2 = _only(restored, 350, 350)
     assert d2.type == "exon"
-    assert d2.attributes["Parent"] == "gene1"
+    assert d2.attributes["Parent"] == ["gene1"]
 
 
 def test_roundtrip_preserves_edges_and_external_data(tmp_path):

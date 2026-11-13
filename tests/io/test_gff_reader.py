@@ -73,12 +73,12 @@ def test_read_gff3(tmp_path):
     assert g.strand == "+"
     assert g.phase is None
     assert g.format == pg.GffFormat.GFF3
-    assert g.attributes["ID"] == "gene1"
-    assert g.attributes["Name"] == "TEST1"
-    assert g.attributes["biotype"] == "protein_coding"
+    assert g.attributes["ID"] == ["gene1"]
+    assert g.attributes["Name"] == ["TEST1"]
+    assert g.attributes["biotype"] == ["protein_coding"]
 
     assert entries[1].type == "exon"
-    assert entries[1].attributes["Parent"] == "gene1"
+    assert entries[1].attributes["Parent"] == ["gene1"]
     assert entries[2].score == 100
     assert entries[2].strand == "-"
     assert entries[3].type == "CDS"
@@ -106,6 +106,18 @@ def test_read_gtf(tmp_path):
     assert entries[3].phase == 0
 
 
+def test_repeated_gtf_attribute_keeps_every_value(tmp_path):
+    """A key repeated on one GTF line (Ensembl `tag`) keeps all values in file order."""
+    pg = _pg()
+    path = tmp_path / "t.gtf"
+    path.write_text('chr1\tsrc\ttranscript\t1\t10\t.\t+\t.\t'
+                    'gene_id "G1"; transcript_id "T1"; tag "basic"; tag "CCDS";\n')
+    (e,) = list(pg.GffReader(str(path)))
+    assert e.attributes["tag"] == ["basic", "CCDS"]
+    assert e.get_attributes("tag") == ["basic", "CCDS"]
+    assert e.get_gene_id() == "G1"
+
+
 def test_empty_file(tmp_path):
     """An empty GFF file yields no entries."""
     pg = _pg()
@@ -121,7 +133,7 @@ def test_comment_lines_skipped(tmp_path):
                     "chr1\tsrc\tgene\t1\t10\t.\t+\t.\tID=g1\n")
     entries = list(pg.GffReader(str(path)))
     assert len(entries) == 1
-    assert entries[0].attributes["ID"] == "g1"
+    assert entries[0].attributes["ID"] == ["g1"]
 
 
 def test_invalid_line_raises_by_default(tmp_path):
@@ -210,7 +222,7 @@ def test_reads_gzip(tmp_path):
         fh.write("chr1\tsrc\tgene\t1000\t2000\t.\t+\t.\tID=g1\n")
     entries = list(pg.GffReader(str(path)))
     assert len(entries) == 1
-    assert entries[0].attributes["ID"] == "g1"
+    assert entries[0].attributes["ID"] == ["g1"]
 
 
 def test_build_grove_from_reader(tmp_path):

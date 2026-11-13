@@ -73,7 +73,8 @@ inline void bind_gff_entry(py::module_& m) {
         .def_readwrite("phase", &gio::gff_entry::phase,
                        "Optional[int] CDS phase (0, 1, or 2; column 8)")
         .def_readwrite("attributes", &gio::gff_entry::attributes,
-                       "dict[str, str] of column-9 key/value attributes "
+                       "dict[str, list[str]] of column-9 attributes; a repeated key "
+                       "(GTF `tag`) keeps every value in file order "
                        "(assigned/returned by copy)")
         .def_readwrite("format", &gio::gff_entry::format,
                        "GffFormat detected for this record")
@@ -81,10 +82,11 @@ inline void bind_gff_entry(py::module_& m) {
              "True if this record was parsed as GTF.")
         .def("is_gff3", &gio::gff_entry::is_gff3,
              "True if this record was parsed as GFF3.")
-        .def("get_attribute", &gio::gff_entry::get_attribute, py::arg("key"),
-             "Return the value of a column-9 attribute, or None if absent.")
+        .def("get_attributes", &gio::gff_entry::get_attributes, py::arg("key"),
+             "list[str] of every value of a column-9 attribute in file order "
+             "(empty if absent).")
         .def("get_gene_id", &gio::gff_entry::get_gene_id,
-             "GTF `gene_id` attribute, or None. GFF3 falls back to a gene's "
+             "GTF `gene_id` attribute (first value), or None. GFF3 falls back to a gene's "
              "`ID` or a transcript's single `Parent`.")
         .def("get_transcript_id", &gio::gff_entry::get_transcript_id,
              "GTF `transcript_id` attribute, or None. GFF3 falls back to the "

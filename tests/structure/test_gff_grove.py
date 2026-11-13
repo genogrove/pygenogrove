@@ -15,7 +15,7 @@ def _pg():
 def _gene(pg, seqid="chr1", start=100, end=200, **attrs):
     e = pg.GffEntry(seqid, start, end, "gene")
     if attrs:
-        e.attributes = attrs
+        e.attributes = {k: [v] for k, v in attrs.items()}
     return e
 
 
