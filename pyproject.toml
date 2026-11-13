@@ -71,12 +71,12 @@ environment = { PKG_CONFIG_PATH = "/usr/local/lib/pkgconfig", LD_LIBRARY_PATH = 
 [tool.cibuildwheel.macos]
 # Homebrew htslib; delocate bundles it into the wheel.
 before-all = "brew install htslib"
-# arm64-only macOS wheels (built on the macos-14 runner; no Intel macOS — see
-# release.yml). Target 14.0: the runner's Homebrew bottles (libhts, liblzma,
-# libdeflate) target macOS 14.0, so delocate won't bundle them into a lower
+# arm64-only macOS wheels (built on the macos-15 runner; no Intel macOS — see
+# release.yml). Target 15.0: the runner's Homebrew bottles (libhts, liblzma,
+# libdeflate) target macOS 15.0, so delocate won't bundle them into a lower
 # target. (genogrove also needs >= 13.3 regardless, for std::format /
 # std::to_chars in libc++.)
-environment = { PKG_CONFIG_PATH = "$(brew --prefix)/lib/pkgconfig", MACOSX_DEPLOYMENT_TARGET = "14.0" }
+environment = { PKG_CONFIG_PATH = "$(brew --prefix)/lib/pkgconfig", MACOSX_DEPLOYMENT_TARGET = "15.0" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
