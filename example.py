@@ -170,7 +170,8 @@ def main():
         peaks.insert(e.chrom, e)              # 2-arg insert derives the key from BED coords
     print(f"  loaded {peaks.size()} peaks from {bed_file}")
 
-    overlaps = list(peaks.intersect(pg.GenomicCoordinate(".", 1500, 1500), "chr1"))
+    # Keys carry the BED strand ('+'), and '.' matches only '.', so query with the '*' wildcard.
+    overlaps = list(peaks.intersect(pg.GenomicCoordinate("*", 1500, 1500), "chr1"))
     print(f"  peak overlapping chr1:1500 -> {overlaps[0].data.name}")
 
     # Bulk insert: load many sorted records into a data-carrying grove at once.
