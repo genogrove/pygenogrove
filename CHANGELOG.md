@@ -18,7 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one line (GTF `tag`) keeps every value in file order; it used to keep only the last.
   Assign lists (`{"gene_id": ["G1"]}`). `get_attribute(key)` is replaced by
   `get_attributes(key) -> list[str]` (`[]` if absent). `get_gene_id()` and the other
-  single-value helpers now read the *first* value of a repeated key, not the last. ([#121](https://github.com/genogrove/pygenogrove/pull/121))
+  single-value helpers now read the *first* value of a repeated key, not the last.
+  A `.gg` written by this release stores every value, and genogrove v0.27.0 and
+  earlier (including pygenogrove 0.10.0) read back only the first value of a repeated
+  key without an error. ([#121](https://github.com/genogrove/pygenogrove/pull/121))
 
 ## [0.10.0] - 2026-10-29
 
