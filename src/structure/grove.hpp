@@ -21,6 +21,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <algorithm>
 #include <functional>
 #include <fstream>
 #include <optional>
@@ -51,6 +52,32 @@ namespace gdt = genogrove::data_type;
 // typed payloads (bed_entry/gff_entry), where a default makes no sense.
 template <typename>
 inline constexpr bool grove_data_optional = false;
+
+// Strips the common leading indentation and surrounding blank lines. pybind11 3.x
+// leaves an overload's body as written, so Sphinx would read an indented
+// body as a block quote and reject its numpy section titles.
+inline std::string dedent(std::string_view s) {
+    std::vector<std::string_view> lines;
+    for (std::size_t pos = 0; pos <= s.size();) {
+        auto nl = s.find('\n', pos);
+        if (nl == std::string_view::npos) nl = s.size();
+        lines.push_back(s.substr(pos, nl - pos));
+        pos = nl + 1;
+    }
+    auto blank = [](std::string_view l) { return l.find_first_not_of(" \t") == std::string_view::npos; };
+    std::size_t indent = std::string_view::npos;
+    for (auto l : lines)
+        if (!blank(l)) indent = std::min(indent, l.find_first_not_of(" \t"));
+    std::size_t first = 0, last = lines.size();
+    while (first < last && blank(lines[first])) ++first;
+    while (last > first && blank(lines[last - 1])) --last;
+    std::string out;
+    for (std::size_t i = first; i < last; ++i) {
+        if (i > first) out += '\n';
+        if (!blank(lines[i])) out += lines[i].substr(indent);
+    }
+    return out;
+}
 
 // Raises TypeError if any element of `keys` is None. The edge-graph methods'
 // single-Key arguments (source/target/key) use py::arg(...).none(false) for
@@ -154,7 +181,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                             const KeyT& key, DataT data) {
             return g.insert_data(index, key, std::move(data));
         };
-        const char* insert_doc = R"pbdoc(
+        const std::string insert_doc = dedent(R"pbdoc(
                     Insert a key with an associated data payload at the given index.
 
                     Parameters
@@ -175,15 +202,15 @@ void bind_grove(py::module_& m, const char* grove_name,
                     -------
                     Key
                         Stable reference to the inserted key.
-                )pbdoc";
+                )pbdoc");
         if constexpr (grove_data_optional<DataT>) {
             cls.def("insert", insert_fn,
                     py::arg("index"), py::arg("key"), py::arg("data") = DataT{},
-                    py::return_value_policy::reference_internal, insert_doc);
+                    py::return_value_policy::reference_internal, insert_doc.c_str());
         } else {
             cls.def("insert", insert_fn,
                     py::arg("index"), py::arg("key"), py::arg("data"),
-                    py::return_value_policy::reference_internal, insert_doc);
+                    py::return_value_policy::reference_internal, insert_doc.c_str());
         }
 
         // ---- Sorted / bulk insertion (fast paths; non-void data only) ----
@@ -225,7 +252,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                     return pinned_key_list(keys, self);
                 },
                 py::arg("index"), py::arg("items"), py::arg("presorted") = false,
-                R"pbdoc(
+                dedent(R"pbdoc(
                     Bulk-insert many (interval, data) records at once. 10-20x
                     faster than repeated insert() for large datasets — an empty
                     index is built bottom-up in O(n); a non-empty index appends.
@@ -250,7 +277,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                     PRECONDITION (appending to a non-empty index): every inserted
                     interval must be greater than every existing interval in the
                     index. Violating this corrupts B+ tree ordering.
-                )pbdoc");
+                )pbdoc").c_str());
 
         // ---- Entry-deriving OVERLOADS of insert / insert_bulk: pass a file
         //      entry (or a list of them) and the GenomicCoordinate key is derived from
@@ -268,7 +295,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                     },
                     py::arg("index"), py::arg("entry"),
                     py::return_value_policy::reference_internal,
-                    R"pbdoc(
+                    dedent(R"pbdoc(
                         insert(index, entry) -> Key
 
                         Overload that takes a single file entry and derives the
@@ -277,7 +304,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                         [s-1, e-1]; strand from the BED6/GFF strand column, or '.'
                         if absent). The entry keeps its native coordinates as the
                         payload.
-                    )pbdoc");
+                    )pbdoc").c_str());
 
             cls.def("insert_bulk",
                     [](py::object self, const std::string& index,
@@ -308,14 +335,14 @@ void bind_grove(py::module_& m, const char* grove_name,
                     },
                     py::arg("index"), py::arg("entries"),
                     py::arg("presorted") = false,
-                    R"pbdoc(
+                    dedent(R"pbdoc(
                         insert_bulk(index, entries, presorted=False) -> list[Key]
 
                         Overload that takes a list of bare file entries (instead
                         of (GenomicCoordinate, data) tuples) and derives each
                         GenomicCoordinate key from the entry's native coordinates
                         + strand. Same append precondition as the explicit form.
-                    )pbdoc");
+                    )pbdoc").c_str());
         }
     }
 
