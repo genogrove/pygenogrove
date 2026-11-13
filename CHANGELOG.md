@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-11-13
+
+### Fixed
+
+- **`GffEntry.attributes` lost repeated values; it is now `dict[str, list[str]]`.** A key
+  repeated on one line (GTF `tag`) keeps every value in file order; it used to keep only
+  the last. Assign lists (`{"gene_id": ["G1"]}`). `get_attribute(key)` is replaced by
+  `get_attributes(key) -> list[str]` (`[]` if absent). `get_gene_id()` and the other
+  single-value helpers now read the *first* value of a repeated key, not the last.
+  A `.gg` written by this release stores every value, and genogrove v0.27.0 and
+  earlier (including pygenogrove 0.10.0) read back only the first value of a repeated
+  key without an error. ([#121](https://github.com/genogrove/pygenogrove/pull/121))
+
 ### Changed
 
 - **Bundled genogrove bumped to
@@ -14,14 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   more malformed `.gg` files on load (over-deep trees, forged leaf links, empty internal
   nodes, duplicate index names) with `RuntimeError`, and a wrong stream version is now
   reported as such rather than as a non-grove file. ([#121](https://github.com/genogrove/pygenogrove/pull/121))
-- **Breaking: `GffEntry.attributes` is now `dict[str, list[str]]`.** A key repeated on
-  one line (GTF `tag`) keeps every value in file order; it used to keep only the last.
-  Assign lists (`{"gene_id": ["G1"]}`). `get_attribute(key)` is replaced by
-  `get_attributes(key) -> list[str]` (`[]` if absent). `get_gene_id()` and the other
-  single-value helpers now read the *first* value of a repeated key, not the last.
-  A `.gg` written by this release stores every value, and genogrove v0.27.0 and
-  earlier (including pygenogrove 0.10.0) read back only the first value of a repeated
-  key without an error. ([#121](https://github.com/genogrove/pygenogrove/pull/121))
 - **macOS CI and wheels move off the retired `macos-14` runner.** CI tests on `macos-15`;
   release wheels are built on `macos-15` with
   `MACOSX_DEPLOYMENT_TARGET=15.0`, so macOS wheels now require macOS 15 or newer
