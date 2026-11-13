@@ -366,7 +366,7 @@ g = pg.GffGrove(100)
 entry = pg.GffEntry("chr1", 1000, 2000, "gene")   # GFF-native coords (1-based, inclusive)
 entry.source = "ensembl"
 entry.strand = "+"
-entry.attributes = {"gene_id": "ENSG1", "gene_name": "BRCA1"}
+entry.attributes = {"gene_id": ["ENSG1"], "gene_name": ["BRCA1"]}
 key = g.insert("chr1", pg.GenomicCoordinate(".", 999, 1999), entry)
 
 print(key.data.type, key.data.get_gene_id())      # gene ENSG1
@@ -397,12 +397,14 @@ GffEntry(seqid: str, start: int, end: int, type: str)
 - `strand`: `Optional[str]` — a single character (`'+'`, `'-'`, `'.'`, `'?'`); empty
   or multi-character raises `ValueError`, `None` clears it
 - `phase`: `Optional[int]` (CDS phase 0/1/2)
-- `attributes`: `dict[str, str]` — the column-9 key/value pairs (returned/assigned by copy)
+- `attributes`: `dict[str, list[str]]` — the column-9 pairs; a repeated key (GTF `tag`) keeps every
+  value in file order (returned/assigned by copy)
 - `format`: a `GffFormat` enum (`GFF3` / `GTF` / `UNKNOWN`)
 
-**Methods**: `is_gtf()`, `is_gff3()`, `get_attribute(key)`, and the GTF helpers
+**Methods**: `is_gtf()`, `is_gff3()`, `get_attributes(key)` (all values, `[]` if absent), and the GTF helpers
 `get_gene_id()`, `get_transcript_id()`, `get_exon_number()`, `get_gene_name()`,
-`get_gene_biotype()` (each returns `None` when the attribute is absent).
+`get_gene_biotype()` (each returns `None` when the attribute is absent; for a repeated key they
+read its first value).
 
 ### BedReader / GffReader (file iterators)
 
