@@ -85,7 +85,7 @@ def test_gtf_round_trip(tmp_path):
     e = pg.GffEntry("chr2", 500, 600, "CDS")
     e.format = pg.GffFormat.GTF
     e.phase = 0
-    e.attributes = {"gene_id": ["G1"], "transcript_id": ["T1"]}
+    e.attributes = {"gene_id": ["G1"], "transcript_id": ["T1"], "tag": ["basic", "CCDS"]}
     g = pg.GffGrove(4)
     g.insert("chr2", pg.GenomicCoordinate(".", 500, 600), e)
 
@@ -96,6 +96,7 @@ def test_gtf_round_trip(tmp_path):
     assert not out.is_gff3()
     assert out.attributes["gene_id"] == ["G1"]
     assert out.attributes["transcript_id"] == ["T1"]
+    assert out.attributes["tag"] == ["basic", "CCDS"]   # repeated key keeps every value, in order
 
 
 def test_empty_attributes_map(tmp_path):
