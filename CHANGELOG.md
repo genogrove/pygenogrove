@@ -22,8 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A `.gg` written by this release stores every value, and genogrove v0.27.0 and
   earlier (including pygenogrove 0.10.0) read back only the first value of a repeated
   key without an error. ([#121](https://github.com/genogrove/pygenogrove/pull/121))
-- **macOS CI and wheels move off the retired `macos-14` runner.** CI tests on `macos-15`
-  and `macos-26`; release wheels are built on `macos-15` with
+- **macOS CI and wheels move off the retired `macos-14` runner.** CI tests on `macos-15`;
+  release wheels are built on `macos-15` with
   `MACOSX_DEPLOYMENT_TARGET=15.0`, so macOS wheels now require macOS 15 or newer
   (macOS 14 users install from the sdist). ([#121](https://github.com/genogrove/pygenogrove/pull/121))
 
