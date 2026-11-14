@@ -100,25 +100,20 @@ def test_insert_bulk_sorts_unsorted_input():
 
 
 def test_presorted_flag_is_honored():
-    """presorted changes behavior: handles come back in input order when
-    presorted=True (trusts the caller) vs sorted order when False.
-
-    The presorted=True grove is fed descending data on purpose (an intentional
-    precondition violation); its tree is left ill-ordered, so it is NOT queried —
-    only the well-defined returned-handle order is asserted.
-    """
+    """presorted=False sorts the batch; presorted=True rejects unsorted input
+    (see test_sorted_preconditions.py) and otherwise keeps input order."""
     pg = _pg()
     descending = list(reversed(_items(pg, 20)))
-    input_starts = [iv.start for iv, _ in descending]            # 1900, 1800, ...
+    ascending = list(reversed(descending))
 
-    g_sorted = pg.BedGrove(8)
-    k_sorted = g_sorted.insert_bulk("chr1", descending)          # presorted=False -> sorts
-    assert [k.value.start for k in k_sorted] == sorted(input_starts)
+    k_sorted = pg.BedGrove(8).insert_bulk("chr1", descending)    # presorted=False -> sorts
+    assert [k.value.start for k in k_sorted] == [iv.start for iv, _ in ascending]
 
-    g_trust = pg.BedGrove(8)
-    k_trust = g_trust.insert_bulk("chr1", descending, presorted=True)  # trusts input order
-    assert [k.value.start for k in k_trust] == input_starts
-    assert [k.value.start for k in k_sorted] != [k.value.start for k in k_trust]
+    k_trust = pg.BedGrove(8).insert_bulk("chr1", ascending, presorted=True)
+    assert [k.value.start for k in k_trust] == [iv.start for iv, _ in ascending]
+
+    with pytest.raises(ValueError):
+        pg.BedGrove(8).insert_bulk("chr1", descending, presorted=True)
 
 
 def test_bulk_returns_handles_with_correct_data():
