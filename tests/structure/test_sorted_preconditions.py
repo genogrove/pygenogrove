@@ -1,7 +1,7 @@
 """
-insert_sorted / insert_bulk append at the rightmost leaf and never re-check order,
-so out-of-order input would silently corrupt the tree. The bindings reject it with
-ValueError and leave the grove untouched.
+insert_bulk appends at the rightmost leaf and never re-checks order, so
+out-of-order batches would silently corrupt the tree. The bindings reject them with
+ValueError and leave the grove untouched. (insert_sorted is the unchecked fast path.)
 """
 
 import pytest
@@ -22,16 +22,8 @@ def _grove_with(pg, starts, index="chr1"):
     return g
 
 
-def test_insert_sorted_rejects_value_below_max():
-    pg = _pg()
-    g = _grove_with(pg, [100, 200])
-    with pytest.raises(ValueError, match="chr1"):
-        g.insert_sorted("chr1", _gc(pg, 50), None)
-    assert g.size() == 2
-
-
 def test_insert_sorted_accepts_equal_and_greater():
-    """Equal values are ties, not violations; ascending appends keep working."""
+    """Ascending appends (ties included) work on the unchecked fast path."""
     pg = _pg()
     g = _grove_with(pg, [100])
     g.insert_sorted("chr1", _gc(pg, 100), None)
@@ -40,11 +32,11 @@ def test_insert_sorted_accepts_equal_and_greater():
     assert len(list(g.intersect(_gc(pg, 0, 1000), "chr1"))) == 3
 
 
-def test_insert_sorted_checks_each_index_separately():
+def test_insert_bulk_checks_each_index_separately():
     pg = _pg()
     g = _grove_with(pg, [500], index="chr1")
-    g.insert_sorted("chr2", _gc(pg, 1), None)        # chr2 is empty: any value is fine
-    g.insert_sorted("chrNew", _gc(pg, 1), None)      # unknown index too
+    g.insert_bulk("chr2", [(_gc(pg, 1), None)])        # chr2 is empty: any value is fine
+    g.insert_bulk("chrNew", [(_gc(pg, 1), None)])      # unknown index too
     assert g.size() == 3
 
 
@@ -115,8 +107,6 @@ def test_numeric_grove_checked_too():
     n.insert("x", pg.Numeric(10))
     with pytest.raises(ValueError):
         n.insert_bulk("x", [(pg.Numeric(1), None)], presorted=True)
-    with pytest.raises(ValueError):
-        n.insert_sorted("x", pg.Numeric(1), None)
     assert n.size() == 1
 
 
@@ -124,8 +114,6 @@ def test_rejected_call_leaves_tree_queryable_and_appendable():
     """After a rejection the tree is intact: queries are right and a valid append still works."""
     pg = _pg()
     g = _grove_with(pg, [100, 200])
-    with pytest.raises(ValueError):
-        g.insert_sorted("chr1", _gc(pg, 50), None)
     with pytest.raises(ValueError):
         g.insert_bulk("chr1", [(_gc(pg, 60), None)])
     assert len(list(g.intersect(_gc(pg, 0, 1000), "chr1"))) == 2
@@ -146,13 +134,13 @@ def test_check_follows_the_max_after_remove_key():
     g = pg.Grove()
     keys = [g.insert("chr1", _gc(pg, s), None) for s in (100, 200, 300)]
     assert g.remove_key("chr1", keys[2])
-    g.insert_sorted("chr1", _gc(pg, 250), None)          # above 200, below the removed 300
+    g.insert_bulk("chr1", [(_gc(pg, 250), None)])        # above 200, below the removed 300
     with pytest.raises(ValueError):
-        g.insert_sorted("chr1", _gc(pg, 150), None)
+        g.insert_bulk("chr1", [(_gc(pg, 150), None)])
 
     for k in g.intersect(_gc(pg, 0, 1000), "chr1"):      # empty the index entirely
         g.remove_key("chr1", k)
-    g.insert_sorted("chr1", _gc(pg, 1), None)            # gone index: any value is fine
+    g.insert_bulk("chr1", [(_gc(pg, 1), None)])          # gone index: any value is fine
     assert g.size() == 1
 
 
@@ -163,8 +151,8 @@ def test_check_after_deserialize(tmp_path):
     g.serialize(path)
     h = pg.Grove.deserialize(path)
     with pytest.raises(ValueError, match="chr1"):
-        h.insert_sorted("chr1", _gc(pg, 50), None)
-    h.insert_sorted("chr1", _gc(pg, 400), None)
+        h.insert_bulk("chr1", [(_gc(pg, 50), None)])
+    h.insert_bulk("chr1", [(_gc(pg, 400), None)])
     assert h.size() == 4
 
 

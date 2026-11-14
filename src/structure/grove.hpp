@@ -241,7 +241,6 @@ void bind_grove(py::module_& m, const char* grove_name,
         cls.def("insert_sorted",
                 [](grove_t& g, const std::string& index,
                    const KeyT& interval, DataT data) {
-                    check_not_below_max(g, index, interval);
                     return g.insert_data(index, interval, std::move(data),
                                          ggs::sorted);
                 },
@@ -251,9 +250,11 @@ void bind_grove(py::module_& m, const char* grove_name,
                     Insert one (interval, data) record on the optimized sorted
                     path (rightmost-append, no tree traversal).
 
-                    The interval must not be below any interval already in this
-                    index (insert in ascending order). Raises ValueError otherwise;
-                    use plain insert() for unordered data.
+                    PRECONDITION: the interval must not be below any interval
+                    already in this index (insert in ascending order). This is
+                    not checked, to keep the fast path fast: violating it corrupts
+                    B+ tree ordering and queries silently return wrong results.
+                    Use insert_bulk() (which validates) or plain insert() if unsure.
                 )pbdoc");
 
         cls.def("insert_bulk",
