@@ -201,6 +201,28 @@ def test_concurrent_fasta_fetch(tmp_path):
     assert all(r == ("ACGT", "TTTTGGGGCCCC") for r in results)
 
 
+def test_fasta_open_races_with_pybind_object_creation(tmp_path):
+    """FastaIndex() registers its instance with the GIL held while other threads
+    create and drop pybind objects (stress test: a race would corrupt pybind's
+    instance map, typically crashing)."""
+    pg = _pg()
+    fa = tmp_path / "g.fa"
+    fa.write_text(">chr1\nACGT\n")
+
+    def open_index(_):
+        return all(pg.FastaIndex(str(fa)).fetch("chr1") == "ACGT" for _ in range(50))
+
+    def make_objects(_):
+        for i in range(2000):
+            pg.GenomicCoordinate(".", i, i + 1)
+        return True
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        jobs = [ex.submit(open_index, i) for i in range(8)]
+        jobs += [ex.submit(make_objects, i) for i in range(8)]
+        assert all(j.result() for j in jobs)
+
+
 def test_concurrent_fasta_fetch_shared_handle(tmp_path):
     """One FastaIndex shared by many threads: fetch is serialized by the
     internal lock, so every call returns the right bases even though the GIL
