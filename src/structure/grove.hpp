@@ -94,6 +94,30 @@ void check_no_none_keys(const std::vector<KeyPtr>& keys, const char* arg_name) {
     }
 }
 
+// The sorted fast paths append at the rightmost leaf and never re-check order,
+// so a value below the index's current maximum silently corrupts the tree.
+template <typename Grove, typename KeyT>
+void check_not_below_max(const Grove& g, const std::string& index, const KeyT& lowest) {
+    const auto* leaf = g.get_rightmost_node(index);
+    if (leaf != nullptr && !leaf->get_keys().empty() &&
+        lowest < leaf->get_keys().back()->get_value()) {
+        throw std::invalid_argument(
+            "values must not be below the largest value already in index '" + index + "'");
+    }
+}
+
+// items: (value, data) pairs for insert_bulk.
+template <typename Grove, typename Items>
+void check_bulk_order(const Grove& g, const std::string& index, const Items& items,
+                      bool presorted) {
+    if (items.empty()) return;
+    auto lt = [](const auto& a, const auto& b) { return a.first < b.first; };
+    if (presorted && !std::is_sorted(items.begin(), items.end(), lt)) {
+        throw std::invalid_argument("presorted=True but items are not in ascending order");
+    }
+    check_not_below_max(g, index, std::min_element(items.begin(), items.end(), lt)->first);
+}
+
 template <typename KeyT, typename DataT, typename EdgeT = void>
 void bind_grove(py::module_& m, const char* grove_name,
                 const char* key_name, const char* qr_name,
@@ -217,6 +241,7 @@ void bind_grove(py::module_& m, const char* grove_name,
         cls.def("insert_sorted",
                 [](grove_t& g, const std::string& index,
                    const KeyT& interval, DataT data) {
+                    check_not_below_max(g, index, interval);
                     return g.insert_data(index, interval, std::move(data),
                                          ggs::sorted);
                 },
@@ -226,10 +251,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                     Insert one (interval, data) record on the optimized sorted
                     path (rightmost-append, no tree traversal).
 
-                    PRECONDITION: the interval must be greater than every interval
-                    already present in this index. Insert in ascending order.
-                    Violating this corrupts B+ tree ordering (queries silently
-                    return wrong results). Use plain insert() if unsure.
+                    The interval must not be below any interval already in this
+                    index (insert in ascending order). Raises ValueError otherwise;
+                    use plain insert() for unordered data.
                 )pbdoc");
 
         cls.def("insert_bulk",
@@ -243,6 +267,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                     std::vector<key_t*> keys;
                     {
                         py::gil_scoped_release rel;
+                        check_bulk_order(g, index, items, presorted);
                         keys = presorted
                                    ? g.insert_data(index, items, ggs::sorted, ggs::bulk)
                                    : g.insert_data(index, std::move(items), ggs::bulk);
@@ -274,9 +299,12 @@ void bind_grove(py::module_& m, const char* grove_name,
                     list[Key]
                         Stable key handles, in insertion (sorted) order.
 
-                    PRECONDITION (appending to a non-empty index): every inserted
-                    interval must be greater than every existing interval in the
-                    index. Violating this corrupts B+ tree ordering.
+                    Raises
+                    ------
+                    ValueError
+                        If presorted=True and items are not ascending, or if any
+                        item is below an interval already in the index (bulk
+                        insert only appends).
                 )pbdoc").c_str());
 
         // ---- Entry-deriving OVERLOADS of insert / insert_bulk: pass a file
@@ -324,6 +352,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                                 KeyT k = genomic_coordinate_from_entry(entry);
                                 items.emplace_back(k, std::move(entry));
                             }
+                            check_bulk_order(g, index, items, presorted);
                             keys = presorted
                                        ? g.insert_data(index, items, ggs::sorted,
                                                        ggs::bulk)
