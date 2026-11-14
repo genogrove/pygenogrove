@@ -291,8 +291,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                         key value type (GenomicCoordinate, Numeric or Kmer).
                     presorted : bool, optional
                         If False (default) the records are sorted by interval
-                        first. If True, they are assumed already sorted ascending
-                        (skips the sort — fastest).
+                        first. If True the sort is skipped and the records must
+                        already be ascending (checked; ValueError otherwise).
 
                     Returns
                     -------
@@ -370,7 +370,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                         Overload that takes a list of bare file entries (instead
                         of (GenomicCoordinate, data) tuples) and derives each
                         GenomicCoordinate key from the entry's native coordinates
-                        + strand. Same append precondition as the explicit form.
+                        + strand. Raises ValueError under the same conditions as the explicit form.
                     )pbdoc").c_str());
         }
     }

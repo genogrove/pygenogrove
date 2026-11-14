@@ -118,3 +118,61 @@ def test_numeric_grove_checked_too():
     with pytest.raises(ValueError):
         n.insert_sorted("x", pg.Numeric(1), None)
     assert n.size() == 1
+
+
+def test_rejected_call_leaves_tree_queryable_and_appendable():
+    """After a rejection the tree is intact: queries are right and a valid append still works."""
+    pg = _pg()
+    g = _grove_with(pg, [100, 200])
+    with pytest.raises(ValueError):
+        g.insert_sorted("chr1", _gc(pg, 50), None)
+    with pytest.raises(ValueError):
+        g.insert_bulk("chr1", [(_gc(pg, 60), None)])
+    assert len(list(g.intersect(_gc(pg, 0, 1000), "chr1"))) == 2
+    g.insert_sorted("chr1", _gc(pg, 300), None)
+    assert len(list(g.intersect(_gc(pg, 0, 1000), "chr1"))) == 3
+
+
+def test_presorted_batch_with_ties_is_accepted():
+    pg = _pg()
+    g = pg.Grove()
+    items = [(_gc(pg, 100), None), (_gc(pg, 100), None), (_gc(pg, 200), None)]
+    assert len(g.insert_bulk("chr1", items, presorted=True)) == 3
+
+
+def test_check_follows_the_max_after_remove_key():
+    """Removing the rightmost key lowers the index maximum the check compares against."""
+    pg = _pg()
+    g = pg.Grove()
+    keys = [g.insert("chr1", _gc(pg, s), None) for s in (100, 200, 300)]
+    assert g.remove_key("chr1", keys[2])
+    g.insert_sorted("chr1", _gc(pg, 250), None)          # above 200, below the removed 300
+    with pytest.raises(ValueError):
+        g.insert_sorted("chr1", _gc(pg, 150), None)
+
+    for k in g.intersect(_gc(pg, 0, 1000), "chr1"):      # empty the index entirely
+        g.remove_key("chr1", k)
+    g.insert_sorted("chr1", _gc(pg, 1), None)            # gone index: any value is fine
+    assert g.size() == 1
+
+
+def test_check_after_deserialize(tmp_path):
+    pg = _pg()
+    g = _grove_with(pg, [100, 200, 300])
+    path = str(tmp_path / "g.gg")
+    g.serialize(path)
+    h = pg.Grove.deserialize(path)
+    with pytest.raises(ValueError, match="chr1"):
+        h.insert_sorted("chr1", _gc(pg, 50), None)
+    h.insert_sorted("chr1", _gc(pg, 400), None)
+    assert h.size() == 4
+
+
+def test_gff_entry_overload_checked():
+    pg = _pg()
+    g = pg.GffGrove()
+    g.insert("chr1", pg.GffEntry("chr1", 1000, 1100, "gene"))
+    with pytest.raises(ValueError, match="chr1"):
+        g.insert_bulk("chr1", [pg.GffEntry("chr1", 10, 20, "gene")])
+    g.insert_bulk("chr1", [pg.GffEntry("chr1", 2000, 2100, "gene")], presorted=True)
+    assert g.size() == 2
