@@ -51,13 +51,15 @@ inline void bind_fasta_index(py::module_& m) {
         garbage-collected.
     )pbdoc")
         .def(py::init([](const std::string& path) {
-                 // fai_load() is not thread-safe: serialize construction.
+                 // fai_load() is not thread-safe: serialize construction. Release the
+                 // GIL only for the load; pybind11 registers the instance after this
+                 // returns and needs it held.
                  static std::mutex fai_load_mutex;
+                 py::gil_scoped_release release;
                  std::lock_guard<std::mutex> lock(fai_load_mutex);
                  return std::make_unique<handle_t>(path);
              }),
              py::arg("path"),
-             py::call_guard<py::gil_scoped_release>(),
              "Open a FASTA file and load (or create) its .fai index.")
         .def("fetch",
              [](const handle_t& h, const std::string& name, std::size_t start,
