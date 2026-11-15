@@ -15,7 +15,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <genogrove/io/bed_reader.hpp>
@@ -25,6 +27,17 @@
 
 namespace py = pybind11;
 namespace gio = genogrove::io;
+
+// Optional sub-structs cross by copy: a reference into the entry would dangle if
+// the optional were reset.
+template <class T>
+auto copy_get(std::optional<T> gio::bed_entry::*mem) {
+    return [mem](const gio::bed_entry& e) { return e.*mem; };
+}
+template <class T>
+auto copy_set(std::optional<T> gio::bed_entry::*mem) {
+    return [mem](gio::bed_entry& e, std::optional<T> v) { e.*mem = std::move(v); };
+}
 
 inline void bind_bed_entry(py::module_& m) {
     // Register the inner structs BEFORE BedEntry, whose optional fields
@@ -106,12 +119,15 @@ inline void bind_bed_entry(py::module_& m) {
                        "Optional[str] strand — a single character ('+', '-', "
                        "'.'); assigning an empty or multi-character string "
                        "raises ValueError, None clears it (BED6+)")
-        .def_readwrite("thickness", &gio::bed_entry::thickness,
-                       "Optional[ThickInfo] thick range (BED7+)")
-        .def_readwrite("item_rgb", &gio::bed_entry::item_rgb,
-                       "Optional[RgbColor] display color (BED9+)")
-        .def_readwrite("blocks", &gio::bed_entry::blocks,
-                       "Optional[BlockInfo] block structure (BED12)")
+        .def_property("thickness", copy_get(&gio::bed_entry::thickness),
+                      copy_set(&gio::bed_entry::thickness),
+                      "Optional[ThickInfo] thick range (BED7+); a copy, assign a new ThickInfo to change it")
+        .def_property("item_rgb", copy_get(&gio::bed_entry::item_rgb),
+                      copy_set(&gio::bed_entry::item_rgb),
+                      "Optional[RgbColor] display color (BED9+); a copy, assign a new RgbColor to change it")
+        .def_property("blocks", copy_get(&gio::bed_entry::blocks),
+                      copy_set(&gio::bed_entry::blocks),
+                      "Optional[BlockInfo] block structure (BED12); a copy, assign a new BlockInfo to change it")
         .def("to_coordinate",
              [](const gio::bed_entry& e) { return genomic_coordinate_from_entry(e); },
              R"pbdoc(

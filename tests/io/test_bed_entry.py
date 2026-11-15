@@ -124,5 +124,23 @@ def test_to_coordinate():
         pg.BedEntry("chr1", 100, 100).to_coordinate()
 
 
+def test_optional_substructs_are_copies():
+    """A handle survives the optional being reset, and edits to it don't write back."""
+    pg = _pg()
+    e = pg.BedEntry("chr1", 100, 200)
+    e.thickness = pg.ThickInfo(110, 190)
+    e.item_rgb = pg.RgbColor(1, 2, 3)
+    e.blocks = pg.BlockInfo(1, [50], [0])
+    t, c, b = e.thickness, e.item_rgb, e.blocks
+
+    t.start = 9
+    assert e.thickness.start == 110
+
+    e.thickness = e.item_rgb = e.blocks = None
+    assert (t.start, t.end) == (9, 190)
+    assert (c.red, c.green, c.blue) == (1, 2, 3)
+    assert b.count == 1 and list(b.sizes) == [50]
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
