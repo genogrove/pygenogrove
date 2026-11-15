@@ -121,13 +121,13 @@ inline void bind_bed_entry(py::module_& m) {
                        "raises ValueError, None clears it (BED6+)")
         .def_property("thickness", copy_get(&gio::bed_entry::thickness),
                       copy_set(&gio::bed_entry::thickness),
-                      "Optional[ThickInfo] thick range (BED7+); a copy, assign a new ThickInfo to change it")
+                      "Optional[ThickInfo] thick range (BED7+); returned by copy")
         .def_property("item_rgb", copy_get(&gio::bed_entry::item_rgb),
                       copy_set(&gio::bed_entry::item_rgb),
-                      "Optional[RgbColor] display color (BED9+); a copy, assign a new RgbColor to change it")
+                      "Optional[RgbColor] display color (BED9+); returned by copy")
         .def_property("blocks", copy_get(&gio::bed_entry::blocks),
                       copy_set(&gio::bed_entry::blocks),
-                      "Optional[BlockInfo] block structure (BED12); a copy, assign a new BlockInfo to change it")
+                      "Optional[BlockInfo] block structure (BED12); returned by copy")
         .def("to_coordinate",
              [](const gio::bed_entry& e) { return genomic_coordinate_from_entry(e); },
              R"pbdoc(

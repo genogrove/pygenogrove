@@ -140,6 +140,15 @@ def test_optional_substructs_are_copies():
     assert (t.start, t.end) == (9, 190)
     assert (c.red, c.green, c.blue) == (1, 2, 3)
     assert b.count == 1 and list(b.sizes) == [50]
+    assert e.thickness is None and e.item_rgb is None and e.blocks is None
+
+    src = pg.ThickInfo(1, 2)
+    e.thickness = src
+    src.start = 7
+    assert e.thickness.start == 1
+
+    with pytest.raises(TypeError):
+        e.thickness = 5
 
 
 if __name__ == "__main__":
