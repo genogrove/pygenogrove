@@ -392,5 +392,52 @@ def test_pointer_stability_for_external_keys():
     assert g.get_neighbors(ext[0])[0].value.start == 1000
 
 
+# --------------------------------------------------------------------------- #
+# Ownership — edges only between live keys of this grove
+# --------------------------------------------------------------------------- #
+
+def _two_keys(pg):
+    g = pg.Grove(3)
+    a = g.insert("chr1", pg.GenomicCoordinate(".", 100, 200))
+    b = g.insert("chr1", pg.GenomicCoordinate(".", 300, 400))
+    return g, a, b
+
+
+def _assert_rejected(g, good, bad):
+    with pytest.raises(ValueError):
+        g.add_edge(good, bad)
+    with pytest.raises(ValueError):
+        g.add_edge(bad, good)
+    with pytest.raises(ValueError):
+        g.add_edge(good, bad, {"w": 1})
+    with pytest.raises(ValueError):
+        g.link_if([good, bad], lambda s, t: True)
+    with pytest.raises(ValueError):
+        g.link_with([good, bad], lambda s, t: 1)
+    assert g.edge_count() == 0
+
+
+def test_edges_reject_key_of_another_grove():
+    pg = _pg()
+    g, a, _ = _two_keys(pg)
+    _, foreign, _ = _two_keys(pg)
+    _assert_rejected(g, a, foreign)
+
+
+def test_edges_reject_removed_key():
+    pg = _pg()
+    g, a, b = _two_keys(pg)
+    assert g.remove_key("chr1", b)
+    _assert_rejected(g, a, b)
+
+
+def test_link_if_accepts_external_keys():
+    pg = _pg()
+    g, a, _ = _two_keys(pg)
+    ext = g.add_external_key(pg.GenomicCoordinate(".", 900, 950))
+    g.link_if([a, ext], lambda s, t: True)
+    assert g.has_edge(a, ext)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
