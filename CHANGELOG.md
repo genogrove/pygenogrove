@@ -11,7 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`get_index_names()` on the eager groves**: `Grove`, `BedGrove`, `GffGrove`, `NumericGrove` and `KmerGrove` list the names of the indices (e.g. chromosomes) they hold, in unspecified order, matching `GroveView.get_index_names()`. ([#118](https://github.com/genogrove/pygenogrove/issues/118), [#124](https://github.com/genogrove/pygenogrove/pull/124))
 
+### Changed
+
+- **Bundled genogrove bumped to
+  [v0.27.2](https://github.com/genogrove/genogrove/releases/tag/v0.27.2)** (from
+  v0.27.1). An allocation failure during an internal node split no longer frees a
+  subtree, and `len(grove)` stays correct when a single-value `insert` raises. After
+  any insert that raises, discard the grove. ([#134](https://github.com/genogrove/pygenogrove/pull/134))
+
 ### Fixed
+
+- **`add_edge`, `link_if` and `link_with` accepted keys the grove does not own**: a key of
+  another grove (or a `GroveView`), or one removed with `remove_key`, was stored in the
+  graph and could be read after its storage was freed. They now raise `ValueError`. The
+  check scans the grove, so each `add_edge` call costs O(n). ([#126](https://github.com/genogrove/pygenogrove/issues/126), [#134](https://github.com/genogrove/pygenogrove/pull/134))
 
 - **Sphinx autodoc rejected the overloaded `insert` / `insert_bulk` docstrings**: on `BedGrove` and `GffGrove`, pybind11 3.x leaves each overload's body indented, so the numpy section titles raised `Unexpected section title`. The docstrings are now dedented before registration. ([#116](https://github.com/genogrove/pygenogrove/issues/116), [#125](https://github.com/genogrove/pygenogrove/pull/125))
 - **`example.py` crashed with `IndexError` in its BED section**: the 2-arg `BedGrove.insert` gives the peaks a strand-aware key, but the example queried with `'.'`, which matches only `'.'`. It now queries with the `'*'` wildcard. The README is cut to install, one Quick Start example and a link to the [documentation](https://genogrove.readthedocs.io). ([#123](https://github.com/genogrove/pygenogrove/pull/123))

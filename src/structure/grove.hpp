@@ -29,6 +29,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -90,6 +91,34 @@ void check_no_none_keys(const std::vector<KeyPtr>& keys, const char* arg_name) {
     for (const auto* k : keys) {
         if (k == nullptr) {
             throw py::type_error(std::string(arg_name) + " must not contain None");
+        }
+    }
+}
+
+// Edges store raw key pointers, so a foreign or removed key would dangle.
+template <typename Grove, typename KeyPtr>
+void check_owned(const Grove& g, KeyPtr key, const char* arg_name) {
+    if (!g.owns(key)) {
+        throw py::value_error(std::string(arg_name) + " is not a live key of this grove");
+    }
+}
+
+// owns() is O(N) per key, so a key list gets one leaf walk instead.
+template <typename Grove, typename KeyPtr>
+void check_all_owned(const Grove& g, const std::vector<KeyPtr>& keys, const char* arg_name) {
+    std::unordered_set<const void*> indexed;
+    for (const auto& [_, root] : g.get_root_nodes()) {
+        const auto* leaf = root;
+        while (!leaf->get_is_leaf()) { leaf = leaf->get_children().front(); }
+        for (; leaf != nullptr; leaf = leaf->get_next()) {
+            indexed.insert(leaf->get_keys().begin(), leaf->get_keys().end());
+        }
+    }
+    for (const auto* k : keys) {
+        // ponytail: external keys fall back to owns(), O(N) each
+        if (!indexed.contains(k) && !g.owns(k)) {
+            throw py::value_error(std::string(arg_name) +
+                                  " contains a key that is not a live key of this grove");
         }
     }
 }
@@ -451,6 +480,8 @@ void bind_grove(py::module_& m, const char* grove_name,
         // ---- Graph overlay (directed edges between keys) ----
         .def("add_edge",
              [](grove_t& g, key_t* source, key_t* target) {
+                 check_owned(g, source, "source");
+                 check_owned(g, target, "target");
                  g.add_edge(source, target);
              },
              py::arg("source").none(false), py::arg("target").none(false),
@@ -459,7 +490,8 @@ void bind_grove(py::module_& m, const char* grove_name,
 
                  source and target must be Keys belonging to this Grove (returned
                  by insert(), add_external_key(), or yielded by a QueryResult).
-                 Raises TypeError if either is None.
+                 Raises TypeError if either is None, ValueError if either is not a
+                 live key of this Grove (foreign or removed). The check is O(n).
              )pbdoc")
         .def("remove_edge",
              [](grove_t& g, key_t* source, key_t* target) {
@@ -532,8 +564,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                  return g.remove_edges_to(target);
              },
              py::arg("target").none(false),
-             "Remove all incoming edges to target — O(in-degree + out-degree) for "
-             "target, not a graph-wide scan. Returns the number removed.")
+             "Remove all incoming edges to target — at least quadratic in target's "
+             "in-degree, but not a graph-wide scan. Returns the number removed.")
         .def("remove_all_edges",
              [](grove_t& g, key_t* key) { return g.remove_all_edges(key); },
              py::arg("key").none(false),
@@ -548,6 +580,7 @@ void bind_grove(py::module_& m, const char* grove_name,
              [](grove_t& g, const std::vector<key_t*>& keys,
                 std::function<bool(key_t*, key_t*)> predicate) {
                  check_no_none_keys(keys, "keys");
+                 check_all_owned(g, keys, "keys");
                  // The predicate calls back into Python — keep the GIL held.
                  g.link_if(keys, std::move(predicate));
              },
@@ -559,7 +592,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                  (keys[i], keys[i+1]) for which predicate(keys[i], keys[i+1])
                  returns True. `keys` is typically the list returned by a bulk
                  insert; the predicate receives two Keys. Use link_with() to attach
-                 edge metadata. Raises TypeError if any element of keys is None.
+                 edge metadata. The predicate must not modify the grove. Raises
+                 TypeError if any element of keys is None, ValueError if any is
+                 not a live key of this Grove.
              )pbdoc")
 
         // ---- Vertex / storage counts ----
@@ -682,6 +717,8 @@ void bind_grove(py::module_& m, const char* grove_name,
     if constexpr (!std::is_void_v<EdgeT>) {
         cls.def("add_edge",
                 [](grove_t& g, key_t* source, key_t* target, EdgeT data) {
+                    check_owned(g, source, "source");
+                    check_owned(g, target, "target");
                     g.add_edge(source, target, std::move(data));
                 },
                 py::arg("source").none(false), py::arg("target").none(false),
@@ -693,7 +730,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                     payload (any JSON-serializable value on the universal Grove).
                     This is an overload of add_edge(source, target); the two-argument
                     form attaches a None payload. Raises TypeError if either key is
-                    None.
+                    None, ValueError if either is not a live key of this Grove. The
+                    check is O(n).
                 )pbdoc");
         cls.def("get_edges",
                 [](const grove_t& g, const key_t* source) {
@@ -811,6 +849,7 @@ void bind_grove(py::module_& m, const char* grove_name,
                 [](grove_t& g, const std::vector<key_t*>& keys,
                    std::function<std::optional<EdgeT>(key_t*, key_t*)> predicate) {
                     check_no_none_keys(keys, "keys");
+                    check_all_owned(g, keys, "keys");
                     // The predicate calls back into Python — keep the GIL held.
                     g.link_if(keys, std::move(predicate));
                 },
@@ -822,7 +861,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                     attach, or None to skip: predicate(keys[i], keys[i+1]) ->
                     Optional[object], applied to each adjacent pair. Use this to
                     label edges built over a bulk-inserted run of keys. Raises
-                    TypeError if any element of keys is None.
+                    TypeError if any element of keys is None, ValueError if any is
+                    not a live key of this Grove. The predicate must not modify the
+                    grove.
                 )pbdoc");
     }
 
