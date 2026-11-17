@@ -404,15 +404,15 @@ def _two_keys(pg):
 
 
 def _assert_rejected(g, good, bad):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not a live key"):
         g.add_edge(good, bad)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not a live key"):
         g.add_edge(bad, good)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not a live key"):
         g.add_edge(good, bad, {"w": 1})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not a live key"):
         g.link_if([good, bad], lambda s, t: True)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not a live key"):
         g.link_with([good, bad], lambda s, t: 1)
     assert g.edge_count() == 0
 
@@ -429,6 +429,16 @@ def test_edges_reject_removed_key():
     g, a, b = _two_keys(pg)
     assert g.remove_key("chr1", b)
     _assert_rejected(g, a, b)
+
+
+def test_edges_reject_grove_view_key(tmp_path):
+    pg = _pg()
+    g, a, _ = _two_keys(pg)
+    path = str(tmp_path / "view.gg")
+    g.serialize(path)
+    view = pg.GroveView.open(path)
+    view_key = next(iter(view.intersect(pg.GenomicCoordinate(".", 100, 200), "chr1")))
+    _assert_rejected(g, a, view_key)
 
 
 def test_link_if_accepts_external_keys():

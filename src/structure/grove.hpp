@@ -592,8 +592,9 @@ void bind_grove(py::module_& m, const char* grove_name,
                  (keys[i], keys[i+1]) for which predicate(keys[i], keys[i+1])
                  returns True. `keys` is typically the list returned by a bulk
                  insert; the predicate receives two Keys. Use link_with() to attach
-                 edge metadata. Raises TypeError if any element of keys is None,
-                 ValueError if any is not a live key of this Grove.
+                 edge metadata. The predicate must not modify the grove. Raises
+                 TypeError if any element of keys is None, ValueError if any is
+                 not a live key of this Grove.
              )pbdoc")
 
         // ---- Vertex / storage counts ----
@@ -729,7 +730,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                     payload (any JSON-serializable value on the universal Grove).
                     This is an overload of add_edge(source, target); the two-argument
                     form attaches a None payload. Raises TypeError if either key is
-                    None, ValueError if either is not a live key of this Grove.
+                    None, ValueError if either is not a live key of this Grove. The
+                    check is O(n).
                 )pbdoc");
         cls.def("get_edges",
                 [](const grove_t& g, const key_t* source) {
@@ -860,7 +862,8 @@ void bind_grove(py::module_& m, const char* grove_name,
                     Optional[object], applied to each adjacent pair. Use this to
                     label edges built over a bulk-inserted run of keys. Raises
                     TypeError if any element of keys is None, ValueError if any is
-                    not a live key of this Grove.
+                    not a live key of this Grove. The predicate must not modify the
+                    grove.
                 )pbdoc");
     }
 
